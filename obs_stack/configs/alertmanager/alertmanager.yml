@@ -1,0 +1,32 @@
+---
+global:
+  resolve_timeout: 30m
+
+# We use a default route to a non-existant endpoint
+# because alertmanager requires at least one default
+# route/receiver. Note, this is just to make alertmanager
+# happy and does not actually do anything!
+route:
+  receiver: empty_webhook
+  routes:
+  - group_by:
+    - alertname
+    match:
+      source: testing
+    receiver: empty_webhook
+  - group_by:
+    - alertname
+    match:
+      source: stack
+    receiver: alerta
+
+
+receivers:
+- name: empty_webhook
+  webhook_configs:
+  - send_resolved: true
+    url: http://localhost:9999
+# - name: alerta
+#   webhook_configs:
+#   - send_resolved: true
+#     url: http://alerta-01:8080/api/webhooks/prometheus

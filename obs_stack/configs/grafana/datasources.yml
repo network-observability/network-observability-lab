@@ -1,0 +1,10 @@
+---
+apiVersion: 1
+
+datasources:
+- name: prometheus-01
+  type: prometheus
+  url: http://prometheus-01:9090
+- name: loki-01
+  type: loki
+  url: http://loki-01:3001
