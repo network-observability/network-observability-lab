@@ -1,0 +1,6 @@
+typer[all]
+typer-cli
+black
+flake8
+ruff
+pydocstyle
