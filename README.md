@@ -4,7 +4,7 @@ This repository serves as a valuable resource for constructing and managing an O
 
 ## Requirements
 
-In order to run the components of the Observability stack and network devices you must have:
+To run the components of the Observability stack and network devices you must have:
 
 - `docker` and compose installed in your system
 - `containerlab` for the network lab
@@ -15,3 +15,5 @@ In order to run the components of the Observability stack and network devices yo
 ## NetObs Utility tool
 
 Netobs is a utility tool that provides functions to interact and manage the network lab and observability stack in the repository. It is designed to simplify the process of managing and monitoring network infrastructure by providing a set of helpful commands and utilities.
+
+For more information about the `netobs.py` tool, please see the [docs](NetObs.md)

@@ -187,6 +187,7 @@ def run_docker_compose_cmd(
     task_name: str = "",
 ) -> subprocess.CompletedProcess:
     """Run a docker compose command.
+
     Args:
         filename (str): Docker compose file.
         action (str): Docker compose action. Example 'up'
@@ -238,11 +239,7 @@ def containerlab_deploy(
 ):
     """Deploy a containerlab topology.
 
-    Args:
-        topology (Path): Path to the topology file
-        sudo (bool, optional): Use sudo to run containerlab. Defaults to True.
-
-    Raises:
+    **Raises:**
         typer.Exit: Exit with code 1 if the topology file is not found
     """
     console.log("Deploying containerlab topology", style="info")
@@ -263,11 +260,7 @@ def containerlab_destroy(
 ):
     """Destroy a containerlab topology.
 
-    Args:
-        topology (Path): Path to the topology file
-        sudo (bool, optional): Use sudo to run containerlab. Defaults to True.
-
-    Raises:
+    **Raises:**
         typer.Exit: Exit with code 1 if the topology file is not found
     """
     console.log("Deploying containerlab topology", style="info")
@@ -293,12 +286,7 @@ def docker_build(
 ):
     """Build a docker image.
 
-    Args:
-        path (Path): Path to the Dockerfile
-        tag (str): Tag to use for the image
-        sudo (bool, optional): Use sudo to run docker. Defaults to True.
-
-    Raises:
+    **Raises:**
         typer.Exit: Exit with code 1 if the Dockerfile is not found
     """
     console.log("Building docker image", style="info")
@@ -317,12 +305,7 @@ def docker_push(
     tag: str = typer.Argument(..., help="Tag to use for the image"),
     sudo: bool = typer.Option(True, help="Use sudo to run docker"),
 ):
-    """Push a docker image.
-
-    Args:
-        tag (str): Tag to use for the image
-        sudo (bool, optional): Use sudo to run docker. Defaults to True.
-    """
+    """Push a docker image."""
     console.log("Pushing docker image", style="info")
     console.log(f"Image tag: [orange1 i]{tag}", style="info")
     exec_cmd = f"docker push {tag}"
@@ -336,12 +319,7 @@ def docker_debug(
     service: Optional[list[str]] = typer.Argument(None, help="Service(s) to run in debug mode"),
     verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Start docker compose in debug mode.
-
-    Args:
-        service (Optional[list[str]], optional): Service(s) to run in debug mode. Defaults to None.
-        verbose (bool, optional): Verbose mode. Defaults to False.
-    """
+    """Start docker compose in debug mode."""
     console.log(f"Starting in debug mode service(s): [orange1 i]{service}", style="info")
     docker_compose_file = Path("./obs_stack/docker-compose.yml")
     run_docker_compose_cmd(
@@ -360,12 +338,7 @@ def docker_destroy(
     volumes: bool = typer.Option(False, help="Remove volumes"),
     verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Destroy all containers and resources.
-
-    Args:
-        service (Optional[list[str]], optional): Service(s) to destroy. Defaults to None.
-        verbose (bool, optional): Verbose mode. Defaults to False.
-    """
+    """Destroy all containers and resources."""
     console.log(f"Destroying service(s): [orange1 i]{service}", style="info")
     docker_compose_file = Path("./obs_stack/docker-compose.yml")
     run_docker_compose_cmd(
@@ -384,12 +357,7 @@ def docker_start(
     service: Optional[list[str]] = typer.Argument(None, help="Service(s) to start"),
     verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Start all containers.
-
-    Args:
-        service (Optional[list[str]], optional): Service(s) to start. Defaults to None.
-        verbose (bool, optional): Verbose mode. Defaults to False.
-    """
+    """Start all containers."""
     console.log(f"Starting service(s): [orange1 i]{service}", style="info")
     docker_compose_file = Path("./obs_stack/docker-compose.yml")
     run_docker_compose_cmd(
@@ -407,12 +375,7 @@ def docker_stop(
     service: Optional[list[str]] = typer.Argument(None, help="Service(s) to stop"),
     verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Stop all containers.
-
-    Args:
-        service (Optional[list[str]], optional): Service(s) to stop. Defaults to None.
-        verbose (bool, optional): Verbose mode. Defaults to False.
-    """
+    """Stop all containers."""
     console.log(f"Stopping service(s): [orange1 i]{service}", style="info")
     docker_compose_file = Path("./obs_stack/docker-compose.yml")
     run_docker_compose_cmd(
@@ -429,12 +392,7 @@ def docker_restart(
     service: Optional[list[str]] = typer.Argument(None, help="Service(s) to restart"),
     verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Restart all containers.
-
-    Args:
-        service (Optional[list[str]], optional): Service(s) to restart. Defaults to None.
-        verbose (bool, optional): Verbose mode. Defaults to False.
-    """
+    """Restart all containers."""
     console.log(f"Restarting service(s): [orange1 i]{service}", style="info")
     docker_compose_file = Path("./obs_stack/docker-compose.yml")
     run_docker_compose_cmd(
@@ -453,14 +411,7 @@ def docker_logs(
     tail: Optional[int] = typer.Option(None, "-t", "--tail", help="Number of lines to show"),
     verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Show logs for all containers.
-
-    Args:
-        service (Optional[list[str]], optional): Service(s) to show logs. Defaults to None.
-        follow (bool, optional): Follow logs. Defaults to False.
-        tail (Optional[int], optional): Number of lines to show. Defaults to None.
-        verbose (bool, optional): Verbose mode. Defaults to False.
-    """
+    """Show logs for all containers."""
     console.log(f"Showing logs for service(s): [orange1 i]{service}", style="info")
     docker_compose_file = Path("./obs_stack/docker-compose.yml")
     options = ""
@@ -484,13 +435,7 @@ def docker_exec(
     command: str = typer.Argument("bash", help="Command to execute"),
     verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Execute a command in a container.
-
-    Args:
-        service (str): Service to execute command.
-        command (str): Command to execute.
-        verbose (bool, optional): Verbose mode. Defaults to False.
-    """
+    """Execute a command in a container."""
     console.log(f"Executing command in service: [orange1 i]{service}", style="info")
     docker_compose_file = Path("./obs_stack/docker-compose.yml")
     run_docker_compose_cmd(
@@ -508,12 +453,7 @@ def docker_ps(
     service: Optional[list[str]] = typer.Argument(None, help="Service(s) to show"),
     verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Show containers.
-
-    Args:
-        service (Optional[list[str]], optional): Service(s) to show. Defaults to None.
-        verbose (bool, optional): Verbose mode. Defaults to False.
-    """
+    """Show containers."""
     console.log(f"Showing containers for service(s): [orange1 i]{service}", style="info")
     docker_compose_file = Path("./obs_stack/docker-compose.yml")
     run_docker_compose_cmd(
@@ -533,14 +473,7 @@ def docker_network(
     subnet: Optional[str] = typer.Option("172.24.177.0/24", help="Network subnet"),
     verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Manage docker network.
-
-    Args:
-        action (str): Action to perform.
-        driver (Optional[str], optional): Network driver. Defaults to None.
-        subnet (Optional[str], optional): Network subnet. Defaults to None.
-        verbose (bool, optional): Verbose mode. Defaults to False.
-    """
+    """Manage docker network."""
     console.log(f"Network {action.value}: [orange1 i]{name}", style="info")
     exec_cmd = f"docker network {action.value}"
     if driver and action.value == "create":
