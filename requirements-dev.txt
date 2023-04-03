@@ -1,5 +1,6 @@
 typer[all]
 typer-cli
+python-dotenv
 black
 flake8
 ruff

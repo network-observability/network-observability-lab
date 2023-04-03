@@ -2,12 +2,17 @@
 import os
 import subprocess
 import shlex
-from typing import Optional
+from enum import Enum
+from typing import Optional, Any
 from pathlib import Path
 
 import typer
+from dotenv import dotenv_values
 from rich.console import Console
 from rich.theme import Theme
+
+
+ENVVARS = {**dotenv_values(".env"), **os.environ}
 
 custom_theme = Theme(
     {
@@ -34,11 +39,101 @@ docker_app = typer.Typer()
 app.add_typer(docker_app, name="docker")
 
 
+class DockerNetworkAction(Enum):
+    """Docker network action."""
+
+    CONNECT = "connect"
+    CREATE = "create"
+    DISCONNECT = "disconnect"
+    INSPECT = "inspect"
+    LIST = "ls"
+    PRUNE = "prune"
+    REMOVE = "rm"
+
+
+def strtobool(val: str) -> bool:
+    """Convert a string representation of truth to true (1) or false (0).
+
+    Args:
+        val (str): String representation of truth.
+
+    Returns:
+        bool: True or False
+    """
+    val = val.lower()
+    if val in ("y", "yes", "t", "true", "on", "1"):
+        return True
+    elif val in ("n", "no", "f", "false", "off", "0"):
+        return False
+    else:
+        raise ValueError("invalid truth value %r" % (val,))
+
+
+def is_truthy(arg: Any) -> bool:
+    """Convert "truthy" strings into Booleans.
+
+    Examples:
+    ```python
+        >>> is_truthy('yes')
+        True
+    ```
+
+    Args:
+        arg (str): Truthy string (True values are y, yes, t, true, on and 1; false values are n, no,
+        f, false, off and 0. Raises ValueError if val is anything else.
+    """
+    if isinstance(arg, bool):
+        return arg
+    if arg is None:
+        return False
+    return bool(strtobool(arg))
+
+
+def docker_compose_cmd(
+    compose_action: str,
+    docker_compose_file: Path,
+    services: list[str] = [],
+    verbose: int = 0,
+    extra_options: str = "",
+    command: str = "",
+    compose_name: str = "",
+) -> str:
+    """Create docker-compose command to execute.
+    Args:
+        compose_action (str): Docker Compose action to run.
+        docker_compose_file (Path): Docker compose file.
+        services (List[str], optional): List of specifics container to action. Defaults to [].
+        verbose (int, optional): Verbosity. Defaults to 0.
+        extra_options (str, optional): Extra docker compose flags to pass to the command line. Defaults to "".
+        command (str, optional): Command to execute in docker compose. Defaults to "".
+        compose_name (str, optional): Name to give to the docker compose project. Defaults to PROJECT_NAME.
+    Returns:
+        str: Docker compose command
+    """
+    if is_truthy(ENVVARS.get("DOCKER_COMPOSE_WITH_HASH", None)):
+        exec_cmd = f"docker-compose --project-name {compose_name} -f {docker_compose_file}"
+    else:
+        exec_cmd = f"docker compose --project-name {compose_name} -f {docker_compose_file}"
+
+    if verbose:
+        exec_cmd += " --verbose"
+    exec_cmd += f" {compose_action}"
+
+    if extra_options:
+        exec_cmd += f" {extra_options}"
+    if services:
+        exec_cmd += f" {' '.join(services)}"
+    if command:
+        exec_cmd += f" {command}"
+
+    return exec_cmd
+
+
 def run_cmd(
     exec_cmd: str,
-    envvars: Optional[dict] = None,
+    envvars: dict[str, str] = ENVVARS,
     cwd: Optional[str] = None,
-    timeout: int = 60,
+    timeout: Optional[int] = None,
     shell: bool = False,
     capture_output: bool = False,
     task_name: str = "",
@@ -47,9 +142,9 @@ def run_cmd(
 
     Args:
         exec_cmd (str): Command to execute
-        envvars (dict, optional): Environment variables to pass to the command. Defaults to None.
+        envvars (dict, optional): Environment variables. Defaults to ENVVARS.
         cwd (str, optional): Working directory. Defaults to None.
-        timeout (int, optional): Timeout in seconds. Defaults to 60.
+        timeout (int, optional): Timeout in seconds. Defaults to None.
         shell (bool, optional): Run the command in a shell. Defaults to False.
         capture_output (bool, optional): Capture stdout and stderr. Defaults to True.
         task_name (str, optional): Name of the task. Defaults to "".
@@ -58,10 +153,6 @@ def run_cmd(
         subprocess.CompletedProcess: Result of the command
     """
     console.log(f"Running command: [orange1 i]{exec_cmd}", style="info")
-    if envvars:
-        envvars = {**os.environ, **envvars}
-    else:
-        envvars = os.environ  # type: ignore
     result = subprocess.run(
         shlex.split(exec_cmd),
         env=envvars,
@@ -82,6 +173,59 @@ def run_cmd(
     return result
 
 
+def run_docker_compose_cmd(
+    filename: Path,
+    action: str,
+    services: list[str] = [],
+    verbose: int = 0,
+    command: str = "",
+    extra_options: str = "",
+    envvars: dict[str, str] = ENVVARS,
+    timeout: Optional[int] = None,
+    shell: bool = False,
+    capture_output: bool = False,
+    task_name: str = "",
+) -> subprocess.CompletedProcess:
+    """Run a docker compose command.
+    Args:
+        filename (str): Docker compose file.
+        action (str): Docker compose action. Example 'up'
+        services (List[str], optional): List of services defined in the docker compose. Defaults to [].
+        verbose (int, optional): Execute verbose command. Defaults to 0.
+        command (str, optional): Docker compose command to send on action `exec`. Defaults to "".
+        extra_options (str, optional): Extra options to pass over docker compose command. Defaults to "".
+        envvars (dict, optional): Environment variables. Defaults to ENVVARS.
+        timeout (int, optional): Timeout in seconds. Defaults to None.
+        shell (bool, optional): Run the command in a shell. Defaults to False.
+        capture_output (bool, optional): Capture stdout and stderr. Defaults to True.
+        task_name (str, optional): Name of the task passed. Defaults to "".
+
+    Returns:
+        subprocess.CompletedProcess: Result of the command
+    """
+    if not filename.exists():
+        console.log(f"File not found: [orange1 i]{filename}", style="error")
+        raise typer.Exit(1)
+
+    exec_cmd = docker_compose_cmd(
+        action,
+        docker_compose_file=filename,
+        services=services,
+        command=command,
+        verbose=verbose,
+        extra_options=extra_options,
+        compose_name="netobs",
+    )
+    return run_cmd(
+        exec_cmd=exec_cmd,
+        envvars=envvars,
+        timeout=timeout,
+        shell=shell,
+        capture_output=capture_output,
+        task_name=f"{task_name}",
+    )
+
+
 # --------------------------------------#
 #             Containerlab              #
 # --------------------------------------#
@@ -89,7 +233,7 @@ def run_cmd(
 
 @containerlab_app.command("deploy")
 def containerlab_deploy(
-    topology: Path = typer.Argument(..., help="Path to the topology file"),
+    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
     sudo: bool = typer.Option(True, help="Use sudo to run containerlab"),
 ):
     """Deploy a containerlab topology.
@@ -114,7 +258,7 @@ def containerlab_deploy(
 
 @containerlab_app.command("destroy")
 def containerlab_destroy(
-    topology: Path = typer.Argument(..., help="Path to the topology file"),
+    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
     sudo: bool = typer.Option(True, help="Use sudo to run containerlab"),
 ):
     """Destroy a containerlab topology.
@@ -189,18 +333,223 @@ def docker_push(
 
 @docker_app.command("debug")
 def docker_debug(
-    service: str = typer.Argument(..., help="Tag to use for the image"),
-    sudo: bool = typer.Option(True, help="Use sudo to run docker"),
+    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to run in debug mode"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Run a docker image in debug mode.
+    """Start docker compose in debug mode.
 
     Args:
-        tag (str): Tag to use for the image
-        sudo (bool, optional): Use sudo to run docker. Defaults to True.
+        service (Optional[list[str]], optional): Service(s) to run in debug mode. Defaults to None.
+        verbose (bool, optional): Verbose mode. Defaults to False.
     """
-    console.log("Running docker image in debug mode", style="info")
-    console.log(f"Image tag: [orange1 i]{tag}", style="info")
-    exec_cmd = f"docker run -it {tag}"
-    if sudo:
-        exec_cmd = f"sudo {exec_cmd}"
-    run_cmd(exec_cmd, task_name="Running docker image in debug mode")
+    console.log(f"Starting in debug mode service(s): [orange1 i]{service}", style="info")
+    docker_compose_file = Path("./obs_stack/docker-compose.yml")
+    run_docker_compose_cmd(
+        action="up",
+        filename=docker_compose_file,
+        services=service if service else [],
+        verbose=verbose,
+        extra_options="--remove-orphans",
+        task_name="debug stack",
+    )
+
+
+@docker_app.command("destroy")
+def docker_destroy(
+    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to destroy"),
+    volumes: bool = typer.Option(False, help="Remove volumes"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Destroy all containers and resources.
+
+    Args:
+        service (Optional[list[str]], optional): Service(s) to destroy. Defaults to None.
+        verbose (bool, optional): Verbose mode. Defaults to False.
+    """
+    console.log(f"Destroying service(s): [orange1 i]{service}", style="info")
+    docker_compose_file = Path("./obs_stack/docker-compose.yml")
+    run_docker_compose_cmd(
+        action="down",
+        filename=docker_compose_file,
+        services=service if service else [],
+        verbose=verbose,
+        extra_options="--volumes" if volumes else "",
+        timeout=None,
+        task_name="destroy stack",
+    )
+
+
+@docker_app.command("start")
+def docker_start(
+    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to start"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Start all containers.
+
+    Args:
+        service (Optional[list[str]], optional): Service(s) to start. Defaults to None.
+        verbose (bool, optional): Verbose mode. Defaults to False.
+    """
+    console.log(f"Starting service(s): [orange1 i]{service}", style="info")
+    docker_compose_file = Path("./obs_stack/docker-compose.yml")
+    run_docker_compose_cmd(
+        action="up",
+        filename=docker_compose_file,
+        services=service if service else [],
+        verbose=verbose,
+        extra_options="-d --remove-orphans",
+        task_name="start stack",
+    )
+
+
+@docker_app.command("stop")
+def docker_stop(
+    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to stop"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Stop all containers.
+
+    Args:
+        service (Optional[list[str]], optional): Service(s) to stop. Defaults to None.
+        verbose (bool, optional): Verbose mode. Defaults to False.
+    """
+    console.log(f"Stopping service(s): [orange1 i]{service}", style="info")
+    docker_compose_file = Path("./obs_stack/docker-compose.yml")
+    run_docker_compose_cmd(
+        action="stop",
+        filename=docker_compose_file,
+        services=service if service else [],
+        verbose=verbose,
+        task_name="stop stack",
+    )
+
+
+@docker_app.command("restart")
+def docker_restart(
+    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to restart"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Restart all containers.
+
+    Args:
+        service (Optional[list[str]], optional): Service(s) to restart. Defaults to None.
+        verbose (bool, optional): Verbose mode. Defaults to False.
+    """
+    console.log(f"Restarting service(s): [orange1 i]{service}", style="info")
+    docker_compose_file = Path("./obs_stack/docker-compose.yml")
+    run_docker_compose_cmd(
+        action="restart",
+        filename=docker_compose_file,
+        services=service if service else [],
+        verbose=verbose,
+        task_name="restart stack",
+    )
+
+
+@docker_app.command("logs")
+def docker_logs(
+    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to show logs"),
+    follow: bool = typer.Option(False, "-f", "--follow", help="Follow logs"),
+    tail: Optional[int] = typer.Option(None, "-t", "--tail", help="Number of lines to show"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Show logs for all containers.
+
+    Args:
+        service (Optional[list[str]], optional): Service(s) to show logs. Defaults to None.
+        follow (bool, optional): Follow logs. Defaults to False.
+        tail (Optional[int], optional): Number of lines to show. Defaults to None.
+        verbose (bool, optional): Verbose mode. Defaults to False.
+    """
+    console.log(f"Showing logs for service(s): [orange1 i]{service}", style="info")
+    docker_compose_file = Path("./obs_stack/docker-compose.yml")
+    options = ""
+    if follow:
+        options += "-f "
+    if tail:
+        options += f"--tail={tail}"
+    run_docker_compose_cmd(
+        action="logs",
+        filename=docker_compose_file,
+        services=service if service else [],
+        extra_options=options,
+        verbose=verbose,
+        task_name="show logs",
+    )
+
+
+@docker_app.command("exec")
+def docker_exec(
+    service: str = typer.Argument(..., help="Service to execute command"),
+    command: str = typer.Argument("bash", help="Command to execute"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Execute a command in a container.
+
+    Args:
+        service (str): Service to execute command.
+        command (str): Command to execute.
+        verbose (bool, optional): Verbose mode. Defaults to False.
+    """
+    console.log(f"Executing command in service: [orange1 i]{service}", style="info")
+    docker_compose_file = Path("./obs_stack/docker-compose.yml")
+    run_docker_compose_cmd(
+        action="exec",
+        filename=docker_compose_file,
+        services=[service],
+        command=command,
+        verbose=verbose,
+        task_name="exec command",
+    )
+
+
+@docker_app.command("ps")
+def docker_ps(
+    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to show"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Show containers.
+
+    Args:
+        service (Optional[list[str]], optional): Service(s) to show. Defaults to None.
+        verbose (bool, optional): Verbose mode. Defaults to False.
+    """
+    console.log(f"Showing containers for service(s): [orange1 i]{service}", style="info")
+    docker_compose_file = Path("./obs_stack/docker-compose.yml")
+    run_docker_compose_cmd(
+        action="ps",
+        filename=docker_compose_file,
+        services=service if service else [],
+        verbose=verbose,
+        task_name="show containers",
+    )
+
+
+@docker_app.command("network")
+def docker_network(
+    action: DockerNetworkAction = typer.Argument(..., help="Action to perform", case_sensitive=False),
+    name: Optional[str] = typer.Option("network-observability", "-n", "--name", help="Network name"),
+    driver: Optional[str] = typer.Option("bridge", help="Network driver"),
+    subnet: Optional[str] = typer.Option("172.24.177.0/24", help="Network subnet"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Manage docker network.
+
+    Args:
+        action (str): Action to perform.
+        driver (Optional[str], optional): Network driver. Defaults to None.
+        subnet (Optional[str], optional): Network subnet. Defaults to None.
+        verbose (bool, optional): Verbose mode. Defaults to False.
+    """
+    console.log(f"Network {action.value}: [orange1 i]{name}", style="info")
+    exec_cmd = f"docker network {action.value}"
+    if driver and action.value == "create":
+        exec_cmd += f" --driver={driver} "
+    if subnet and action.value == "create":
+        exec_cmd += f" --subnet={subnet}"
+    if action.value != "ls" and action.value != "prune":
+        exec_cmd += f" {name}"
+    run_cmd(
+        exec_cmd=exec_cmd,
+        task_name=f"network {action.value}",
+    )

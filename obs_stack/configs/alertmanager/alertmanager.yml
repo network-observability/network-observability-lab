@@ -14,11 +14,11 @@ route:
     match:
       source: testing
     receiver: empty_webhook
-  - group_by:
-    - alertname
-    match:
-      source: stack
-    receiver: alerta
+  # - group_by:
+  #   - alertname
+  #   match:
+  #     source: stack
+  #   receiver: alerta
 
 
 receivers:

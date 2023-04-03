@@ -9,7 +9,8 @@ volumes:
 
 networks:
   network-observability:
-      name: network-observability
+    external: true
+    name: network-observability
 
 version: "3.8"
 services:

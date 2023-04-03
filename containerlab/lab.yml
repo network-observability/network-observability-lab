@@ -1,4 +1,5 @@
 name: lab
+prefix: ""  # Empty string to not add a prefix to the containers
 
 mgmt:
   network: network-observability
