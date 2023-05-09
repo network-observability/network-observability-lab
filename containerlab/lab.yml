@@ -1,0 +1,36 @@
+name: lab
+prefix: ""  # Empty string to not add a prefix to the containers
+
+mgmt:
+  network: network-observability
+  ipv4_subnet: 172.24.177.0/24
+
+topology:
+  kinds:
+    ceos:
+      image: ceos:4.28.5.1M
+  nodes:
+    ceos-01:
+      kind: ceos
+      mgmt_ipv4: 172.24.177.11
+      startup-config: startups/ceos-01.conf
+      publish:
+        - tcp/50051
+        - tcp/80
+        - tcp/443
+        - udp/161
+    ceos-02:
+      kind: ceos
+      mgmt_ipv4: 172.24.177.12
+      startup-config: startups/ceos-02.conf
+      publish:
+        - tcp/50051
+        - tcp/80
+        - tcp/443
+        - udp/161
+      # ports:
+      #   - 51161:161/udp
+
+  links:
+    - endpoints: ["ceos-01:eth1", "ceos-02:eth1"]
+    - endpoints: ["ceos-01:eth2", "ceos-02:eth2"]
