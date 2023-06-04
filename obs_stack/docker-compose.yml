@@ -24,7 +24,7 @@ services:
       - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
       - loki-01_data:/loki:rw
     env_file:
-      - .env
+      - ../.env
     networks:
       - network-observability
 
@@ -37,14 +37,14 @@ services:
     volumes:
       - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
     env_file:
-      - .env
+      - ../.env
     networks:
       - network-observability
 
   prometheus-01:
     image: docker.io/prom/prometheus:latest
     ports:
-      - 9091:9090
+      - 9090:9090
     command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml
     tty: true
     volumes:
@@ -52,7 +52,7 @@ services:
       - ./configs/prometheus/rules/:/etc/prometheus/rules/
       - prometheus-01_data:/prometheus
     env_file:
-      - .env
+      - ../.env
     networks:
       - network-observability
 
@@ -64,7 +64,7 @@ services:
   #   volumes:
   #     - ./configs/alerta/alertad.conf:/etc/alertad.conf
   #   env_file:
-  #     - .env
+  #     - ../.env
   #   networks:
   #     - network-observability
 
@@ -73,7 +73,7 @@ services:
   #   ports:
   #     - 5432:5432
   #   env_file:
-  #     - .env
+  #     - ../.env
   #   networks:
   #     - network-observability
 
@@ -88,7 +88,7 @@ services:
       - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
       - grafana-01_data:/grafana
     env_file:
-      - .env
+      - ../.env
     networks:
       - network-observability
 
@@ -102,7 +102,7 @@ services:
     ports:
       - 9004:9004
     env_file:
-      - .env
+      - ../.env
     networks:
       - network-observability
 
@@ -115,7 +115,7 @@ services:
     ports:
       - 9005:9005
     env_file:
-      - .env
+      - ../.env
     networks:
       - network-observability
 
@@ -131,6 +131,6 @@ services:
       - 1516:1516
       - 1517:1517
     env_file:
-      - .env
+      - ../.env
     networks:
       - network-observability

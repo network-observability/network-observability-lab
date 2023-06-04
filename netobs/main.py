@@ -31,12 +31,17 @@ console = Console(
     force_terminal=True,
 )
 
-app = typer.Typer()
-containerlab_app = typer.Typer()
+app = typer.Typer(help="Run commands for setup and testing", rich_markup_mode="rich")
+containerlab_app = typer.Typer(help="[b i blue]Containerlab[/b i blue] related commands.", rich_markup_mode="rich")
 app.add_typer(containerlab_app, name="containerlab")
 
-docker_app = typer.Typer()
+docker_app = typer.Typer(
+    help="[b i blue]Docker and Stacks[/b i blue] management related commands.", rich_markup_mode="rich"
+)
 app.add_typer(docker_app, name="docker")
+
+lab_app = typer.Typer(help="[b i blue]Overall Lab[/b i blue] management related commands.", rich_markup_mode="rich")
+app.add_typer(lab_app, name="lab")
 
 
 class DockerNetworkAction(Enum):
@@ -239,8 +244,8 @@ def containerlab_deploy(
 ):
     """Deploy a containerlab topology.
 
-    **Raises:**
-        typer.Exit: Exit with code 1 if the topology file is not found
+    [u]Example:[/u]
+        [i]netobs containerlab deploy --topology ./containerlab/lab.yml[/i]
     """
     console.log("Deploying containerlab topology", style="info")
     console.log(f"Topology file: [orange1 i]{topology}", style="info")
@@ -277,6 +282,7 @@ def containerlab_destroy(
 # --------------------------------------#
 #                Docker                 #
 # --------------------------------------#
+
 
 @docker_app.command("build")
 def docker_build(
@@ -486,3 +492,55 @@ def docker_network(
         exec_cmd=exec_cmd,
         task_name=f"network {action.value}",
     )
+
+
+# --------------------------------------#
+#                  Lab                  #
+# --------------------------------------#
+
+
+@lab_app.command("deploy")
+def lab_deploy(
+    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
+    sudo: bool = typer.Option(False, help="Use sudo to run containerlab"),
+):
+    """Deploy a lab topology.
+
+    **Raises:**
+        typer.Exit: Exit with code 1 if the topology file is not found
+    """
+    console.log("Deploying lab environment", style="info")
+
+    # First create docker network if not exists
+    docker_network(
+        DockerNetworkAction.CREATE,
+        name="network-observability",
+        driver="bridge",
+        subnet="172.24.177.0/24",
+        verbose=True,
+    )
+
+    # Deploy containerlab topology
+    containerlab_deploy(topology=topology, sudo=sudo)
+
+    # Start docker compose
+    docker_start(service=None, verbose=True)
+
+
+@lab_app.command("destroy")
+def lab_destroy(
+    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
+    sudo: bool = typer.Option(False, help="Use sudo to run containerlab"),
+):
+    """Destroy a lab topology.
+
+    **Raises:**
+        typer.Exit: Exit with code 1 if the topology file is not found
+    """
+    console.log("Destroying lab environment", style="info")
+
+    # Stop docker compose
+    docker_destroy(service=None, volumes=True, verbose=True)
+
+    # Destroy containerlab topology
+    containerlab_destroy(topology=topology, sudo=sudo)
