@@ -4,11 +4,10 @@
 #    [ceos-01]
 #        interface = "gnmi"
 #        interface_ethernet = "gnmi"
-#        bgp = "gnmi"
-#        cpu = "gnmi"
-#        memory = "gnmi"
+#        bgp = "execd"
+#        cpu = "snmp"
+#        memory = "snmp"
 #        storage = "snmp"
-#        sensors = "gnmi"
 #        uptime = "snmp"
 #
 ################################################################
@@ -34,7 +33,6 @@
     listen = ":9004"
     metric_version = 2
     expiration_interval = "120s"
-    fielddrop = ["cbgpPeer2LastError"]
     tagexclude = ["index", "agent_host"]
 
 
@@ -53,7 +51,7 @@
 [[inputs.internal]]
   collect_memstats = true
   [inputs.internal.tags]
-    telegraf_type="network_collector"
+    telegraf_type="network_agent"
 
 # ---------------------------------------------------------------------
 # Inputs Definitions
@@ -104,21 +102,18 @@
   # ---------------------------------------------------
   [[inputs.gnmi.subscription]]
     name = "interface"
-    # origin = "openconfig-interfaces"
     path = "/interfaces/interface/state/counters"
     subscription_mode = "sample"
     sample_interval = "10s"
 
   [[inputs.gnmi.subscription]]
     name = "interface"
-    # origin = "openconfig-interfaces"
     path = "/interfaces/interface/state/admin-status"
     subscription_mode = "sample"
     sample_interval = "10s"
 
   [[inputs.gnmi.subscription]]
     name = "interface"
-    # origin = "openconfig-interfaces"
     path = "/interfaces/interface/state/oper-status"
     subscription_mode = "sample"
     sample_interval = "10s"
@@ -127,91 +122,32 @@
   # ---------------------------------------------------
   [[inputs.gnmi.subscription]]
     name = "interface"
-    # origin = "openconfig-if-ethernet"
     path = "/interfaces/interface/ethernet/state/counters"
     subscription_mode = "sample"
     sample_interval = "10s"
   # ----------------------------------------------
-  # Device BGP state and prefixes polling (gNMI)
+  # Device BGP state and prefixes polling (execd)
   # ----------------------------------------------
-  [[inputs.gnmi.subscription]]
-    name = "bgp"
-    # origin = "openconfig-network-instance"
-    path = "/network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/state"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-
-  [[inputs.gnmi.subscription]]
-    name = "bgp"
-    # origin = "openconfig-network-instance"
-    path = "/network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor/afi-safis/afi-safi/state/prefixes"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-  # ----------------------------------------------
-  # Device CPU polling (gNMI)
-  # ----------------------------------------------
-  [[inputs.gnmi.subscription]]
-    name = "cpu"
-    # origin = "openconfig-platform"
-    path = "/components/component/cpu/utilization/state/instant"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-  # ----------------------------------------------
-  # Device Memory polling (gNMI)
-  # ----------------------------------------------
-  [[inputs.gnmi.subscription]]
-    name = "memory"
-    # origin = "openconfig-platform"
-    path = "/components/component/state/memory"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-  # ----------------------------------------------
-  # Device Sensors polling (gNMI)
-  # ----------------------------------------------
-  [[inputs.gnmi.subscription]]
-    name = "sensor_status"
-    # origin = "openconfig-platform"
-    path = "/components/component/properties/property[name=hwStatus]/state/value"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-
-  [[inputs.gnmi.subscription]]
-    name = "sensor_temperature"
-    # origin = "openconfig-platform"
-    path = "/components/component/state/temperature/instant"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-
-  [[inputs.gnmi.subscription]]
-    name = "sensor_fan"
-    # origin = "openconfig-platform"
-    path = "/components/component/fan/state/speed"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-
-  [[inputs.gnmi.subscription]]
-    name = "sensor_transceiver_input_power"
-    # origin = "openconfig-platform"
-    path = "/components/component/transceiver/physical-channel/channel/state/input-power"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-
-  [[inputs.gnmi.subscription]]
-    name = "sensor_transceiver_output_power"
-    # origin = "openconfig-platform"
-    path = "/components/component/transceiver/physical-channel/channel/state/output-power"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-
-  [[inputs.gnmi.subscription]]
-    name = "sensor_transceiver_current"
-    # origin = "openconfig-platform"
-    path = "/components/component/transceiver/physical-channel/channel/state/laser-bias-current"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-
-
-
+  [[inputs.execd]]
+  interval = "15s"
+  signal = "SIGHUP"
+  restart_delay = "10s"
+  data_format = "influx"
+  command = [
+    '/usr/local/bin/network_agent',
+    '-h',
+    'ceos-01',
+    '-d',
+    'arista_eos',
+    '-c',
+    'bgp_sessions::http',  ]
+  [inputs.execd.tags]
+    collection_method = "execd"
+    device = "ceos-01"
+    device_role = "router"
+    device_platform = "arista"
+    site = "lab-site-01"
+    region = "lab"
 
 # ------------------------------------------------
 # Input - SNMP  ceos-01
@@ -233,6 +169,47 @@
     site = "lab-site-01"
     region = "lab"
     net_os = "eos"
+
+  # ----------------------------------------------
+  # Device CPU polling (SNMP)
+  # ----------------------------------------------
+  [[inputs.snmp.table]]
+    name = "cpu"
+
+    [[inputs.snmp.table.field]]
+      name = "name"
+      oid = "HOST-RESOURCES-MIB::hrDeviceDescr"
+      is_tag = true
+
+    [[inputs.snmp.table.field]]
+      name = "used"
+      oid = "HOST-RESOURCES-MIB::hrProcessorLoad"
+  # ----------------------------------------------
+  # Device Memory polling (SNMP)
+  # ----------------------------------------------
+  [[inputs.snmp.table]]
+    name = "memory"
+
+    # Partition name
+    [[inputs.snmp.table.field]]
+      name = "name"
+      oid = "HOST-RESOURCES-MIB::hrStorageDescr"
+      is_tag = true
+
+    # Size in bytesof the data objects allocated to the partition
+    [[inputs.snmp.table.field]]
+      name = "allocation_units"
+      oid = "HOST-RESOURCES-MIB::hrStorageAllocationUnits"
+
+    # Size of the partition storage represented by the allocation units
+    [[inputs.snmp.table.field]]
+      name = "size_allocation_units"
+      oid = "HOST-RESOURCES-MIB::hrStorageSize"
+
+    # mount of space used by the partition represented by the allocation units
+    [[inputs.snmp.table.field]]
+      name = "used_allocation_units"
+      oid = "HOST-RESOURCES-MIB::hrStorageUsed"
   # ----------------------------------------------
   # Device Storage Partition Table polling (SNMP)
   # ----------------------------------------------
@@ -327,6 +304,31 @@
     [[processors.rename.replace]]
       field = "received"
       dest = "prefixes_received"
+
+  [[processors.starlark]]
+    order = 2
+    namepass = ["bgp_session*"]
+    source = '''
+def apply(metric):
+    metric.tags.pop("session_state")
+    return metric
+'''
+
+  [[processors.rename]]
+    order = 3
+    namepass = ["bgp_session*"]
+
+    [[processors.rename.replace]]
+      field = "session_state_code"
+      dest = "state"
+
+  [[processors.rename]]
+    order = 3
+    namepass = ["bgp_session*"]
+
+    [[processors.rename.replace]]
+      measurement = "bgp_sessions"
+      dest = "bgp_session"
   # ---------------------------------------------------
   # Normalize the CPU data
   # ---------------------------------------------------
@@ -352,6 +354,23 @@
       field = "utilized"
       dest = "used"
 
+  [[processors.starlark]]
+    order = 4
+    namepass = ["memory", "storage"]
+    source = '''
+def apply(metric):
+    if 'allocation_units' in metric.fields:
+        metric.fields['total'] = metric.fields['size_allocation_units'] * metric.fields['allocation_units']
+        metric.fields['used'] = 100 * (metric.fields['used_allocation_units'] * metric.fields['allocation_units']) / metric.fields['total']
+        metric.fields['free'] = 100 - metric.fields['used']
+        for field_type in ['size_allocation_units', 'allocation_units', 'used_allocation_units']:
+            metric.fields.pop(field_type)
+        return metric
+'''
+    [processors.starlark.tagpass]
+      collection_method = ["snmp"]
+      net_os = ["eos"]
+
 
 
 
@@ -370,7 +389,7 @@
   # Normalize status codes
   # ---------------------------------------------------
   [[processors.enum]]
-    order = 3
+    order = 5
     namepass = ["bgp"]
 
     [[processors.enum.mapping]]
@@ -385,7 +404,7 @@
         OPENCONFIRM = 5
         ESTABLISHED = 6
   [[processors.enum]]
-    order = 3
+    order = 5
     namepass = ["interface"]
 
     [[processors.enum.mapping]]
@@ -407,7 +426,7 @@
         DOWN = 2
         TESTING = 3
   [[processors.enum]]
-    order = 3
+    order = 5
     namepass = ["storage"]
 
     [[processors.enum.mapping]]

@@ -56,27 +56,6 @@ services:
     networks:
       - network-observability
 
-
-  # alerta-01:
-  #   image: docker.io/alerta/alerta-web:latest
-  #   ports:
-  #     - 8085:8080
-  #   volumes:
-  #     - ./configs/alerta/alertad.conf:/etc/alertad.conf
-  #   env_file:
-  #     - ../.env
-  #   networks:
-  #     - network-observability
-
-  # postgres-01:
-  #   image: docker.io/postgres:latest
-  #   ports:
-  #     - 5432:5432
-  #   env_file:
-  #     - ../.env
-  #   networks:
-  #     - network-observability
-
   grafana-01:
     image: docker.io/grafana/grafana:latest
     ports:
@@ -87,6 +66,9 @@ services:
       - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
       - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
       - grafana-01_data:/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
     env_file:
       - ../.env
     networks:
@@ -94,7 +76,7 @@ services:
 
 
   telegraf-01:
-    image: docker.io/networktocode/network-collector:latest
+    image: docker.io/networktocode/network-agent:1.23-py3.8-v0.4.0
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:
@@ -107,7 +89,7 @@ services:
       - network-observability
 
   telegraf-02:
-    image: docker.io/networktocode/network-collector:latest
+    image: docker.io/networktocode/network-agent:1.23-py3.8-v0.4.0
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:
