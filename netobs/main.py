@@ -14,29 +14,19 @@ from rich.theme import Theme
 
 ENVVARS = {**dotenv_values(".env"), **os.environ}
 
-custom_theme = Theme(
-    {
-        "info": "cyan",
-        "warning": "bold magenta",
-        "error": "bold red",
-        "good": "bold green",
-    }
-)
+custom_theme = Theme({"info": "cyan", "warning": "bold magenta", "error": "bold red", "good": "bold green"})
 
-console = Console(
-    color_system="truecolor",
-    log_path=False,
-    record=True,
-    theme=custom_theme,
-    force_terminal=True,
-)
+console = Console(color_system="truecolor", log_path=False, record=True, theme=custom_theme, force_terminal=True)
 
-app = typer.Typer()
-containerlab_app = typer.Typer()
+app = typer.Typer(help="Run commands for setup and testing", rich_markup_mode="rich")
+containerlab_app = typer.Typer(help="Containerlab related commands.", rich_markup_mode="rich")
 app.add_typer(containerlab_app, name="containerlab")
 
-docker_app = typer.Typer()
+docker_app = typer.Typer(help="Docker and Stacks management related commands.", rich_markup_mode="rich")
 app.add_typer(docker_app, name="docker")
+
+lab_app = typer.Typer(help="Overall Lab management related commands.", rich_markup_mode="rich")
+app.add_typer(lab_app, name="lab")
 
 
 class DockerNetworkAction(Enum):
@@ -99,6 +89,7 @@ def docker_compose_cmd(
     compose_name: str = "",
 ) -> str:
     """Create docker-compose command to execute.
+
     Args:
         compose_action (str): Docker Compose action to run.
         docker_compose_file (Path): Docker compose file.
@@ -107,6 +98,7 @@ def docker_compose_cmd(
         extra_options (str, optional): Extra docker compose flags to pass to the command line. Defaults to "".
         command (str, optional): Command to execute in docker compose. Defaults to "".
         compose_name (str, optional): Name to give to the docker compose project. Defaults to PROJECT_NAME.
+
     Returns:
         str: Docker compose command
     """
@@ -232,15 +224,15 @@ def run_docker_compose_cmd(
 # --------------------------------------#
 
 
-@containerlab_app.command("deploy")
+@containerlab_app.command(rich_help_panel="Containerlab Management", name="deploy")
 def containerlab_deploy(
     topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
     sudo: bool = typer.Option(True, help="Use sudo to run containerlab"),
 ):
     """Deploy a containerlab topology.
 
-    **Raises:**
-        typer.Exit: Exit with code 1 if the topology file is not found
+    [u]Example:[/u]
+        [i]netobs containerlab deploy --topology ./containerlab/lab.yml[/i]
     """
     console.log("Deploying containerlab topology", style="info")
     console.log(f"Topology file: [orange1 i]{topology}", style="info")
@@ -253,15 +245,15 @@ def containerlab_deploy(
     run_cmd(exec_cmd, task_name="Deploying containerlab topology")
 
 
-@containerlab_app.command("destroy")
+@containerlab_app.command(rich_help_panel="Containerlab Management", name="destroy")
 def containerlab_destroy(
     topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
     sudo: bool = typer.Option(True, help="Use sudo to run containerlab"),
 ):
     """Destroy a containerlab topology.
 
-    **Raises:**
-        typer.Exit: Exit with code 1 if the topology file is not found
+    [u]Example:[/u]
+        [i]netobs containerlab destroy --topology ./containerlab/lab.yml[/i]
     """
     console.log("Deploying containerlab topology", style="info")
     console.log(f"Topology file: [orange1 i]{topology}", style="info")
@@ -278,158 +270,8 @@ def containerlab_destroy(
 #                Docker                 #
 # --------------------------------------#
 
-@docker_app.command("build")
-def docker_build(
-    path: Path = typer.Argument(..., help="Path to the Dockerfile"),
-    tag: str = typer.Argument(..., help="Tag to use for the image"),
-    sudo: bool = typer.Option(True, help="Use sudo to run docker"),
-):
-    """Build a docker image.
 
-    **Raises:**
-        typer.Exit: Exit with code 1 if the Dockerfile is not found
-    """
-    console.log("Building docker image", style="info")
-    console.log(f"Dockerfile: [orange1 i]{path}", style="info")
-    if not path.exists():
-        console.log(f"Dockerfile not found: [red i]{path}", style="error")
-        raise typer.Exit(code=1)
-    exec_cmd = f"docker build -t {tag} {path}"
-    if sudo:
-        exec_cmd = f"sudo {exec_cmd}"
-    run_cmd(exec_cmd, task_name="Building docker image")
-
-
-@docker_app.command("push")
-def docker_push(
-    tag: str = typer.Argument(..., help="Tag to use for the image"),
-    sudo: bool = typer.Option(True, help="Use sudo to run docker"),
-):
-    """Push a docker image."""
-    console.log("Pushing docker image", style="info")
-    console.log(f"Image tag: [orange1 i]{tag}", style="info")
-    exec_cmd = f"docker push {tag}"
-    if sudo:
-        exec_cmd = f"sudo {exec_cmd}"
-    run_cmd(exec_cmd, task_name="Pushing docker image")
-
-
-@docker_app.command("debug")
-def docker_debug(
-    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to run in debug mode"),
-    verbose: bool = typer.Option(False, help="Verbose mode"),
-):
-    """Start docker compose in debug mode."""
-    console.log(f"Starting in debug mode service(s): [orange1 i]{service}", style="info")
-    docker_compose_file = Path("./obs_stack/docker-compose.yml")
-    run_docker_compose_cmd(
-        action="up",
-        filename=docker_compose_file,
-        services=service if service else [],
-        verbose=verbose,
-        extra_options="--remove-orphans",
-        task_name="debug stack",
-    )
-
-
-@docker_app.command("destroy")
-def docker_destroy(
-    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to destroy"),
-    volumes: bool = typer.Option(False, help="Remove volumes"),
-    verbose: bool = typer.Option(False, help="Verbose mode"),
-):
-    """Destroy all containers and resources."""
-    console.log(f"Destroying service(s): [orange1 i]{service}", style="info")
-    docker_compose_file = Path("./obs_stack/docker-compose.yml")
-    run_docker_compose_cmd(
-        action="down",
-        filename=docker_compose_file,
-        services=service if service else [],
-        verbose=verbose,
-        extra_options="--volumes" if volumes else "",
-        timeout=None,
-        task_name="destroy stack",
-    )
-
-
-@docker_app.command("start")
-def docker_start(
-    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to start"),
-    verbose: bool = typer.Option(False, help="Verbose mode"),
-):
-    """Start all containers."""
-    console.log(f"Starting service(s): [orange1 i]{service}", style="info")
-    docker_compose_file = Path("./obs_stack/docker-compose.yml")
-    run_docker_compose_cmd(
-        action="up",
-        filename=docker_compose_file,
-        services=service if service else [],
-        verbose=verbose,
-        extra_options="-d --remove-orphans",
-        task_name="start stack",
-    )
-
-
-@docker_app.command("stop")
-def docker_stop(
-    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to stop"),
-    verbose: bool = typer.Option(False, help="Verbose mode"),
-):
-    """Stop all containers."""
-    console.log(f"Stopping service(s): [orange1 i]{service}", style="info")
-    docker_compose_file = Path("./obs_stack/docker-compose.yml")
-    run_docker_compose_cmd(
-        action="stop",
-        filename=docker_compose_file,
-        services=service if service else [],
-        verbose=verbose,
-        task_name="stop stack",
-    )
-
-
-@docker_app.command("restart")
-def docker_restart(
-    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to restart"),
-    verbose: bool = typer.Option(False, help="Verbose mode"),
-):
-    """Restart all containers."""
-    console.log(f"Restarting service(s): [orange1 i]{service}", style="info")
-    docker_compose_file = Path("./obs_stack/docker-compose.yml")
-    run_docker_compose_cmd(
-        action="restart",
-        filename=docker_compose_file,
-        services=service if service else [],
-        verbose=verbose,
-        task_name="restart stack",
-    )
-
-
-@docker_app.command("logs")
-def docker_logs(
-    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to show logs"),
-    follow: bool = typer.Option(False, "-f", "--follow", help="Follow logs"),
-    tail: Optional[int] = typer.Option(None, "-t", "--tail", help="Number of lines to show"),
-    verbose: bool = typer.Option(False, help="Verbose mode"),
-):
-    """Show logs for all containers."""
-    console.log(f"Showing logs for service(s): [orange1 i]{service}", style="info")
-    docker_compose_file = Path("./obs_stack/docker-compose.yml")
-    options = ""
-    if follow:
-        options += "-f "
-    if tail:
-        options += f"--tail={tail}"
-    run_docker_compose_cmd(
-        action="logs",
-        filename=docker_compose_file,
-        services=service if service else [],
-        extra_options=options,
-        verbose=verbose,
-        task_name="show logs",
-    )
-
-
-@docker_app.command("exec")
+@docker_app.command(rich_help_panel="Docker Stack Management", name="exec")
 def docker_exec(
     service: str = typer.Argument(..., help="Service to execute command"),
     command: str = typer.Argument("bash", help="Command to execute"),
@@ -437,10 +279,9 @@ def docker_exec(
 ):
     """Execute a command in a container."""
     console.log(f"Executing command in service: [orange1 i]{service}", style="info")
-    docker_compose_file = Path("./obs_stack/docker-compose.yml")
     run_docker_compose_cmd(
         action="exec",
-        filename=docker_compose_file,
+        filename=Path("./obs_stack/docker-compose.yml"),
         services=[service],
         command=command,
         verbose=verbose,
@@ -448,20 +289,244 @@ def docker_exec(
     )
 
 
-@docker_app.command("ps")
-def docker_ps(
-    service: Optional[list[str]] = typer.Argument(None, help="Service(s) to show"),
+@docker_app.command(rich_help_panel="Docker Stack Management", name="debug")
+def docker_debug(
+    services: Optional[list[str]] = typer.Argument(None, help="Service(s) to run in debug mode"),
     verbose: bool = typer.Option(False, help="Verbose mode"),
 ):
-    """Show containers."""
-    console.log(f"Showing containers for service(s): [orange1 i]{service}", style="info")
-    docker_compose_file = Path("./obs_stack/docker-compose.yml")
+    """Start docker compose in debug mode.
+
+    [u]Example:[/u]
+
+    To start all services in debug mode:
+        [i]netobs docker debug[/i]
+
+    To start a specific service in debug mode:
+        [i]netobs docker debug --services telegraf-01[/i]
+    """
+    console.log(f"Starting in debug mode service(s): [orange1 i]{services}", style="info")
+    run_docker_compose_cmd(
+        action="up",
+        filename=Path("./obs_stack/docker-compose.yml"),
+        services=services if services else [],
+        verbose=verbose,
+        extra_options="--remove-orphans",
+        task_name="debug stack",
+    )
+
+
+@docker_app.command(rich_help_panel="Docker Stack Management", name="start")
+def docker_start(
+    services: Optional[list[str]] = typer.Argument(None, help="Service(s) to start"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Start all containers.
+
+    [u]Example:[/u]
+
+    To start all services:
+        [i]netobs docker start[/i]
+
+    To start a specific service:
+        [i]netobs docker start --services telegraf-01[/i]
+    """
+    console.log(f"Starting service(s): [orange1 i]{services}", style="info")
+    run_docker_compose_cmd(
+        action="up",
+        filename=Path("./obs_stack/docker-compose.yml"),
+        services=services if services else [],
+        verbose=verbose,
+        extra_options="-d --remove-orphans",
+        task_name="start stack",
+    )
+
+
+@docker_app.command(rich_help_panel="Docker Stack Management", name="stop")
+def docker_stop(
+    services: Optional[list[str]] = typer.Argument(None, help="Service(s) to stop"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Stop all containers.
+
+    [u]Example:[/u]
+
+    To stop all services:
+        [i]netobs docker stop[/i]
+
+    To stop a specific service:
+        [i]netobs docker stop --services telegraf-01[/i]
+    """
+    console.log(f"Stopping service(s): [orange1 i]{services}", style="info")
+    run_docker_compose_cmd(
+        action="stop",
+        filename=Path("./obs_stack/docker-compose.yml"),
+        services=services if services else [],
+        verbose=verbose,
+        task_name="stop stack",
+    )
+
+
+@docker_app.command(rich_help_panel="Docker Stack Management", name="restart")
+def docker_restart(
+    services: Optional[list[str]] = typer.Argument(None, help="Service(s) to restart"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Restart all containers.
+
+    [u]Example:[/u]
+
+    To restart all services:
+        [i]netobs docker restart[/i]
+
+    To restart a specific service:
+        [i]netobs docker restart --services telegraf-01[/i]
+    """
+    console.log(f"Restarting service(s): [orange1 i]{services}", style="info")
+    run_docker_compose_cmd(
+        action="restart",
+        filename=Path("./obs_stack/docker-compose.yml"),
+        services=services if services else [],
+        verbose=verbose,
+        task_name="restart stack",
+    )
+
+
+@docker_app.command(rich_help_panel="Docker Stack Management", name="logs")
+def docker_logs(
+    services: Optional[list[str]] = typer.Argument(None, help="Service(s) to show logs"),
+    follow: bool = typer.Option(False, "-f", "--follow", help="Follow logs"),
+    tail: Optional[int] = typer.Option(None, "-t", "--tail", help="Number of lines to show"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Show logs for containers.
+
+    [u]Example:[/u]
+
+    To show logs for all services:
+        [i]netobs docker logs[/i]
+
+    To show logs for a specific service:
+        [i]netobs docker logs --services telegraf-01[/i]
+
+    To show logs for a specific service and follow the logs and tail 10 lines:
+        [i]netobs docker logs --services telegraf-01 --follow --tail 10[/i]
+    """
+    console.log(f"Showing logs for service(s): [orange1 i]{services}", style="info")
+    options = ""
+    if follow:
+        options += "-f "
+    if tail:
+        options += f"--tail={tail}"
+    run_docker_compose_cmd(
+        action="logs",
+        filename=Path("./obs_stack/docker-compose.yml"),
+        services=services if services else [],
+        extra_options=options,
+        verbose=verbose,
+        task_name="show logs",
+    )
+
+
+@docker_app.command(rich_help_panel="Docker Stack Management", name="ps")
+def docker_ps(
+    services: Optional[list[str]] = typer.Argument(None, help="Service(s) to show"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Show containers.
+
+    [u]Example:[/u]
+
+    To show all services:
+        [i]netobs docker ps[/i]
+
+    To show a specific service:
+        [i]netobs docker ps --services telegraf-01[/i]
+    """
+    console.log(f"Showing containers for service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
         action="ps",
-        filename=docker_compose_file,
-        services=service if service else [],
+        filename=Path("./obs_stack/docker-compose.yml"),
+        services=services if services else [],
         verbose=verbose,
         task_name="show containers",
+    )
+
+
+@docker_app.command(rich_help_panel="Docker Stack Management", name="destroy")
+def docker_destroy(
+    services: Optional[list[str]] = typer.Argument(None, help="Service(s) to destroy"),
+    volumes: bool = typer.Option(False, help="Remove volumes"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Destroy containers and resources.
+
+    [u]Example:[/u]
+
+    To destroy all services:
+        [i]netobs docker destroy[/i]
+
+    To destroy a specific service:
+        [i]netobs docker destroy --services telegraf-01[/i]
+
+    To destroy a specific service and remove volumes:
+        [i]netobs docker destroy --services telegraf-01 --volumes[/i]
+
+    To destroy all services and remove volumes:
+        [i]netobs docker destroy --volumes[/i]
+    """
+    console.log(f"Destroying service(s): [orange1 i]{services}", style="info")
+    run_docker_compose_cmd(
+        action="down",
+        filename=Path("./obs_stack/docker-compose.yml"),
+        services=services if services else [],
+        verbose=verbose,
+        extra_options="--volumes --remove-orphans" if volumes else "--remove-orphans",
+        task_name="destroy stack",
+    )
+
+
+@docker_app.command(rich_help_panel="Docker Stack Management", name="rm")
+def docker_rm(
+    services: Optional[list[str]] = typer.Argument(None, help="Service(s) to remove"),
+    volumes: bool = typer.Option(False, help="Remove volumes"),
+    force: bool = typer.Option(False, help="Force removal of containers"),
+    verbose: bool = typer.Option(False, help="Verbose mode"),
+):
+    """Remove containers.
+
+    [u]Example:[/u]
+
+    To remove all services:
+        [i]netobs docker rm[/i]
+
+    To remove a specific service:
+        [i]netobs docker rm --services telegraf-01[/i]
+
+    To remove a specific service and remove volumes:
+        [i]netobs docker rm --services telegraf-01 --volumes[/i]
+
+    To remove all services and remove volumes:
+        [i]netobs docker rm --volumes[/i]
+
+    To remove all services and force removal of containers:
+        [i]netobs docker rm --force[/i]
+
+    To force removal of a specific service and remove volumes:
+        [i]netobs docker rm --services telegraf-01 --volumes --force[/i]
+    """
+    extra_options = "--stop "
+    if force:
+        extra_options += "--force "
+    if volumes:
+        extra_options += "--volumes "
+    console.log(f"Removing service(s): [orange1 i]{services}", style="info")
+    run_docker_compose_cmd(
+        action="rm",
+        filename=Path("./obs_stack/docker-compose.yml"),
+        services=services if services else [],
+        verbose=verbose,
+        extra_options=extra_options,
+        task_name="remove containers",
     )
 
 
@@ -486,3 +551,55 @@ def docker_network(
         exec_cmd=exec_cmd,
         task_name=f"network {action.value}",
     )
+
+
+# --------------------------------------#
+#                  Lab                  #
+# --------------------------------------#
+
+
+@lab_app.command("deploy")
+def lab_deploy(
+    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
+    sudo: bool = typer.Option(False, help="Use sudo to run containerlab"),
+):
+    """Deploy a lab topology.
+
+    **Raises:**
+        typer.Exit: Exit with code 1 if the topology file is not found
+    """
+    console.log("Deploying lab environment", style="info")
+
+    # First create docker network if not exists
+    docker_network(
+        DockerNetworkAction.CREATE,
+        name="network-observability",
+        driver="bridge",
+        subnet="172.24.177.0/24",
+        verbose=True,
+    )
+
+    # Deploy containerlab topology
+    containerlab_deploy(topology=topology, sudo=sudo)
+
+    # Start docker compose
+    docker_start(services=None, verbose=True)
+
+
+@lab_app.command("destroy")
+def lab_destroy(
+    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
+    sudo: bool = typer.Option(False, help="Use sudo to run containerlab"),
+):
+    """Destroy a lab topology.
+
+    **Raises:**
+        typer.Exit: Exit with code 1 if the topology file is not found
+    """
+    console.log("Destroying lab environment", style="info")
+
+    # Stop docker compose
+    docker_destroy(services=None, volumes=True, verbose=True)
+
+    # Destroy containerlab topology
+    containerlab_destroy(topology=topology, sudo=sudo)

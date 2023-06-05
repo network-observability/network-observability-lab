@@ -1,3 +1,0 @@
-typer[all]
-typer-cli
-python-dotenv
