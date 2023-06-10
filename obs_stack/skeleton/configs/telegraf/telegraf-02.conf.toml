@@ -1,0 +1,19 @@
+[global_tags]
+  environment = "${ENVIRONMENT}"
+
+[agent]
+  hostname = "telegraf-02"
+
+# Performs a TCP handshake to the specified TCP address.
+[[inputs.net_response]]
+  protocol = "tcp"
+  address = "ceos-02:22"
+
+# Outputs metrics to stdout
+[[outputs.file]]
+  files = ["stdout"]
+
+# Outputs prometheus formatted metrics to endpoint /metrics
+[[outputs.prometheus_client]]
+  listen = ":9005"
+  metric_version = 2

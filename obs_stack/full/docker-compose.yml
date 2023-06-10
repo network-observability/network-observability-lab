@@ -24,7 +24,7 @@ services:
       - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
       - loki-01_data:/loki:rw
     env_file:
-      - ../.env
+      - ../../.env
     networks:
       - network-observability
 
@@ -37,7 +37,7 @@ services:
     volumes:
       - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
     env_file:
-      - ../.env
+      - ../../.env
     networks:
       - network-observability
 
@@ -52,7 +52,7 @@ services:
       - ./configs/prometheus/rules/:/etc/prometheus/rules/
       - prometheus-01_data:/prometheus
     env_file:
-      - ../.env
+      - ../../.env
     networks:
       - network-observability
 
@@ -70,7 +70,7 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
     env_file:
-      - ../.env
+      - ../../.env
     networks:
       - network-observability
 
@@ -84,7 +84,7 @@ services:
     ports:
       - 9004:9004
     env_file:
-      - ../.env
+      - ../../.env
     networks:
       - network-observability
 
@@ -97,7 +97,7 @@ services:
     ports:
       - 9005:9005
     env_file:
-      - ../.env
+      - ../../.env
     networks:
       - network-observability
 
@@ -112,7 +112,9 @@ services:
       - 1515:1515
       - 1516:1516
       - 1517:1517
+    environment:
+      XPACK_MONITORING_ENABLED: false
     env_file:
-      - ../.env
+      - ../../.env
     networks:
       - network-observability
