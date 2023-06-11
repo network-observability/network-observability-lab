@@ -23,5 +23,5 @@ alerting:
   alertmanagers:
     - static_configs:
       - targets:
-          - alertmanager-01:9093
+          - alertmanager:9093
       timeout: 5s

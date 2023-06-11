@@ -3,9 +3,9 @@
 
 
 volumes:
-  loki-01_data:
-  prometheus-01_data:
-  grafana-01_data:
+  loki_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   network-observability:
@@ -15,21 +15,21 @@ networks:
 version: "3.8"
 services:
 
-  loki-01:
+  loki:
     image: docker.io/grafana/loki:latest
     ports:
       - 3001:3001
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
       - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
-      - loki-01_data:/loki:rw
+      - loki_data:/loki:rw
     env_file:
       - ../../.env
     networks:
       - network-observability
 
 
-  alertmanager-01:
+  alertmanager:
     image: docker.io/prom/alertmanager:latest
     ports:
       - 9093:9093
@@ -41,7 +41,7 @@ services:
     networks:
       - network-observability
 
-  prometheus-01:
+  prometheus:
     image: docker.io/prom/prometheus:latest
     ports:
       - 9090:9090
@@ -50,13 +50,13 @@ services:
     volumes:
       - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./configs/prometheus/rules/:/etc/prometheus/rules/
-      - prometheus-01_data:/prometheus
+      - prometheus_data:/prometheus
     env_file:
       - ../../.env
     networks:
       - network-observability
 
-  grafana-01:
+  grafana:
     image: docker.io/grafana/grafana:latest
     ports:
       - 3000:3000
@@ -65,7 +65,7 @@ services:
       - ./configs/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
       - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
       - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
-      - grafana-01_data:/grafana
+      - grafana_data:/grafana
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
@@ -101,7 +101,7 @@ services:
     networks:
       - network-observability
 
-  logstash-01:
+  logstash:
     image: docker.io/grafana/logstash-output-loki:latest
     command: -f /home/logstash/logstash.cfg
     volumes:

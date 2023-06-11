@@ -8,7 +8,7 @@ To run the components of the Observability stack and network devices you must ha
 
 - `docker` and compose installed in your system
 - `containerlab` for the network lab
-- Install the python dependencies to run some of the commands to ease your way to stand up the stack and the network
+- `netobs` (optional) for managing the network lab and observability stack
 
 ### Quickstart
 
@@ -27,7 +27,7 @@ netobs lab deploy
 
 `netobs` is a utility tool that provides functions to interact and manage the network lab and observability stack in the repository. It is designed to simplify the process of managing and monitoring network infrastructure by providing a set of helpful commands and utilities.
 
-Alternaterly, you can run the following commands to start the network lab and observability stack:
+Alternatively, you can run the following commands to start the network lab and observability stack:
 
 ```bash
 # Start the containerlab
@@ -45,7 +45,7 @@ Deploy the network lab and observability stack:
 
 ```bash
 # Start the network lab
-❯ netobs lab deploy --sudo
+❯ netobs lab deploy batteries-included --sudo
 [21:50:42] Deploying lab environment
            Network create: network-observability
            Running command: docker network create --driver=bridge  --subnet=172.24.177.0/24 network-observability
@@ -123,7 +123,7 @@ To access Grafana, you can use the following credentials:
 - Username: `netobs`
 - Password: `netobs123`
 
-Next you can access Grafana at http://<host_ip>:3000
+Now you can access Grafana at `http://<host_ip>:3000`
 
 <p float="left">
   <img src="./pics/grafana-home.png" width="800" />
@@ -133,12 +133,11 @@ Next you can access Grafana at http://<host_ip>:3000
   <img src="./pics/grafana-explore.png" width="400" />
 </p>
 
-
 ---
 
 ### Prometheus Access
 
-To access Prometheus at http://<host_ip>:9090
+To access Prometheus at `http://<host_ip>:9090`
 
 <p float="left">
   <img src="./pics/prometheus-home.png" width="800" />

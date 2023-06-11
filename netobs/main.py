@@ -227,7 +227,7 @@ def run_docker_compose_cmd(
 
 @containerlab_app.command(rich_help_panel="Containerlab Management", name="deploy")
 def containerlab_deploy(
-    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
+    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
     sudo: bool = typer.Option(True, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
 ):
     """Deploy a containerlab topology.
@@ -237,9 +237,6 @@ def containerlab_deploy(
     """
     console.log("Deploying containerlab topology", style="info")
     console.log(f"Topology file: [orange1 i]{topology}", style="info")
-    if not topology.exists():
-        console.log(f"Topology file not found: [red i]{topology}", style="error")
-        raise typer.Exit(code=1)
     exec_cmd = f"containerlab deploy -t {topology}"
     if sudo:
         exec_cmd = f"sudo {exec_cmd}"
@@ -248,7 +245,7 @@ def containerlab_deploy(
 
 @containerlab_app.command(rich_help_panel="Containerlab Management", name="destroy")
 def containerlab_destroy(
-    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
+    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
     sudo: bool = typer.Option(True, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
 ):
     """Destroy a containerlab topology.
@@ -258,9 +255,6 @@ def containerlab_destroy(
     """
     console.log("Deploying containerlab topology", style="info")
     console.log(f"Topology file: [orange1 i]{topology}", style="info")
-    if not topology.exists():
-        console.log(f"Topology file not found: [red i]{topology}", style="error")
-        raise typer.Exit(code=1)
     exec_cmd = f"containerlab destroy -t {topology} --cleanup"
     if sudo:
         exec_cmd = f"sudo {exec_cmd}"
@@ -269,7 +263,7 @@ def containerlab_destroy(
 
 @containerlab_app.command(rich_help_panel="Containerlab Management", name="inspect")
 def containerlab_inspect(
-    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file"),
+    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
     sudo: bool = typer.Option(True, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
 ):
     """Inspect a containerlab topology.
@@ -279,9 +273,6 @@ def containerlab_inspect(
     """
     console.log("Showing containerlab topology", style="info")
     console.log(f"Topology file: [orange1 i]{topology}", style="info")
-    if not topology.exists():
-        console.log(f"Topology file not found: [red i]{topology}", style="error")
-        raise typer.Exit(code=1)
     exec_cmd = f"containerlab inspect -t {topology}"
     if sudo:
         exec_cmd = f"sudo {exec_cmd}"
@@ -604,12 +595,8 @@ def lab_deploy(
     topology: Path = typer.Option(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
     sudo: bool = typer.Option(False, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
 ):
-    """Deploy a lab topology.
-
-    **Raises:**
-        typer.Exit: Exit with code 1 if the topology file is not found
-    """
-    console.log("Deploying lab environment", style="info")
+    """Deploy a lab topology."""
+    console.log(f"Deploying lab environment for scenario: [orange1 i]{scenario}", style="info")
 
     # First create docker network if not exists
     docker_network(
@@ -626,6 +613,8 @@ def lab_deploy(
     # Start docker compose
     docker_start(scenario=scenario, services=None, verbose=True)
 
+    console.log(f"Lab environment deployed for scenario: [orange1 i]{scenario}", style="info")
+
 
 @lab_app.command("destroy")
 def lab_destroy(
@@ -633,18 +622,16 @@ def lab_destroy(
     topology: Path = typer.Option(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
     sudo: bool = typer.Option(False, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
 ):
-    """Destroy a lab topology.
-
-    **Raises:**
-        typer.Exit: Exit with code 1 if the topology file is not found
-    """
-    console.log("Destroying lab environment", style="info")
+    """Destroy a lab topology."""
+    console.log(f"Destroying lab environment for scenario: [orange1 i]{scenario}", style="info")
 
     # Stop docker compose
     docker_destroy(scenario=scenario, services=None, volumes=True, verbose=True)
 
     # Destroy containerlab topology
     containerlab_destroy(topology=topology, sudo=sudo)
+
+    console.log(f"Lab environment destroyed for scenario: [orange1 i]{scenario}", style="info")
 
 
 @lab_app.command("show")
@@ -654,10 +641,12 @@ def lab_show(
     sudo: bool = typer.Option(False, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
 ):
     """Show lab environment."""
-    console.log("Showing lab environment", style="info")
+    console.log(f"Showing lab environment for scenario: [orange1 i]{scenario}", style="info")
 
     # Show docker compose
     docker_ps(scenario=scenario, services=None, verbose=True)
 
     # Show containerlab topology
     containerlab_inspect(topology=topology, sudo=sudo)
+
+    console.log(f"Lab environment shown for scenario: [orange1 i]{scenario}", style="info")
