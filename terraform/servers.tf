@@ -2,13 +2,14 @@ resource "digitalocean_droplet" "netobs_vm" {
   image  = "ubuntu-20-04-x64"
   name   = format("%s-%s", "netobs", var.reader)
   region = var.vm_region
-  size   = "s-2vcpu-4gb"
+  size   = var.vm_size
   ssh_keys = [
     data.digitalocean_ssh_key.terraform.id
   ]
   tags = [
-    format("%s:%s", "lab", var.reader)
+    "netobs-vm"
   ]
+
   connection {
     host        = self.ipv4_address
     user        = "root"
@@ -24,11 +25,23 @@ resource "digitalocean_droplet" "netobs_vm" {
 
   provisioner "remote-exec" {
     inline = [
-      "cat /tmp/temp.pub >> ~/.ssh/authorized_keys",
-      "sudo apt-get update -y",
-      "curl -fsSL https://get.docker.com -o get-docker.sh",
-      "sudo sh get-docker.sh",
-      "bash -c \"$(curl -sL https://get.containerlab.dev)\"",
+        # Set up SSH keys
+        "cat /tmp/temp.pub >> ~/.ssh/authorized_keys",
+        "sudo apt-get update -y",
+        # Install Docker
+        "curl -fsSL https://get.docker.com -o get-docker.sh",
+        "sudo sh get-docker.sh",
+        # Install containerlab
+        "bash -c \"$(curl -sL https://get.containerlab.dev)\"",
+        # Install Python 3.9
+        "sudo add-apt-repository -y ppa:deadsnakes/ppa",
+        "sudo apt update -y",
+        "sudo apt install -y python3.9",
+        "sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1",
+        "sudo apt-get install -y python3-pip",
+        # Install netobs
+        "git clone https://github.com/network-observability/network-observability-lab.git",
+        "cd network-observability-lab && git checkout main && cp example.env .env && pip install .",
     ]
   }
 }
@@ -104,4 +117,8 @@ resource "digitalocean_firewall" "netobs" {
 
 output "vm_ips" {
   value = "netobs-vm: ${digitalocean_droplet.netobs_vm.ipv4_address}"
+}
+
+output "ssh_command" {
+  value = "ssh -i ${var.pvt_key} root@${digitalocean_droplet.netobs_vm.ipv4_address}"
 }

@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netobs"
-version = "0.0.2"
+version = "0.0.3"
 description = "Utilities and Management Tools for Network Observability Book"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -27,11 +27,11 @@ packages = ["netobs"]
 netobs = "netobs.main:app"
 
 [tool.setuptools.dynamic]
-readme = {file = ["README.md", "NetObs.md"]}
+readme = {file = ["README.md"]}
 
 [tool.black]
 line-length = 120
-target-version = ['py38', 'py39', 'py310']
+target-version = ['py39', 'py310']
 include = '\.pyi?$'
 exclude = '''
 (

@@ -20,6 +20,11 @@ variable vm_region {
   description = "region where VM will be created"
   default = "nyc3"
 }
+variable "vm_size" {
+  type = string
+  description = "size of VM"
+  default = "s-2vcpu-4gb"
+}
 variable "reader" {
   type = string
   description = "reader name"
