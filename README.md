@@ -48,7 +48,7 @@ Deploy the network lab and observability stack:
 ❯ netobs lab deploy batteries-included --sudo
 [21:50:42] Deploying lab environment
            Network create: network-observability
-           Running command: docker network create --driver=bridge  --subnet=172.24.177.0/24 network-observability
+           Running command: docker network create --driver=bridge  --subnet=198.51.100.0/24 network-observability
 9b4f25c69a21796cd563e09fba341087f0a4b8c4e38872b0ed701e61d3d3f2c8
            Successfully ran: network create
 ─────────────────────────────────────────────────── End of task: network create ────────────────────────────────────────────────────
@@ -71,8 +71,8 @@ Run 'containerlab version upgrade' to upgrade or go check other installation opt
 +---+---------+--------------+----------------+------+---------+------------------+--------------+
 | # |  Name   | Container ID |     Image      | Kind |  State  |   IPv4 Address   | IPv6 Address |
 +---+---------+--------------+----------------+------+---------+------------------+--------------+
-| 1 | ceos-01 | d59629fbbdc0 | ceos:4.28.5.1M | ceos | running | 172.24.177.11/24 | N/A          |
-| 2 | ceos-02 | 80854bfd7e08 | ceos:4.28.5.1M | ceos | running | 172.24.177.12/24 | N/A          |
+| 1 | ceos-01 | d59629fbbdc0 | ceos:4.28.5.1M | ceos | running | 198.51.100.11/24 | N/A          |
+| 2 | ceos-02 | 80854bfd7e08 | ceos:4.28.5.1M | ceos | running | 198.51.100.12/24 | N/A          |
 +---+---------+--------------+----------------+------+---------+------------------+--------------+
 [21:51:14] Successfully ran: Deploying containerlab topology
 ─────────────────────────────────────────── End of task: Deploying containerlab topology ───────────────────────────────────────────
