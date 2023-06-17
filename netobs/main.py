@@ -593,6 +593,7 @@ def docker_network(
 def lab_deploy(
     scenario: str = typer.Argument(..., help="Scenario to execute command", envvar="LAB_SCENARIO"),
     topology: Path = typer.Option(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
+    network_name: Optional[str] = typer.Option("network-observability", "-n", "--network-name", help="Network name"),
     subnet: Optional[str] = typer.Option("198.51.100.0/24", help="Network subnet"),
     sudo: bool = typer.Option(False, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
 ):
@@ -602,7 +603,7 @@ def lab_deploy(
     # First create docker network if not exists
     docker_network(
         DockerNetworkAction.CREATE,
-        name="network-observability",
+        name=network_name,
         driver="bridge",
         subnet=subnet,
         verbose=True,
