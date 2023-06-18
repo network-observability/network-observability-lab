@@ -673,6 +673,10 @@ def vm_deploy():
     exec_cmd = "terraform -chdir=./terraform/ init"
     run_cmd(exec_cmd, task_name="terraform init")
 
+    # Terraform validate
+    exec_cmd = "terraform -chdir=./terraform/ validate"
+    run_cmd(exec_cmd, task_name="terraform validate")
+
     # Terraform apply
     exec_cmd = "terraform -chdir=./terraform/ apply -auto-approve"
     run_cmd(exec_cmd, task_name="terraform apply")
@@ -681,6 +685,8 @@ def vm_deploy():
     # Get VM IP and SSH command
     exec_cmd = "terraform -chdir=./terraform/ output -json"
     result = run_cmd(exec_cmd, task_name="terraform output", capture_output=True)
+
+    # Parse JSON output
     result_json = json.loads(result.stdout)
     vm_ip = result_json["vm_ips"]["value"]
     vm_ssh_cmd = result_json["ssh_command"]["value"]
