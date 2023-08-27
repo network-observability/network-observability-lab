@@ -1,6 +1,6 @@
 resource "digitalocean_droplet" "netobs_vm" {
-  image  = "ubuntu-20-04-x64"
-  name   = format("%s-%s", "netobs", var.reader)
+  image  = "ubuntu-22-04-x64"
+  name   = format("%s-%s", "netobs", var.user)
   region = var.vm_region
   size   = var.vm_size
   ssh_keys = [
@@ -23,31 +23,79 @@ resource "digitalocean_droplet" "netobs_vm" {
     destination = "/tmp/temp.pub"
   }
 
+  # TODO: Add provisioner to copy .env file to VM
+  provisioner "file" {
+    source      = "../.env"
+    destination = "/tmp/.env"
+  }
+
+  provisioner "file" {
+    content = <<EOF
+
+127.0.0.1 prometheus
+127.0.0.1 grafana
+127.0.0.1 loki
+127.0.0.1 nautobot
+
+    EOF
+    destination = "/tmp/network-observability-lab.txt"
+  }
+
   provisioner "remote-exec" {
     inline = [
         # Set up SSH keys
         "cat /tmp/temp.pub >> ~/.ssh/authorized_keys",
         "sudo apt-get update -y",
+        "sleep 60",
         # Install Docker
         "curl -fsSL https://get.docker.com -o get-docker.sh",
         "sudo sh get-docker.sh",
+        "sleep 60",
+        # Install Python 3.9 with miniconda
+        "curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o ~/miniconda.sh",
+        "bash ~/miniconda.sh -b -p $HOME/miniconda",
+        "export PATH=\"$HOME/miniconda/bin:$PATH\"",
+        "echo 'export PATH=\"$HOME/miniconda/bin:$PATH\"' >> ~/.bashrc",
+        # Update /etc/hosts
+        "cat /tmp/network-observability-lab.txt >> /etc/hosts",
         # Install containerlab
         "bash -c \"$(curl -sL https://get.containerlab.dev)\"",
-        # Install Python 3.9
-        "sudo add-apt-repository -y ppa:deadsnakes/ppa",
-        "sudo apt update -y",
-        "sudo apt install -y python3.9",
-        "sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1",
-        "sudo apt-get install -y python3-pip",
         # Install netobs
         "git clone https://github.com/network-observability/network-observability-lab.git",
-        "cd network-observability-lab && git checkout main && cp example.env .env && pip install .",
+        "cd network-observability-lab && git checkout main && mv /tmp/.env .env && pip install .",
+        "sleep 60",
+    ]
+  }
+
+  ############################# ONLY NEEDED IF PASSING IN A CEOS IMAGE #############################
+  provisioner "file" {
+    source      = var.lab_image.local_path
+    # source      = "~/tmp/images/arista/cEOS-lab-4.29.2F.tar"
+    # destination = "/tmp/${var.lab_tarimage}"
+    destination = "/tmp/${var.lab_image.tar_name}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+        # Import cEOS image
+        # "docker import /tmp/${var.lab_tarimage} ${var.lab_image_name}",
+        "docker import /tmp/${var.lab_image.tar_name} ${var.lab_image.image_name}",
+    ]
+  }
+  ##################################################################################################
+
+  # Prepare the lab
+  provisioner "remote-exec" {
+    inline = [
+        "export PATH=\"$HOME/miniconda/bin:$PATH\"",
+        "cd network-observability-lab && git checkout ${var.github_branch}",
+        "netobs lab deploy skeleton"
     ]
   }
 }
 
 resource "digitalocean_firewall" "netobs" {
-  name = "netobs-${var.reader}"
+  name = "netobs-${var.user}"
 
   droplet_ids = [digitalocean_droplet.netobs_vm.id]
 
@@ -115,10 +163,14 @@ resource "digitalocean_firewall" "netobs" {
   }
 }
 
-output "vm_ips" {
-  value = "netobs-vm: ${digitalocean_droplet.netobs_vm.ipv4_address}"
+output "vm_endpoints" {
+  value = {
+    nautobot = "http://${digitalocean_droplet.netobs_vm.ipv4_address}:8080",
+    grafana = "http://${digitalocean_droplet.netobs_vm.ipv4_address}:3000",
+    prometheus = "http://${digitalocean_droplet.netobs_vm.ipv4_address}:9090",
+  }
 }
 
 output "ssh_command" {
-  value = "ssh -i ${var.pvt_key} root@${digitalocean_droplet.netobs_vm.ipv4_address}"
+  value = "ssh -o StrictHostKeyChecking=no -i ${var.pvt_key} root@${digitalocean_droplet.netobs_vm.ipv4_address}"
 }
