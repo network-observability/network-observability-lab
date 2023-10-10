@@ -688,10 +688,12 @@ def vm_deploy():
 
     # Parse JSON output
     result_json = json.loads(result.stdout)
-    vm_ip = result_json["vm_ips"]["value"]
+    vm_endpoints = result_json["vm_endpoints"]["value"]
     vm_ssh_cmd = result_json["ssh_command"]["value"]
-    console.log(f"VM IP: [orange1 i]{vm_ip}", style="info")
+    console.log("VM Endpoints:", style="info")
+    console.print(vm_endpoints)
     console.log(f"VM SSH command: [orange1 i]{vm_ssh_cmd}", style="info")
+    console.log("You can now connect to the VM using the above SSH command", style="info")
 
 
 @vm_app.command("destroy")
