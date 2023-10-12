@@ -29,6 +29,18 @@
     subscription_mode = "sample"
     sample_interval = "10s"
 
+[[inputs.ping]]
+  # Interval time between ping commands
+  interval = "10s"
+  # Number of ping packets to send per interval
+  count = 3
+  # Time to wait between sending ping packets in seconds
+  ping_interval = 1.0
+  # Time to wait for a ping response in seconds
+  timeout = 5.0
+  # Hosts to send ping packets to
+  urls = ["ceos-02"]
+
 # Outputs metrics to stdout
 [[outputs.file]]
   files = ["stdout"]
