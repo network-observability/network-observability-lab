@@ -27,7 +27,7 @@ Expand out the folder structure and select the top most image. Then follow the p
 Once the image is downloaded, now you need to install the image into Docker. This can be done with the `docker import command`:
 
 ```bash
- ❯ docker import ~/Downloads/cEOS64-lab-4.29.5M.tar 
+ ❯ docker import ~/Downloads/cEOS64-lab-4.29.5M.tar ceos:4.29.5M
 sha256:2b5e7c32d1458b3b772eb7e9129cead51a6f92aab038592da7b7e31ed5dc45b9
 ```
 
