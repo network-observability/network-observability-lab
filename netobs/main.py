@@ -666,11 +666,17 @@ def lab_destroy(
 @lab_app.command("purge")
 def lab_purge():
     """Purge all lab environments."""
+    console.rule("[b i]PURGING ALL LAB ENVIRONMENTS", style="error")
+    console.log("Purging lab environments", style="info")
+
+    # Iterate over all scenarios and destroy them
     for scenario in NetObsScenarios:
         try:
             lab_destroy(scenario=scenario)
         except typer.Exit:
             pass
+
+    console.rule("[b i]LAB ENVIRONMENTS PURGED", style="error")
 
 
 @lab_app.command("show")
@@ -702,13 +708,10 @@ def lab_prepare(
     sudo: Annotated[bool, typer.Option(help="Use sudo to run containerlab", envvar="LAB_SUDO")] = False,
 ):
     """Prepare the lab for the scenario."""
-    console.log(f"Preapring lab environment for scenario: [orange1 i]{scenario.value}", style="info")
+    console.log(f"Preparing lab environment for scenario: [orange1 i]{scenario.value}", style="info")
 
-    # Stop docker compose
-    docker_stop(scenario=scenario, services=[], verbose=True)
-
-    # Destroy containerlab topology
-    containerlab_destroy(topology=topology, sudo=sudo)
+    # Destroy all other lab environments and network topologies
+    lab_purge()
 
     # Deploy containerlab topology
     containerlab_deploy(topology=topology, sudo=sudo)

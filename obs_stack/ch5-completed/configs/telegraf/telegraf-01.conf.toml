@@ -5,7 +5,7 @@
 [[inputs.snmp]]
   # Targets for the SNMP Plugin
   agents = ["ceos-01"]
-  # SNMP versions to use (v2)
+  # SNMP version to use (v2)
   version = 2
   # SNMP community string passed as an environment variable - see example.env
   community = "${SNMP_COMMUNITY}"

@@ -29,6 +29,25 @@
     subscription_mode = "sample"
     sample_interval = "10s"
 
+# Read metrics from one or more commands that can output to stdout
+[[inputs.exec]]
+  ## Commands array
+  commands = [
+    "python /etc/telegraf/script.py arista_eos ceos-02",
+  ]
+
+  # Interval time between ping commands
+  interval = "30s"
+
+  ## Timeout for each command to complete.
+  timeout = "5s"
+
+  ## Data format to consume.
+  ## Each data format has its own unique set of configuration options, read
+  ## more about them here:
+  ## https://github.com/influxdata/telegraf/blob/master/docs/DATA_FORMATS_INPUT.md
+  data_format = "influx"
+
 [[inputs.ping]]
   # Interval time between ping commands
   interval = "10s"
