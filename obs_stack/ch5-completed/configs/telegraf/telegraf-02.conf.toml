@@ -1,0 +1,65 @@
+[agent]
+  # Set the hostname because by default it will grab the container ID
+  hostname = "telegraf-02"
+
+
+[[inputs.gnmi]]
+  # Targets for gNMI plugin - notice we are using port 50051
+  addresses = ["ceos-02:50051"]
+  # Creds to connect to the device
+  username = "${NETWORK_AGENT_USER}"
+  password = "${NETWORK_AGENT_PASSWORD}"
+  # Retries in case of failure
+  redial = "20s"
+
+  [[inputs.gnmi.subscription]]
+    # Name of the resulting metric namespace
+    name = "interface"
+    # Specific YANG path for interface counters
+    path = "/interfaces/interface/state/counters"
+    # gNMI subscription mode ("target_defined", "sample", "on_change")
+    subscription_mode = "sample"
+    # Interval to send each sample
+    sample_interval = "10s"
+
+  [[inputs.gnmi.subscription]]
+    name = "interface"
+    # Specific path to collect interface oper-status
+    path = "/interfaces/interface/state/oper-status"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+# Read metrics from one or more commands that can output to stdout
+[[inputs.exec]]
+  ## Commands array
+  commands = [
+    "python /etc/telegraf/script.py arista_eos ceos-02",
+  ]
+
+  # Interval time between ping commands
+  interval = "30s"
+
+  ## Timeout for each command to complete.
+  timeout = "5s"
+
+  ## Data format to consume.
+  ## Each data format has its own unique set of configuration options, read
+  ## more about them here:
+  ## https://github.com/influxdata/telegraf/blob/master/docs/DATA_FORMATS_INPUT.md
+  data_format = "influx"
+
+[[inputs.ping]]
+  # Interval time between ping commands
+  interval = "10s"
+  # Number of ping packets to send per interval
+  count = 3
+  # Time to wait between sending ping packets in seconds
+  ping_interval = 1.0
+  # Time to wait for a ping response in seconds
+  timeout = 5.0
+  # Hosts to send ping packets to
+  urls = ["ceos-02"]
+
+# Outputs metrics to stdout
+[[outputs.file]]
+  files = ["stdout"]
