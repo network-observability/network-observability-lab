@@ -48,9 +48,9 @@ variable "lab_image" {
     tar_name = string
   })
   default = {
-    local_path = "~/Downloads/cEOS-lab-4.29.2F.tar"
-    image_name = "ceos:4.29.2F"
-    tar_name = "cEOS-lab-4.29.2F.tar"
+    local_path = "~/Downloads/cEOS-lab-4.29.5M.tar"
+    image_name = "ceos:4.29.5M"
+    tar_name = "cEOS-lab-4.29.5M.tar"
   }
 }
 

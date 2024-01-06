@@ -3,16 +3,16 @@ prefix: ""  # Empty string to not add a prefix to the containers
 
 mgmt:
   network: network-observability
-  ipv4_subnet: 198.51.100.0/24
+  ipv4-subnet: 198.51.100.0/24
 
 topology:
   kinds:
     ceos:
-      image: ceos:4.29.2F
+      image: ceos:4.29.5M
   nodes:
     ceos-01:
       kind: ceos
-      mgmt_ipv4: 198.51.100.11
+      mgmt-ipv4: 198.51.100.11
       startup-config: startups/ceos-01.conf
       publish:
         - tcp/50051
@@ -21,7 +21,7 @@ topology:
         - udp/161
     ceos-02:
       kind: ceos
-      mgmt_ipv4: 198.51.100.12
+      mgmt-ipv4: 198.51.100.12
       startup-config: startups/ceos-02.conf
       publish:
         - tcp/50051
