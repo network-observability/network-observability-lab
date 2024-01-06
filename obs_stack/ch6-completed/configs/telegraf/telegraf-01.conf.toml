@@ -13,14 +13,26 @@
     name = "interface"
 
     [[inputs.snmp.table.field]]
+      # Name of the tag used to identify the interface name.
+      name = "name"
       oid = "IF-MIB::ifDescr"
       is_tag = true
 
     [[inputs.snmp.table.field]]
+      # Name of the field used to identify Rx Counters.
+      name = "in_octets"
       oid = "IF-MIB::ifHCInOctets"
 
     [[inputs.snmp.table.field]]
+      # Name of the field used to identify Tx Counters.
+      name = "out_octets"
       oid = "IF-MIB::ifHCOutOctets"
+
+[[processors.rename]]
+  # Rename the tag "agent_host" to "device"
+  [[processors.rename.replace]]
+    tag = "agent_host"
+    dest = "device"
 
 [[outputs.file]]
   files = ["stdout"]
