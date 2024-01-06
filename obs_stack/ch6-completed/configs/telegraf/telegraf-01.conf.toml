@@ -1,0 +1,50 @@
+[agent]
+  # Set the hostname because by default it will grab the container ID
+  hostname = "telegraf-01"
+
+[[inputs.snmp]]
+  # Targets for the SNMP Plugin
+  agents = ["ceos-01"]
+  # SNMP version to use (v2)
+  version = 2
+  # SNMP community string passed as an environment variable - see example.env
+  community = "${SNMP_COMMUNITY}"
+  # SNMP polling interval, timeout and retries
+  interval = "60s"
+  timeout = "10s"
+  retries = 3
+
+  # Example of SNMP Get operation
+  [[inputs.snmp.field]]
+    # # Overriding the name of the metric collected to "uptime"
+    # name = "uptime"
+    # SNMP OID
+    oid = "RFC1213-MIB::sysUpTime.0"
+
+  # Example of SNMP Walk operation
+  [[inputs.snmp.table]]
+    # # Name of the metrics collected
+    # name = "interface"
+
+    # Example of retrieving an specific field from the table
+    [[inputs.snmp.table.field]]
+      # # Overriding the name of this field
+      # name = "name"
+      # SNMP OID which has the Interface Name
+      oid = "IF-MIB::ifDescr"
+      # Flag that signal to use this as a tag instead of a metric value
+      is_tag = true
+
+    # By default the plugin is collecting all the metrics from the table walk
+    # but in this case we are selecting some specific fields to showcase in the book
+    [[inputs.snmp.table.field]]
+          # name = "in_octets"
+          oid = "IF-MIB::ifHCInOctets"
+
+      [[inputs.snmp.table.field]]
+          # name = "out_octets"
+          oid = "IF-MIB::ifHCOutOctets"
+
+# Outputs metrics to stdout
+[[outputs.file]]
+  files = ["stdout"]
