@@ -13,8 +13,7 @@
   redial = "20s"
 
   [[inputs.gnmi.subscription]]
-    # # Name of the resulting metric namespace
-    # name = "interface"
+    name = "interface"
     # Specific YANG path for interface counters
     path = "/interfaces/interface/state/counters"
     # gNMI subscription mode ("target_defined", "sample", "on_change")
@@ -23,7 +22,7 @@
     sample_interval = "10s"
 
   [[inputs.gnmi.subscription]]
-    # name = "interface"
+    name = "interface"
     # Specific path to collect interface oper-status
     path = "/interfaces/interface/state/oper-status"
     subscription_mode = "sample"
