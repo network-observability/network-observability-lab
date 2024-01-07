@@ -27,5 +27,30 @@
     tag = "source"
     dest = "device"
 
+# Add a tag "intf_role" based on the interface name
+[[processors.regex]]
+  # Filter metrics that have the "interface" name
+  namepass = ["interface"]
+
+  # Filter metrics that have the "ceos-02" device
+  [processors.regex.tagpass]
+      device = ["ceos-02"]
+
+  [[processors.regex.tags]]
+    # Name of the tag to match
+    key = "name"
+    # Regex pattern to match
+    pattern = "^Ethernet.*$"
+    # Name of the new tag
+    result_key = "intf_role"
+    # Replacement string
+    replacement = "peer"
+
+  [[processors.regex.tags]]
+    key = "name"
+    pattern = "^Management.*$"
+    result_key = "intf_role"
+    replacement = "mgmt"
+
 [[outputs.file]]
   files = ["stdout"]
