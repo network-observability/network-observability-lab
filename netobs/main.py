@@ -362,7 +362,7 @@ def run_docker_compose_cmd(
 # --------------------------------------#
 
 
-def read_containerlab_topology(topology: Path) -> dict:
+def load_yaml(topology: Path) -> dict:
     """Read a containerlab topology file.
 
     Args:
@@ -943,15 +943,21 @@ def utils_load_nautobot_data(
     topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
         "./containerlab/lab.yml"
     ),
+    extra_topology_vars: Annotated[Path, typer.Option(help="Path to the extra topology vars file", exists=True)] = Path(
+        "./containerlab/lab_vars.yml"
+    ),
     nautobot_url: Annotated[str, typer.Option(help="Nautobot URL", envvar="NAUTOBOT_URL")] = "http://localhost:8080",
 ):
     """Load Nautobot data from containerlab topology file."""
     console.log(f"Loading Nautobot data from topology file: [orange1 i]{topology}", style="info")
 
     console.log("Reading containerlab topology file", style="info")
-    topology_dict = read_containerlab_topology(topology)
-    topology_nodes = topology_dict["topology"]["nodes"]
-    topology_links = topology_dict["topology"]["links"]
+    topology_dict = load_yaml(topology)
+
+    # Add extra vars to topology dict
+    extra_topology_vars_dict = load_yaml(extra_topology_vars)
+    for key, value in extra_topology_vars_dict["nodes"].items():
+        topology_dict["topology"]["nodes"][key].update(value)
 
     # Instantiate Nautobot Client
     console.log("Instantiating Nautobot Client", style="info")
@@ -1021,7 +1027,7 @@ def utils_load_nautobot_data(
     console.log(f"Created IPAM Namespace: [orange1 i]{ipam_namespace['display']}", style="info")
 
     # Create Prefixes for the Namespace
-    for prefix_data in topology_dict["mgmt"]["_custom_data"]["prefixes"]:
+    for prefix_data in extra_topology_vars_dict["prefixes"]:
         prefix = nautobot_client.http_call(
             url="/api/ipam/prefixes/",
             method="post",
@@ -1050,7 +1056,7 @@ def utils_load_nautobot_data(
     console.log(f"Created Prefix: [orange1 i]{mgmt_prefix['display']}", style="info")
 
     # Create Devices
-    for node, node_data in topology_nodes.items():
+    for node, node_data in topology_dict["topology"]["nodes"].items():
         device = nautobot_client.http_call(
             url="/api/dcim/devices/",
             method="post",
@@ -1073,7 +1079,7 @@ def utils_load_nautobot_data(
         console.log(f"Created Device: [orange1 i]{device['display']}", style="info")
 
         # Create IP Addresses and Interfaces
-        for intf_data in node_data["_custom_data"]["interfaces"]:
+        for intf_data in node_data["interfaces"]:
             ip_address = nautobot_client.http_call(
                 url="/api/ipam/ip-addresses/",
                 method="post",

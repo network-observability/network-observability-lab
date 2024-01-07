@@ -4,18 +4,6 @@ prefix: ""  # Empty string to not add a prefix to the containers
 mgmt:
   network: network-observability
   ipv4-subnet: 198.51.100.0/24
-  _custom_data:
-    prefixes:
-      - prefix: "10.1.2.0/24"
-        name: "lab-net1"
-      - prefix: "10.1.7.0/24"
-        name: "lab-net2"
-      - prefix: "10.17.17.0/24"
-        name: "lab-net3"
-      - prefix: "10.111.0.0/24"
-        name: "lab-net4"
-      - prefix: "10.222.0.0/24"
-        name: "lab-net4"
 
 topology:
   kinds:
@@ -25,20 +13,6 @@ topology:
     ceos-01:
       kind: ceos
       mgmt-ipv4: 198.51.100.11
-      _custom_data:
-        interfaces:
-          - name: Ethernet1
-            ipv4: 10.1.2.1/24
-            role: peer
-          - name: Ethernet2
-            ipv4: 10.1.7.1/24
-            role: peer
-          - name: Loopback0
-            ipv4: 10.17.17.1/32
-            role: loopback
-          - name: Loopback1
-            ipv4: 10.111.0.1/24
-            role: loopback
       startup-config: startups/ceos-01.conf
       publish:
         - tcp/50051
@@ -48,20 +22,6 @@ topology:
     ceos-02:
       kind: ceos
       mgmt-ipv4: 198.51.100.12
-      _custom_data:
-        interfaces:
-          - name: Ethernet1
-            ipv4: 10.1.2.2/24
-            role: peer
-          - name: Ethernet2
-            ipv4: 10.1.7.2/24
-            role: peer
-          - name: Loopback0
-            ipv4: 10.17.17.2/32
-            role: loopback
-          - name: Loopback1
-            ipv4: 10.222.0.1/24
-            role: loopback
       startup-config: startups/ceos-02.conf
       publish:
         - tcp/50051
