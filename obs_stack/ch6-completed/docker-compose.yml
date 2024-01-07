@@ -4,6 +4,9 @@ networks:
     external: true
     name: network-observability
 
+volumes:
+  nautobot_postgres_data:
+
 version: "3.8"
 services:
 
@@ -43,6 +46,46 @@ services:
       - 1515:1515
     environment:
       XPACK_MONITORING_ENABLED: false
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  nautobot:
+    image: "networktocode/nautobot:2.1-py3.10"
+    env_file:
+      - "../../.env"
+    ports:
+      - "8443:8443"
+      - "8080:8080"
+    restart: "unless-stopped"
+    volumes:
+      - ./configs/nautobot/nautobot_config.py:/opt/nautobot/nautobot_config.py
+    networks:
+      - network-observability
+
+  nautobot-redis:
+    image: "redis:alpine"
+    command:
+      - "sh"
+      - "-c"
+      - "redis-server --appendonly yes --requirepass $$NAUTOBOT_REDIS_PASSWORD"
+    restart: "unless-stopped"
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  nautobot-postgres:
+    image: "postgres:14"
+    environment:
+      NAUTOBOT_DB_ENGINE: "django.db.backends.postgres"
+      POSTGRES_USER: ${NAUTOBOT_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${NAUTOBOT_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${NAUTOBOT_POSTGRES_DB}
+    volumes:
+      - nautobot_postgres_data:/var/lib/postgresql/data
+    restart: "unless-stopped"
     env_file:
       - ../../.env
     networks:
