@@ -1,83 +1,133 @@
-"""BGP neighbor state_pfxrcd/state_pfxacc to InfluxDB line protocol script."""
 import os
 import sys
-from netmiko import ConnectHandler
+import fileinput
+from dataclasses import dataclass
+from typing import Optional
+
+import requests
+import jmespath
+from line_protocol_parser import parse_line
+from requests.exceptions import ConnectionError
 
 
-def influx_line_protocol(measurement, tags, fields):
-    """Generate an InfluxDB line protocol string."""
-    # Create the measurement string
-    line_protocol = f"{measurement},"
-
-    # Add the tags to the line protocol
-    for tag in tags:
-        line_protocol += f"{tag},"
-
-    # Remove the trailing comma
-    line_protocol = line_protocol[:-1]
-
-    # Add the fields to the line protocol
-    line_protocol += " "
-    for field in fields:
-        line_protocol += f"{field},"
-
-    # Remove the trailing comma
-    line_protocol = line_protocol[:-1]
-
-    # Return the line protocol string.
-    return line_protocol
+# Define the Nautobot URL and API token
+NAUTOBOT_URL = os.getenv("NAUTOBOT_URL", "")
+NAUTOBOT_SUPERUSER_API_TOKEN = os.getenv("NAUTOBOT_SUPERUSER_API_TOKEN", "")
 
 
-def main(device_type, host):
-    """Connect to a device and print the BGP neighbor pfxrcd/pfxacc value in the influx line protocol format."""
-    # Define the device to connect to
-    device = {
-        "device_type": device_type,
-        "host": host,
-        # Use environment variables for username and password
-        "username": os.getenv("NETWORK_AGENT_USER"),
-        "password": os.getenv("NETWORK_AGENT_PASSWORD"),
+# Nautobot GraphQL query to retrieve device data
+NAUTOBOT_DEVICE_GQL = """
+query ($device_name: [String]) {
+  devices (name: $device_name) {
+    name
+    id
+    interfaces {
+      name
+      label
+      ip_addresses {
+        address
+      }
     }
+  }
+}
+"""
 
-    # Establish an SSH connection to the device by passing in the device dictionary
-    net_connect = ConnectHandler(**device)
 
-    # Execute the show version command on the device
-    output = net_connect.send_command("show ip bgp summary", use_textfsm=True)
+@dataclass
+class InfluxMetric:
+    measurement: str
+    tags: dict
+    fields: dict
+    time: Optional[int] = None
 
-    # Print the output of the command
-    # print(output)
+    def __str__(self):
+        tags_string = ""
+        for key, value in self.tags.items():
+            if value is not None:
+                if isinstance(value, str):
+                    value = value.replace(" ", r"\ ")
+                tags_string += f",{key}={value}"
 
-    # Print the state_pfxrcd / state_pfxacc value for each BGP neighbor in the influx line protocol format
-    for neighbor in output:
-        # Ignore neighbors that are not in the Established state
-        if not neighbor['state_pfxrcd']:  # type: ignore
+        fields_string = ""
+        for key, value in self.fields.items():
+            if fields_string:
+                fields_string += ","
+            if isinstance(value, bool):
+                fields_string += f"{key}=true" if value else f"{key}=false"
+            elif isinstance(value, (int)):
+                fields_string += f"{key}={value}i"
+            elif isinstance(value, (float)):
+                fields_string += f"{key}={value}"
+            elif isinstance(value, str):
+                value = value.replace(" ", r"\ ")
+                fields_string += f'{key}="{value}"'
+            else:
+                fields_string += f"{key}={value}"
+
+        return (
+            f"{self.measurement}{tags_string} {fields_string} {self.time}"
+            if self.time
+            else f"{self.measurement}{tags_string} {fields_string}"
+        )
+
+
+def get_device_data(device_name) -> Optional[dict]:
+    """Retrieve device data from Nautobot GraphQL API if available."""
+    # Retrieve the device data from Nautobot GraphQL API
+    try:
+        response = requests.post(
+            url=f"{NAUTOBOT_URL}/api/graphql/",
+            headers={"Authorization": f"Token {NAUTOBOT_SUPERUSER_API_TOKEN}"},
+            json={
+                "query": NAUTOBOT_DEVICE_GQL,
+                "variables": {"device_name": device_name},
+            },
+        )
+    except ConnectionError:
+        print("[ERROR] Unable to connect to Nautobot GraphQL API", file=sys.stderr, flush=True)
+        return None
+
+    # Return the device data
+    if response.json()["data"]["devices"]:
+        return response.json()["data"]["devices"][0]
+    else:
+        print(f"[WARNING] Device `{device_name}` data not found in {NAUTOBOT_URL}", file=sys.stderr, flush=True)
+        return None
+
+
+def main():
+    # Iterate over the lines of input
+    for line in fileinput.input():
+        # Parse the line into an InfluxMetric object
+        influx_metric = InfluxMetric(**parse_line(line))
+
+        # Extract the device name from the tags
+        device_name = influx_metric.tags.get("device")
+        if not device_name:
+            # Print metric even if device_name is not available
+            print(influx_metric, flush=True)
             continue
 
-        # Create the measurement, tags, and fields for InfluxDB line protocol format
-        measurement = "bgp"
-        tags = [
-            f"neighbor={neighbor['bgp_neigh']}",  # type: ignore
-            f"neighbor_asn={neighbor['neigh_as']}",  # type: ignore
-            f"vrf={neighbor['vrf']}",  # type: ignore
-        ]
-        fields = [
-            f"prefixes_received={neighbor['state_pfxrcd']}",  # type: ignore
-            f"prefixes_accepted={neighbor['state_pfxacc']}",  # type: ignore
-        ]
+        # Retrieve device data from Nautobot
+        device_data = get_device_data(device_name)
+        if not device_data:
+            # Print metric even if device data is not available
+            print(influx_metric, flush=True)
+            continue
 
-        # Generate the line protocol string
-        line_protocol = influx_line_protocol(measurement, tags, fields)
+        # Create JMESPath expressions to extract and interface data from the device
+        jpath = f"interfaces[?name=='{influx_metric.tags['name']}'].label"
 
-        # Print the line protocol string.
-        # For example: bgp,neighbor=x.x.x.x,neighbor_asn=xxxx,vrf=default prefixes_received=0,prefixes_accepted=0
-        print(line_protocol)
+        # Extract the interface label from the device data
+        intf_role = jmespath.search(jpath, device_data)[0]
+
+        # Add the interface role to the tags
+        influx_metric.tags["intf_role"] = intf_role
+
+        # Print the line protocol string
+        print(influx_metric, flush=True)
 
 
 if __name__ == "__main__":
-    # Get the device type and host from the command line
-    device_type = sys.argv[1]
-    host = sys.argv[2]
-
-    # Call the main function passing in the device type and host
-    main(device_type, host)
+    # Start the processor
+    main()

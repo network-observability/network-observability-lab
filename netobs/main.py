@@ -949,7 +949,9 @@ def utils_load_nautobot_data(
     nautobot_url: Annotated[str, typer.Option(help="Nautobot URL", envvar="NAUTOBOT_URL")] = "http://localhost:8080",
 ):
     """Load Nautobot data from containerlab topology file."""
-    console.log(f"Loading Nautobot data from topology file: [orange1 i]{topology}", style="info")
+    console.log(
+        f"Loading Nautobot data from topology file: [orange1 i]{topology} && {extra_topology_vars}", style="info"
+    )
 
     console.log("Reading containerlab topology file", style="info")
     topology_dict = load_yaml(topology)
@@ -1037,7 +1039,7 @@ def utils_load_nautobot_data(
                 "type": "network",
                 "status": {"id": statuses["id"]},
                 "description": prefix_data["name"],
-            }
+            },
         )
         console.log(f"Created Prefix: [orange1 i]{prefix['display']}", style="info")
 
@@ -1051,7 +1053,7 @@ def utils_load_nautobot_data(
             "type": "network",
             "status": {"id": statuses["id"]},
             "description": "lab-mgmt-prefix",
-        }
+        },
     )
     console.log(f"Created Prefix: [orange1 i]{mgmt_prefix['display']}", style="info")
 
