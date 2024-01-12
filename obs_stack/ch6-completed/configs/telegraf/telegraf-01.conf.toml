@@ -9,6 +9,10 @@
   timeout = "10s"
   retries = 3
 
+  # Tag to identify the stage of the data pipeline
+  [inputs.snmp.tags]
+    data_type = "raw"
+
   [[inputs.snmp.table]]
     name = "interface"
 
@@ -61,3 +65,9 @@
 
 [[outputs.file]]
   files = ["stdout"]
+
+# Send the metrics to Kafka
+[[outputs.kafka]]
+  brokers = ["kafka-01:29092"]
+  topic = "telegraf-data-collection"
+  routing_tag = "host"
