@@ -8,8 +8,13 @@ from typing import Optional, Any
 from typing_extensions import Annotated
 from pathlib import Path
 from subprocess import CompletedProcess  # nosec
+from urllib.parse import urlparse
 
 import typer
+import yaml
+import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry  # type: ignore
 from dotenv import dotenv_values, load_dotenv
 from rich.console import Console
 from rich.theme import Theme
@@ -34,6 +39,9 @@ app.add_typer(lab_app, name="lab")
 
 vm_app = typer.Typer(help="Digital Ocean VM management related commands.", rich_markup_mode="rich")
 app.add_typer(vm_app, name="vm")
+
+utils_app = typer.Typer(help="Utilities and scripts related commands.", rich_markup_mode="rich")
+app.add_typer(utils_app, name="utils")
 
 
 class NetObsScenarios(Enum):
@@ -61,6 +69,114 @@ class DockerNetworkAction(Enum):
     LIST = "ls"
     PRUNE = "prune"
     REMOVE = "rm"
+
+
+class NautobotClient:
+    def __init__(
+        self,
+        url: str,
+        token: str | None = None,
+        **kwargs,
+    ):
+        self.base_url = self._parse_url(url)
+        self._token = token
+        self.verify_ssl = kwargs.get("verify_ssl", False)
+        self.retries = kwargs.get("retries", 3)
+        self.timeout = kwargs.get("timeout", 10)
+        self.proxies = kwargs.get("proxies", None)
+        self._create_session()
+
+    def _parse_url(self, url: str) -> str:
+        """Checks if the provided URL has http or https and updates it if needed.
+
+        Args:
+            url (str): URL of the grafana instance. ex: "grafana.mylab.com:3000"
+
+        Returns:
+            str: a string of the URL. ex: "http://grafana.mylab.com:3000"
+        """
+        parsed_url = urlparse(url)
+        if not parsed_url.scheme:
+            return f"http://{url}"
+        return f"{parsed_url.geturl()}"
+
+    def _create_session(self):
+        """
+        Creates the requests.Session object and applies the necessary parameters
+        """
+        self.session = requests.Session()
+        self.session.headers["Content-Type"] = "application/json"
+        self.session.headers["Accept"] = "application/json"
+        self.session.headers["Authorization"] = f"Token {self._token}"
+        if self.proxies:
+            self.session.proxies.update(self.proxies)
+
+        retry_method = Retry(
+            total=self.retries,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+        adapter = HTTPAdapter(max_retries=retry_method)
+
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
+
+    def http_call(
+        self,
+        method: str,
+        url: str,
+        data: dict | str | None = None,
+        json_data: dict | None = None,
+        headers: dict | None = None,
+        verify: bool = False,
+        params: dict | list[tuple] | None = None,
+    ) -> dict:
+        """
+        Performs the HTTP operation actioned
+
+        **Required Attributes:**
+
+        - `method` (enum): HTTP method to perform: get, post, put, delete, head,
+        patch (**required**)
+        - `url` (str): URL target (**required**)
+        - `data`: Dictionary or byte of request body data to attach to the Request
+        - `json_data`: Dictionary or List of dicts to be passed as JSON object/array
+        - `headers`: Dictionary of HTTP Headers to attach to the Request
+        - `verify`: SSL Verification
+        - `params`: Dictionary or bytes to be sent in the query string for the Request
+        """
+        _request = requests.Request(
+            method=method.upper(),
+            url=self.base_url + url,
+            data=data,
+            json=json_data,
+            headers=headers,
+            params=params,
+        )
+
+        # Prepare the request
+        _request = self.session.prepare_request(_request)
+
+        # Send the request
+        try:
+            _response = self.session.send(request=_request, verify=verify, timeout=self.timeout)
+            # print(_response.text)
+        except Exception as err:
+            raise err
+
+        # Raise Error if object already exists
+        if "already exists" in _response.text:
+            raise ValueError(_response.text)
+
+        # Raise any HTTP errors
+        try:
+            _response.raise_for_status()
+        except Exception as err:
+            raise err
+
+        if _response.status_code == 204:
+            return {}
+        return _response.json()
 
 
 def strtobool(val: str) -> bool:
@@ -244,6 +360,24 @@ def run_docker_compose_cmd(
 # --------------------------------------#
 #             Containerlab              #
 # --------------------------------------#
+
+
+def load_yaml(topology: Path) -> dict:
+    """Read a containerlab topology file.
+
+    Args:
+        topology (Path): Path to the topology file
+
+    Returns:
+        dict: Topology file as a dict
+    """
+    with open(topology, "r") as stream:
+        try:
+            topology_dict = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            console.log(exc, style="error")
+            raise typer.Exit(1)
+    return topology_dict
 
 
 @containerlab_app.command(rich_help_panel="Containerlab Management", name="deploy")
@@ -796,3 +930,321 @@ def vm_destroy():
     run_cmd(exec_cmd, task_name="terraform destroy")
 
     console.log("Lab VM destroyed", style="info")
+
+
+# --------------------------------------#
+#                Utils                  #
+# --------------------------------------#
+
+
+@utils_app.command("load-nautobot", help="Load Nautobot data from containerlab topology file")
+def utils_load_nautobot_data(
+    nautobot_token: Annotated[str, typer.Option(help="Nautobot Token", envvar="NAUTOBOT_SUPERUSER_API_TOKEN")],
+    topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
+        "./containerlab/lab.yml"
+    ),
+    extra_topology_vars: Annotated[Path, typer.Option(help="Path to the extra topology vars file", exists=True)] = Path(
+        "./containerlab/lab_vars.yml"
+    ),
+    nautobot_url: Annotated[str, typer.Option(help="Nautobot URL", envvar="NAUTOBOT_URL")] = "http://localhost:8080",
+):
+    """Load Nautobot data from containerlab topology file."""
+    console.log(
+        f"Loading Nautobot data from topology file: [orange1 i]{topology} && {extra_topology_vars}", style="info"
+    )
+
+    console.log("Reading containerlab topology file", style="info")
+    topology_dict = load_yaml(topology)
+
+    # Add extra vars to topology dict
+    extra_topology_vars_dict = load_yaml(extra_topology_vars)
+    for key, value in extra_topology_vars_dict["nodes"].items():
+        topology_dict["topology"]["nodes"][key].update(value)
+
+    # Instantiate Nautobot Client
+    console.log("Instantiating Nautobot Client", style="info")
+    nautobot_client = NautobotClient(url=nautobot_url, token=nautobot_token)
+
+    # Create Roles in Nautobot
+    roles = nautobot_client.http_call(
+        url="/api/extras/roles/",
+        method="post",
+        json_data={"name": "network_device", "content_types": ["dcim.device"]},
+    )
+    console.log(f"Created Role: [orange1 i]{roles['display']}", style="info")
+
+    # Create Manufacturers in Nautobot
+    manufacturers = nautobot_client.http_call(
+        url="/api/dcim/manufacturers/",
+        method="post",
+        json_data={"name": "Arista"},
+    )
+    console.log(f"Created Manufacturer: [orange1 i]{manufacturers['display']}", style="info")
+
+    # Create Device Types in Nautobot
+    device_types = nautobot_client.http_call(
+        url="/api/dcim/device-types/",
+        method="post",
+        json_data={"manufacturer": "Arista", "model": "cEOS"},
+    )
+    console.log(f"Created Device Types: [orange1 i]{device_types['display']}", style="info")
+
+    # Create Location Types
+    location_type = nautobot_client.http_call(
+        url="/api/dcim/location-types/",
+        method="post",
+        json_data={"name": "site", "content_types": ["dcim.device"]},
+    )
+    console.log(f"Created Location Type: [orange1 i]{location_type['display']}", style="info")
+
+    # Create Statuses
+    statuses = nautobot_client.http_call(
+        url="/api/extras/statuses/",
+        method="post",
+        json_data={
+            "name": "lab-active",
+            "content_types": ["dcim.device", "dcim.interface", "dcim.location", "ipam.ipaddress", "ipam.prefix"],
+        },
+    )
+    console.log(f"Created Status: [orange1 i]{statuses['display']}", style="info")
+
+    # Create Locations
+    locations = nautobot_client.http_call(
+        url="/api/dcim/locations/",
+        method="post",
+        json_data={
+            "name": "lab",
+            "location_type": {"id": location_type["id"]},
+            "status": {"id": statuses["id"]},
+        },
+    )
+    console.log(f"Created Location: [orange1 i]{locations['display']}", style="info")
+
+    # Create IPAM Namespace
+    ipam_namespace = nautobot_client.http_call(
+        url="/api/ipam/namespaces/",
+        method="post",
+        json_data={"name": "lab-default"},
+    )
+    console.log(f"Created IPAM Namespace: [orange1 i]{ipam_namespace['display']}", style="info")
+
+    # Create Prefixes for the Namespace
+    for prefix_data in extra_topology_vars_dict["prefixes"]:
+        prefix = nautobot_client.http_call(
+            url="/api/ipam/prefixes/",
+            method="post",
+            json_data={
+                "prefix": prefix_data["prefix"],
+                "namespace": {"id": ipam_namespace["id"]},
+                "type": "network",
+                "status": {"id": statuses["id"]},
+                "description": prefix_data["name"],
+            },
+        )
+        console.log(f"Created Prefix: [orange1 i]{prefix['display']}", style="info")
+
+    # Create Management Prefix
+    mgmt_prefix = nautobot_client.http_call(
+        url="/api/ipam/prefixes/",
+        method="post",
+        json_data={
+            "prefix": topology_dict["mgmt"]["ipv4-subnet"],
+            "namespace": {"id": ipam_namespace["id"]},
+            "type": "network",
+            "status": {"id": statuses["id"]},
+            "description": "lab-mgmt-prefix",
+        },
+    )
+    console.log(f"Created Prefix: [orange1 i]{mgmt_prefix['display']}", style="info")
+
+    # Create Devices
+    for node, node_data in topology_dict["topology"]["nodes"].items():
+        device = nautobot_client.http_call(
+            url="/api/dcim/devices/",
+            method="post",
+            json_data={
+                "name": node,
+                "role": {"id": roles["id"]},
+                "device_type": {"id": device_types["id"]},
+                # "platform": "other",
+                "location": {"id": locations["id"]},
+                "status": {"id": statuses["id"]},
+                # "primary_ip4": {"id": ip_address["id"]},
+                "customn_fields": {
+                    "containerlab": {
+                        "node_kind": node_data["kind"],
+                        "node_address": node_data["mgmt-ipv4"],
+                    }
+                },
+            },
+        )
+        console.log(f"Created Device: [orange1 i]{device['display']}", style="info")
+
+        # Create IP Addresses and Interfaces
+        for intf_data in node_data["interfaces"]:
+            ip_address = nautobot_client.http_call(
+                url="/api/ipam/ip-addresses/",
+                method="post",
+                json_data={
+                    "address": intf_data["ipv4"],
+                    "status": {"id": statuses["id"]},
+                    "namespace": {"id": ipam_namespace["id"]},
+                    "type": "host",
+                },
+            )
+            console.log(f"Created IP Address: [orange1 i]{ip_address['display']}", style="info")
+
+            interface = nautobot_client.http_call(
+                url="/api/dcim/interfaces/",
+                method="post",
+                json_data={
+                    "device": {"id": device["id"]},
+                    "name": intf_data["name"],
+                    "type": "virtual",
+                    "enabled": True,
+                    "description": f"Interface {intf_data['name']}",
+                    "status": {"id": statuses["id"]},
+                    "label": intf_data["role"],
+                },
+            )
+            console.log(f"Created Interface: [orange1 i]{device['display']}:{interface['display']}", style="info")
+
+            # Create IP address to interface mapping
+            mapping = nautobot_client.http_call(
+                url="/api/ipam/ip-address-to-interface/",
+                method="post",
+                json_data={
+                    "ip_address": {"id": ip_address["id"]},
+                    "interface": {"id": interface["id"]},
+                },
+            )
+            console.log(f"Created IP Address to Interface Mapping: [orange1 i]{mapping['display']}", style="info")
+
+        # Create Mgmt IP Address
+        mgmt_ip_address = nautobot_client.http_call(
+            url="/api/ipam/ip-addresses/",
+            method="post",
+            json_data={
+                "address": node_data["mgmt-ipv4"],
+                "status": {"id": statuses["id"]},
+                "namespace": {"id": ipam_namespace["id"]},
+                "type": "host",
+            },
+        )
+        console.log(f"Created Mgmt IP Address: [orange1 i]{mgmt_ip_address['display']}", style="info")
+
+        # Create Mgmt Interface
+        mgmt_interface = nautobot_client.http_call(
+            url="/api/dcim/interfaces/",
+            method="post",
+            json_data={
+                "device": {"id": device["id"]},
+                "name": "Management0",
+                "type": "virtual",
+                "enabled": True,
+                "description": "Management Interface",
+                "status": {"id": statuses["id"]},
+                "label": "mgmt",
+            },
+        )
+        console.log(f"Created Mgmt Interface: [orange1 i]{device['display']}:{mgmt_interface['display']}", style="info")
+
+        # Create Mgmt IP address to interface mapping
+        mgmt_mapping = nautobot_client.http_call(
+            url="/api/ipam/ip-address-to-interface/",
+            method="post",
+            json_data={
+                "ip_address": {"id": mgmt_ip_address["id"]},
+                "interface": {"id": mgmt_interface["id"]},
+            },
+        )
+        console.log(f"Created Mgmt IP Address to Interface Mapping: [orange1 i]{mgmt_mapping['display']}", style="info")
+
+        # Update Device with Primary IP Address
+        device = nautobot_client.http_call(
+            url=f"/api/dcim/devices/{device['id']}/",
+            method="patch",
+            json_data={
+                "primary_ip4": {"id": mgmt_ip_address["id"]},
+            },
+        )
+        console.log(f"Updated Device: [orange1 i]{device['display']}", style="info")
+
+
+@utils_app.command("delete-nautobot", help="Delete Nautobot data from containerlab topology file")
+def utils_delete_nautobot_data(
+    nautobot_token: Annotated[str, typer.Option(help="Nautobot Token", envvar="NAUTOBOT_SUPERUSER_API_TOKEN")],
+    nautobot_url: Annotated[str, typer.Option(help="Nautobot URL", envvar="NAUTOBOT_URL")] = "http://localhost:8080",
+):
+    """Delete Nautobot data from containerlab topology file."""
+    console.log("Deleting Nautobot data", style="info")
+
+    # Instantiate Nautobot Client
+    console.log("Instantiating Nautobot Client", style="info")
+    nautobot_client = NautobotClient(url=nautobot_url, token=nautobot_token)
+
+    # Delete Devices
+    console.log("Delete Devices in Nautobot", style="info")
+    all_devices = nautobot_client.http_call(url="/api/dcim/devices/", method="get")
+    if all_devices["count"] > 0:
+        nautobot_client.http_call(url="/api/dcim/devices/", method="delete", json_data=all_devices["results"])
+
+    # Delete Locations
+    console.log("Delete Locations in Nautobot", style="info")
+    all_locations = nautobot_client.http_call(url="/api/dcim/locations/", method="get")
+    if all_locations["count"] > 0:
+        nautobot_client.http_call(url="/api/dcim/locations/", method="delete", json_data=all_locations["results"])
+
+    # Delete Location Types
+    console.log("Delete Location Types in Nautobot", style="info")
+    all_location_types = nautobot_client.http_call(url="/api/dcim/location-types/", method="get")
+    if all_location_types["count"] > 0:
+        nautobot_client.http_call(
+            url="/api/dcim/location-types/", method="delete", json_data=all_location_types["results"]
+        )
+
+    # Delete Device Types
+    console.log("Delete Device Types in Nautobot", style="info")
+    all_device_types = nautobot_client.http_call(url="/api/dcim/device-types/", method="get")
+    if all_device_types["count"] > 0:
+        nautobot_client.http_call(url="/api/dcim/device-types/", method="delete", json_data=all_device_types["results"])
+
+    # Delete Manufacturers
+    console.log("Delete Manufacturers in Nautobot", style="info")
+    all_manufacturers = nautobot_client.http_call(url="/api/dcim/manufacturers/", method="get")
+    if all_manufacturers["count"] > 0:
+        nautobot_client.http_call(
+            url="/api/dcim/manufacturers/", method="delete", json_data=all_manufacturers["results"]
+        )
+
+    # Delete Roles
+    console.log("Delete Roles in Nautobot", style="info")
+    all_roles = nautobot_client.http_call(url="/api/extras/roles/", method="get")
+    if all_roles["count"] > 0:
+        nautobot_client.http_call(url="/api/extras/roles/", method="delete", json_data=all_roles["results"])
+
+    # Delete IP Address
+    console.log("Delete IP Address in Nautobot", style="info")
+    all_ip_address = nautobot_client.http_call(url="/api/ipam/ip-addresses/", method="get")
+    if all_ip_address["count"] > 0:
+        nautobot_client.http_call(url="/api/ipam/ip-addresses/", method="delete", json_data=all_ip_address["results"])
+
+    # Delete Prefix
+    console.log("Delete Prefix in Nautobot", style="info")
+    all_prefix = nautobot_client.http_call(url="/api/ipam/prefixes/", method="get")
+    if all_prefix["count"] > 0:
+        nautobot_client.http_call(url="/api/ipam/prefixes/", method="delete", json_data=all_prefix["results"])
+
+    # Delete Namespace
+    console.log("Delete Namespace in Nautobot", style="info")
+    all_namespaces = nautobot_client.http_call(url="/api/ipam/namespaces/", method="get")
+    if all_namespaces["count"] > 0:
+        nautobot_client.http_call(url="/api/ipam/namespaces/", method="delete", json_data=all_namespaces["results"])
+
+    # Delete Statuses
+    console.log("Delete Statuses in Nautobot", style="info")
+    all_statuses = nautobot_client.http_call(url="/api/extras/statuses/", method="get")
+    if all_statuses["count"] > 0:
+        nautobot_client.http_call(url="/api/extras/statuses/", method="delete", json_data=all_statuses["results"])
+
+    console.log("Nautobot data deleted", style="info")

@@ -1,0 +1,25 @@
+# Consume Kafka data from the topic telegraf-data-collection and write it to stdout
+[[inputs.kafka_consumer]]
+  brokers = ["kafka-01:29092"]
+  topics = ["telegraf-data-collection"]
+
+  # Adding Kafka tag specifying the kafka broker
+  [inputs.kafka_consumer.tags]
+    kafka_pipeline = "kafka-01"
+
+# Update the data_type tag to new stage in pipeline: kafka_distributed
+[[processors.regex]]
+  namepass = ["interface"]
+
+  [[processors.regex.tagpass]]
+    data_type = "raw"
+
+  [[processors.regex.tags]]
+    key = "data_type"
+    # Regex pattern to match
+    pattern = "^raw$"
+    # Replacement string
+    replacement = "kafka_distributed"
+
+[[outputs.file]]
+  files = ["stdout"]

@@ -1,0 +1,73 @@
+[agent]
+  hostname = "telegraf-01"
+
+[[inputs.snmp]]
+  agents = ["ceos-01"]
+  version = 2
+  community = "${SNMP_COMMUNITY}"
+  interval = "60s"
+  timeout = "10s"
+  retries = 3
+
+  # Tag to identify the stage of the data pipeline
+  [inputs.snmp.tags]
+    data_type = "raw"
+
+  [[inputs.snmp.table]]
+    name = "interface"
+
+    [[inputs.snmp.table.field]]
+      # Name of the tag used to identify the interface name.
+      name = "name"
+      oid = "IF-MIB::ifDescr"
+      is_tag = true
+
+    [[inputs.snmp.table.field]]
+      # Name of the field used to identify Rx Counters.
+      name = "in_octets"
+      oid = "IF-MIB::ifHCInOctets"
+
+    [[inputs.snmp.table.field]]
+      # Name of the field used to identify Tx Counters.
+      name = "out_octets"
+      oid = "IF-MIB::ifHCOutOctets"
+
+[[processors.rename]]
+  # Rename the tag "agent_host" to "device"
+  [[processors.rename.replace]]
+    tag = "agent_host"
+    dest = "device"
+
+# Add a tag "intf_role" based on the interface name
+[[processors.regex]]
+  # Filter metrics that have the "interface" name
+  namepass = ["interface"]
+
+  # Filter metrics that have the "ceos-01" device
+  [processors.regex.tagpass]
+      device = ["ceos-01"]
+
+  [[processors.regex.tags]]
+    # Name of the tag to match
+    key = "name"
+    # Regex pattern to match
+    pattern = "^Ethernet.*$"
+    # Name of the new tag
+    result_key = "intf_role"
+    # Replacement string
+    replacement = "peer"
+
+  [[processors.regex.tags]]
+    key = "name"
+    pattern = "^Management.*$"
+    result_key = "intf_role"
+    replacement = "mgmt"
+
+[[outputs.file]]
+  files = ["stdout"]
+
+# Send the metrics to Kafka
+[[outputs.kafka]]
+  brokers = ["kafka-01:29092"]
+  topic = "telegraf-data-collection"
+  routing_tag = "host"

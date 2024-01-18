@@ -1,0 +1,43 @@
+# Lab variables file used to populate Nautobot
+---
+prefixes:
+  - prefix: "10.1.2.0/24"
+    name: "lab-net1"
+  - prefix: "10.1.7.0/24"
+    name: "lab-net2"
+  - prefix: "10.17.17.0/24"
+    name: "lab-net3"
+  - prefix: "10.111.0.0/24"
+    name: "lab-net4"
+  - prefix: "10.222.0.0/24"
+    name: "lab-net5"
+
+nodes:
+  ceos-01:
+    interfaces:
+      - name: Ethernet1
+        ipv4: 10.1.2.1/24
+        role: peer
+      - name: Ethernet2
+        ipv4: 10.1.7.1/24
+        role: peer
+      - name: Loopback0
+        ipv4: 10.17.17.1/32
+        role: loopback
+      - name: Loopback1
+        ipv4: 10.111.0.1/24
+        role: loopback
+  ceos-02:
+    interfaces:
+      - name: Ethernet1
+        ipv4: 10.1.2.2/24
+        role: peer
+      - name: Ethernet2
+        ipv4: 10.1.7.2/24
+        role: peer
+      - name: Loopback0
+        ipv4: 10.17.17.2/32
+        role: loopback
+      - name: Loopback1
+        ipv4: 10.222.0.1/24
+        role: loopback

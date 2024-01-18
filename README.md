@@ -101,7 +101,7 @@ Showing the logs of the `telegraf-01` container:
 
 ```bash
 # Show the logs of the telegraf-01 container
-❯ netobs docker logs telegraf-01 --tail 20
+❯ netobs docker logs --services telegraf-01 --tail 20
 [21:54:21] Showing logs for service(s): ['telegraf-01']
            Running command: docker compose --project-name netobs -f obs_stack/docker-compose.yml logs --tail=20 telegraf-01
 netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! Starting Telegraf 1.17.2
