@@ -1,0 +1,125 @@
+[agent]
+  hostname = "telegraf-01"
+
+###############################################################################
+#                            DATA COLLECTION                                  #
+###############################################################################
+[[inputs.snmp]]
+  agents = ["ceos-01"]
+  version = 2
+  community = "${SNMP_COMMUNITY}"
+  interval = "60s"
+  timeout = "10s"
+  retries = 3
+
+  # `up` measurement
+  [[inputs.snmp.field]]
+    name = "uptime"
+    oid = "RFC1213-MIB::sysUpTime.0"
+
+  # `interface` measurement
+  [[inputs.snmp.table]]
+    name = "interface"
+
+    [[inputs.snmp.table.field]]
+      name = "name"
+      oid = "IF-MIB::ifDescr"
+      is_tag = true
+
+    [[inputs.snmp.table.field]]
+      name = "in_octets"
+      oid = "IF-MIB::ifHCInOctets"
+
+    [[inputs.snmp.table.field]]
+      name = "out_octets"
+      oid = "IF-MIB::ifHCOutOctets"
+
+    [[inputs.snmp.table.field]]
+      name = "out_broadcast_pkts"
+      oid = "IF-MIB::ifHCOutBroadcastPkts"
+
+    [[inputs.snmp.table.field]]
+      name = "in_broadcast_pkts"
+      oid = "IF-MIB::ifHCInBroadcastPkts"
+
+    [[inputs.snmp.table.field]]
+      name = "in_multicast_pkts"
+      oid = "IF-MIB::ifHCOutMulticastPkts"
+
+    [[inputs.snmp.table.field]]
+      name = "out_multicast_pkts"
+      oid = "IF-MIB::ifHCInMulticastPkts"
+
+
+###############################################################################
+#                            DATA NORMALIZATION                               #
+##############################################################################
+[[processors.rename]]
+  # Rename the tag "agent_host" to "device"
+  [[processors.rename.replace]]
+    tag = "agent_host"
+    dest = "device"
+
+  # Rename the measurement "snmp" to "device"
+  [[processors.rename.replace]]
+    measurement = "snmp"
+    dest = "device"
+
+# Enum processor for interface oper_status and admin_status field values to numbers
+[[processors.enum]]
+  namepass = ["interface"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "oper_status"
+    [processors.enum.mapping.value_mappings]
+      UP = 1
+      DOWN = 2
+      TESTING = 3
+      UNKNOWN = 4
+      DORMANT = 5
+      NOT_PRESENT = 6
+      LOWER_LAYER_DOWN = 7
+
+  [[processors.enum.mapping]]
+    field = "admin_status"
+    [processors.enum.mapping.value_mappings]
+      UP = 1
+      DOWN = 2
+      TESTING = 3
+
+
+###############################################################################
+#                            DATA ENRICHMENT                                  #
+###############################################################################
+[[processors.regex]]
+  namepass = ["interface"]
+
+  [processors.regex.tagpass]
+      device = ["ceos-01"]
+
+  [[processors.regex.tags]]
+    key = "name"
+    pattern = "^Ethernet.*$"
+    result_key = "intf_role"
+    replacement = "peer"
+
+  [[processors.regex.tags]]
+    key = "name"
+    pattern = "^Management.*$"
+    result_key = "intf_role"
+    replacement = "mgmt"
+
+
+###############################################################################
+#                            DATA OUTPUT                                      #
+##############################################################################
+[[outputs.prometheus_client]]
+  listen = ":9004"
+  metric_version = 2
+  # expiration_interval = "120s"
+  # fielddrop = ["cbgpPeer2LastError"]
+  # tagexclude = ["index", "agent_host"]
+
+[[outputs.file]]
+  files = ["stdout"]
