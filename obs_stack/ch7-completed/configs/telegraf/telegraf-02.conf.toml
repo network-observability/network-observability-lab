@@ -1,6 +1,25 @@
 [agent]
   hostname = "telegraf-02"
 
+###############################################################################
+#                            DATA COLLECTION                                  #
+###############################################################################
+[[inputs.snmp]]
+  agents = ["ceos-02"]
+  version = 2
+  community = "${SNMP_COMMUNITY}"
+  interval = "60s"
+  timeout = "10s"
+  retries = 3
+
+  [inputs.snmp.tags]
+    collection_type = "snmp"
+
+  # `up` measurement
+  [[inputs.snmp.field]]
+    name = "uptime"
+    oid = "RFC1213-MIB::sysUpTime.0"
+
 [[inputs.gnmi]]
   addresses = ["ceos-02:50051"]
   username = "${NETWORK_AGENT_USER}"
@@ -8,6 +27,9 @@
   redial = "20s"
   # Exclude the "path" tag from the output
   tagexclude = ["path"]
+
+  [inputs.gnmi.tags]
+    collection_type = "gnmi"
 
   [[inputs.gnmi.subscription]]
     name = "interface"
@@ -21,20 +43,106 @@
     subscription_mode = "sample"
     sample_interval = "10s"
 
+  [[inputs.gnmi.subscription]]
+    name = "interface"
+    path = "/interfaces/interface/state/admin-status"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+##############################################################################
+#                            DATA NORMALIZATION                              #
+##############################################################################
 [[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["gnmi"]
   # Rename the tag "source" to "device"
   [[processors.rename.replace]]
     tag = "source"
     dest = "device"
+  [[processors.rename.replace]]
+    field = "in_errors"
+    dest = "in_errors_pkts"
+  [[processors.rename.replace]]
+    field = "out_errors"
+    dest = "out_errors_pkts"
+  [[processors.rename.replace]]
+    field = "in_discards"
+    dest = "in_discards_pkts"
+  [[processors.rename.replace]]
+    field = "out_discards"
+    dest = "out_discards_pkts"
 
-# Add a tag "intf_role" dynamically by querying Nautobot
-[[processors.execd]]
-  # Make sure to only pass the "interface" measurement netrics to the script
+
+[[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["snmp"]
+  # Rename the tag "agent_host" to "device"
+  [[processors.rename.replace]]
+    tag = "agent_host"
+    dest = "device"
+
+  # Rename the measurement "snmp" to "device"
+  [[processors.rename.replace]]
+    measurement = "snmp"
+    dest = "device"
+
+# Enum processor for interface oper_status and admin_status field values to numbers
+[[processors.enum]]
   namepass = ["interface"]
-  # Run the Nautobot data enrichment script
-  command = ["python", "/etc/telegraf/script.py"]
-  # If script quits unexpectedly, wait 10 seconds before restarting
-  restart_delay = "10s"
+
+  [[processors.enum.tagpass]]
+    collection_type = ["snmp", "gnmi"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "oper_status"
+    [processors.enum.mapping.value_mappings]
+      UP = 1
+      DOWN = 2
+      TESTING = 3
+      UNKNOWN = 4
+      DORMANT = 5
+      NOT_PRESENT = 6
+      LOWER_LAYER_DOWN = 7
+
+  [[processors.enum.mapping]]
+    field = "admin_status"
+    [processors.enum.mapping.value_mappings]
+      UP = 1
+      DOWN = 2
+      TESTING = 3
+
+###############################################################################
+#                            DATA ENRICHMENT                                  #
+###############################################################################
+[[processors.regex]]
+  namepass = ["interface"]
+
+  [processors.regex.tagpass]
+      device = ["ceos-02"]
+
+  [[processors.regex.tags]]
+    key = "name"
+    pattern = "^Ethernet.*$"
+    result_key = "intf_role"
+    replacement = "peer"
+
+  [[processors.regex.tags]]
+    key = "name"
+    pattern = "^Management.*$"
+    result_key = "intf_role"
+    replacement = "mgmt"
+
+
+##############################################################################
+#                            DATA OUTPUT                                     #
+##############################################################################
+[[outputs.prometheus_client]]
+  listen = ":9005"
+  metric_version = 2
+  # expiration_interval = "120s"
+  # fielddrop = ["cbgpPeer2LastError"]
+  # tagexclude = ["index", "agent_host"]
 
 [[outputs.file]]
   files = ["stdout"]

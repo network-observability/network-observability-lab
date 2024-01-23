@@ -12,6 +12,9 @@
   timeout = "10s"
   retries = 3
 
+  [inputs.snmp.tags]
+    collection_type = "snmp"
+
   # `up` measurement
   [[inputs.snmp.field]]
     name = "uptime"
@@ -25,6 +28,30 @@
       name = "name"
       oid = "IF-MIB::ifDescr"
       is_tag = true
+
+    [[inputs.snmp.table.field]]
+      name = "oper_status"
+      oid = "IF-MIB::ifOperStatus"
+
+    [[inputs.snmp.table.field]]
+      name = "admin_status"
+      oid = "IF-MIB::ifAdminStatus"
+
+    [[inputs.snmp.table.field]]
+      name = "in_errors_pkts"
+      oid = "IF-MIB::ifInErrors"
+
+    [[inputs.snmp.table.field]]
+      name = "out_errors_pkts"
+      oid = "IF-MIB::ifOutErrors"
+
+    [[inputs.snmp.table.field]]
+      name = "in_discards_pkts"
+      oid = "IF-MIB::ifInDiscards"
+
+    [[inputs.snmp.table.field]]
+      name = "out_discards_pkts"
+      oid = "IF-MIB::ifOutDiscards"
 
     [[inputs.snmp.table.field]]
       name = "in_octets"
@@ -51,10 +78,12 @@
       oid = "IF-MIB::ifHCInMulticastPkts"
 
 
-###############################################################################
-#                            DATA NORMALIZATION                               #
+##############################################################################
+#                            DATA NORMALIZATION                              #
 ##############################################################################
 [[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["snmp"]
   # Rename the tag "agent_host" to "device"
   [[processors.rename.replace]]
     tag = "agent_host"
@@ -68,6 +97,9 @@
 # Enum processor for interface oper_status and admin_status field values to numbers
 [[processors.enum]]
   namepass = ["interface"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["snmp", "gnmi"]
 
   [[processors.enum.mapping]]
     ## Name of the field to map
@@ -111,8 +143,8 @@
     replacement = "mgmt"
 
 
-###############################################################################
-#                            DATA OUTPUT                                      #
+##############################################################################
+#                            DATA OUTPUT                                     #
 ##############################################################################
 [[outputs.prometheus_client]]
   listen = ":9004"
