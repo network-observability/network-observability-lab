@@ -153,11 +153,3 @@
 ##############################################################################
 [[outputs.file]]
   files = ["stdout"]
-
-
-[[outputs.prometheus_client]]
-  listen = ":9004"
-  metric_version = 2
-  # expiration_interval = "120s"
-  # fielddrop = ["cbgpPeer2LastError"]
-  # tagexclude = ["index", "agent_host"]

@@ -49,6 +49,12 @@
     subscription_mode = "sample"
     sample_interval = "10s"
 
+
+[[inputs.exec]]
+  commands = ["python /etc/telegraf/bgp_collector.py arista_eos ceos-02"]
+  interval = "20s"
+  timeout = "5s"
+  data_format = "influx"
 ##############################################################################
 #                            DATA NORMALIZATION                              #
 ##############################################################################
@@ -137,12 +143,13 @@
 ##############################################################################
 #                            DATA OUTPUT                                     #
 ##############################################################################
+[[outputs.file]]
+  files = ["stdout"]
+
+
 [[outputs.prometheus_client]]
   listen = ":9005"
   metric_version = 2
   # expiration_interval = "120s"
   # fielddrop = ["cbgpPeer2LastError"]
   # tagexclude = ["index", "agent_host"]
-
-[[outputs.file]]
-  files = ["stdout"]

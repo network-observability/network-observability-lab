@@ -5,7 +5,6 @@ from typing import Optional
 from dataclasses import dataclass
 
 from netmiko import ConnectHandler
-from line_protocol_parser import parse_line
 
 
 @dataclass
@@ -81,8 +80,8 @@ def main(device_type, host):
             "vrf": neighbor['vrf'],  # type: ignore
         }
         fields = {
-            "prefixes_received": neighbor['state_pfxrcd'],  # type: ignore
-            "prefixes_accepted": neighbor['state_pfxacc'],  # type: ignore
+            "prefixes_received": int(neighbor['state_pfxrcd']),  # type: ignore
+            "prefixes_accepted": int(neighbor['state_pfxacc']),  # type: ignore
         }
 
         # Generate the line protocol string

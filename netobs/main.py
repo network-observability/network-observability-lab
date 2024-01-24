@@ -57,6 +57,8 @@ class NetObsScenarios(Enum):
     CH7_COMPLETED = "ch7-completed"
     CH8 = "ch8"
     CH8_COMPLETED = "ch8-completed"
+    CH9 = "ch9"
+    CH9_COMPLETED = "ch9-completed"
 
 
 class DockerNetworkAction(Enum):
