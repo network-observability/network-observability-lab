@@ -19,7 +19,7 @@ services:
     tty: true
     volumes:
       - ./configs/telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
-      - ./configs/telegraf/bgp_collector.py:/etc/telegraf/bgp_collector.py
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
     ports:
       - 9004:9004
     env_file:
@@ -33,7 +33,7 @@ services:
     tty: true
     volumes:
       - ./configs/telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
-      - ./configs/telegraf/bgp_collector.py:/etc/telegraf/bgp_collector.py
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
     ports:
       - 9005:9005
     env_file:
@@ -77,6 +77,16 @@ services:
     volumes:
       - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  promlens:
+    image: docker.io/prom/promlens:main
+    ports:
+      - 9091:9091
+    command: --web.listen-address=:9091
     env_file:
       - ../../.env
     networks:

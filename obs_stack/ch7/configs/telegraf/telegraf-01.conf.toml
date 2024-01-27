@@ -1,6 +1,8 @@
 [agent]
   hostname = "telegraf-01"
 
+[global_tags]
+  site = "lab-site-01"
 ###############################################################################
 #                            DATA COLLECTION                                  #
 ###############################################################################
@@ -77,27 +79,71 @@
       name = "out_multicast_pkts"
       oid = "IF-MIB::ifHCInMulticastPkts"
 
+[[inputs.gnmi]]
+  addresses = ["ceos-01:50051"]
+  username = "${NETWORK_AGENT_USER}"
+  password = "${NETWORK_AGENT_PASSWORD}"
+  redial = "20s"
+  tagexclude = ["path"]
+
+  [inputs.gnmi.tags]
+    collection_type = "gnmi"
+
+  [[inputs.gnmi.subscription]]
+    name = "cpu"
+    path = "/components/component/cpu/utilization/state/instant"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+  [[inputs.gnmi.subscription]]
+    name = "memory"
+    path = "/components/component/state/memory"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
 
 [[inputs.exec]]
-  commands = ["python /etc/telegraf/bgp_collector.py arista_eos ceos-01"]
+  commands = ["python /etc/telegraf/routing_collector.py arista_eos ceos-01"]
   interval = "20s"
-  timeout = "5s"
+  timeout = "15s"
   data_format = "influx"
+
+  [inputs.exec.tags]
+    collection_type = "exec"
 ##############################################################################
 #                            DATA NORMALIZATION                              #
 ##############################################################################
 [[processors.rename]]
   [[processors.rename.tagpass]]
     collection_type = ["snmp"]
-  # Rename the tag "agent_host" to "device"
+
   [[processors.rename.replace]]
     tag = "agent_host"
     dest = "device"
 
-  # Rename the measurement "snmp" to "device"
   [[processors.rename.replace]]
     measurement = "snmp"
     dest = "device"
+
+
+[[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["gnmi"]
+
+  [[processors.rename.replace]]
+    tag = "source"
+    dest = "device"
+
+  # Rename fields for CPU metrics
+  [[processors.rename.replace]]
+    field = "instant"
+    dest = "used"
+
+  # Rename fields for Memory metrics
+  [[processors.rename.replace]]
+    field = "utilized"
+    dest = "used"
+
 
 # Enum processor for interface oper_status and admin_status field values to numbers
 [[processors.enum]]

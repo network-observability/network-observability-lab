@@ -1,6 +1,8 @@
 [agent]
   hostname = "telegraf-02"
 
+[global_tags]
+  site = "lab-site-02"
 ###############################################################################
 #                            DATA COLLECTION                                  #
 ###############################################################################
@@ -49,19 +51,33 @@
     subscription_mode = "sample"
     sample_interval = "10s"
 
+  [[inputs.gnmi.subscription]]
+    name = "cpu"
+    path = "/components/component/cpu/utilization/state/instant"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+  [[inputs.gnmi.subscription]]
+    name = "memory"
+    path = "/components/component/state/memory"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
 
 [[inputs.exec]]
-  commands = ["python /etc/telegraf/bgp_collector.py arista_eos ceos-02"]
+  commands = ["python /etc/telegraf/routing_collector.py arista_eos ceos-02"]
   interval = "20s"
-  timeout = "5s"
+  timeout = "15s"
   data_format = "influx"
+
+  [inputs.exec.tags]
+    collection_type = "exec"
 ##############################################################################
 #                            DATA NORMALIZATION                              #
 ##############################################################################
 [[processors.rename]]
   [[processors.rename.tagpass]]
     collection_type = ["gnmi"]
-  # Rename the tag "source" to "device"
   [[processors.rename.replace]]
     tag = "source"
     dest = "device"
@@ -77,17 +93,24 @@
   [[processors.rename.replace]]
     field = "out_discards"
     dest = "out_discards_pkts"
+  # Rename fields for CPU metrics
+  [[processors.rename.replace]]
+    field = "instant"
+    dest = "used"
+  # Rename fields for Memory metrics
+  [[processors.rename.replace]]
+    field = "utilized"
+    dest = "used"
 
 
 [[processors.rename]]
   [[processors.rename.tagpass]]
     collection_type = ["snmp"]
-  # Rename the tag "agent_host" to "device"
+
   [[processors.rename.replace]]
     tag = "agent_host"
     dest = "device"
 
-  # Rename the measurement "snmp" to "device"
   [[processors.rename.replace]]
     measurement = "snmp"
     dest = "device"
@@ -117,6 +140,45 @@
       UP = 1
       DOWN = 2
       TESTING = 3
+
+# Enum processor for ospf states
+[[processors.enum]]
+  namepass = ["ospf"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["exec"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "neighbor_state"
+    [processors.enum.mapping.value_mappings]
+      FULL = 1
+      DOWN = 2
+      ATTEMPT = 3
+      INIT = 4
+      2WAY = 5
+      EXTART = 6
+      EXCHANGE = 7
+      LOADING = 7
+
+# Enum processor for bgp states
+[[processors.enum]]
+  namepass = ["bgp"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["exec"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "neighbor_state"
+    [processors.enum.mapping.value_mappings]
+      ESTABLISHED = 1
+      IDLE = 2
+      CONNECT = 3
+      ACTIVE = 4
+      OPENSENT = 5
+      OPENCONFIRM = 6
+      NONEXISTENT = 7
 
 ###############################################################################
 #                            DATA ENRICHMENT                                  #
@@ -148,8 +210,5 @@
 
 
 [[outputs.prometheus_client]]
+  # HTTP port to listen on
   listen = ":9005"
-  metric_version = 2
-  # expiration_interval = "120s"
-  # fielddrop = ["cbgpPeer2LastError"]
-  # tagexclude = ["index", "agent_host"]

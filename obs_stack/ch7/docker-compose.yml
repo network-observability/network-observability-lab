@@ -19,7 +19,7 @@ services:
     tty: true
     volumes:
       - ./configs/telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
-      - ./configs/telegraf/bgp_collector.py:/etc/telegraf/bgp_collector.py
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
     ports:
       - 9004:9004
     env_file:
@@ -33,7 +33,7 @@ services:
     tty: true
     volumes:
       - ./configs/telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
-      - ./configs/telegraf/bgp_collector.py:/etc/telegraf/bgp_collector.py
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
     ports:
       - 9005:9005
     env_file:
