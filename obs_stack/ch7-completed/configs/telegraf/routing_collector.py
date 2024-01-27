@@ -97,8 +97,8 @@ def main(device_type, host):
             state = neighbor['state'].upper()  # type: ignore
 
         fields = {
-            "prefixes_received_total": int(neighbor['state_pfxrcd']),  # type: ignore
-            "prefixes_accepted_total": int(neighbor['state_pfxacc']),  # type: ignore
+            "prefixes_received": int(neighbor['state_pfxrcd']),  # type: ignore
+            "prefixes_accepted": int(neighbor['state_pfxacc']),  # type: ignore
             "neighbor_state": state,
         }
 

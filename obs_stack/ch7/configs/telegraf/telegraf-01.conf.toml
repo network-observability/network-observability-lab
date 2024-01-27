@@ -171,6 +171,44 @@
       DOWN = 2
       TESTING = 3
 
+# Enum processor for ospf states
+[[processors.enum]]
+  namepass = ["ospf"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["exec"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "neighbor_state"
+    [processors.enum.mapping.value_mappings]
+      FULL = 1
+      DOWN = 2
+      ATTEMPT = 3
+      INIT = 4
+      2WAY = 5
+      EXTART = 6
+      EXCHANGE = 7
+      LOADING = 7
+
+# Enum processor for bgp states
+[[processors.enum]]
+  namepass = ["bgp"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["exec"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "neighbor_state"
+    [processors.enum.mapping.value_mappings]
+      ESTABLISHED = 1
+      IDLE = 2
+      CONNECT = 3
+      ACTIVE = 4
+      OPENSENT = 5
+      OPENCONFIRM = 6
+      NONEXISTENT = 7
 
 ###############################################################################
 #                            DATA ENRICHMENT                                  #
