@@ -10,3 +10,7 @@ scrape_configs:
   scrape_interval: 15s
   static_configs:
     - targets: ["telegraf-01:9004", "telegraf-02:9005"]
+
+
+rule_files:
+  - recording_rules.yml

@@ -76,6 +76,7 @@ services:
     tty: true
     volumes:
       - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./configs/prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml
       - prometheus_data:/prometheus
     env_file:
       - ../../.env

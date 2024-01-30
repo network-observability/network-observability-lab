@@ -72,6 +72,17 @@
 
   [inputs.exec.tags]
     collection_type = "exec"
+
+
+[[inputs.ping]]
+  interval = "10s"
+  count = 3
+  ping_interval = 1.0
+  timeout = 5.0
+  urls = ["ceos-02"]
+
+  [inputs.ping.tags]
+    collection_type = "ping"
 ##############################################################################
 #                            DATA NORMALIZATION                              #
 ##############################################################################
@@ -114,6 +125,16 @@
   [[processors.rename.replace]]
     measurement = "snmp"
     dest = "device"
+
+
+[[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["ping"]
+
+  [[processors.rename.replace]]
+    tag = "url"
+    dest = "device"
+
 
 # Enum processor for interface oper_status and admin_status field values to numbers
 [[processors.enum]]
