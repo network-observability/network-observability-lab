@@ -106,3 +106,14 @@ services:
       - ../../.env
     networks:
       - network-observability
+
+  machine-learning:
+    build:
+      context: "./"
+      dockerfile: "./machine-learning.Dockerfile"
+    command: "python -m app.main"
+    ports:
+      - 9997:9997
+    tty: true
+    networks:
+      - network-observability

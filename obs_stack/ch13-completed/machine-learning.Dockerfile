@@ -17,10 +17,12 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-COPY ./pyproject.toml ./poetry.lock /app/
+COPY ./machine-learning/pyproject.toml ./machine-learning/poetry.lock /app/
 
 RUN poetry config virtualenvs.create false \
     && poetry install --no-interaction --no-ansi
 
 # Do not break dependency caching before installing project
-COPY ./app/ /app/
+COPY ./machine-learning/app/ /app/
+
+WORKDIR /
