@@ -1,0 +1,22 @@
+---
+global:
+  resolve_timeout: 30m
+
+# We use a default route to a non-existant endpoint
+# because alertmanager requires at least one default
+# route/receiver. Note, this is just to make alertmanager
+# happy and does not actually do anything!
+route:
+  receiver: air-alertmanager-webhook
+  routes:
+    - group_by:
+        - alertname
+      match:
+        source: stack
+      receiver: air-alertmanager-webhook
+
+receivers:
+  - name: air-alertmanager-webhook
+    webhook_configs:
+      - send_resolved: true
+        url: http://air-alertmanager-webhook:9997/v1/api/air-alertmanager-webhook

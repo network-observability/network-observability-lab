@@ -1,0 +1,35 @@
+---
+scrape_configs:
+  - job_name: "prometheus"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "telegraf"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["telegraf-01:9004", "telegraf-02:9005"]
+
+groups:
+  - name: BGP Interface Flaps
+    rules:
+      - alert: InterfaceUplinkFlaps
+        expr: changes(interface_oper_status{device=~"fr-border.*", interface_label="uplink"}[2m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          source: stack
+          environment: Production
+          metric_name: interface_oper_status
+          device: "{{ $labels.device }}"
+          device_role: "{{ $labels.device_role }}"
+          site: "{{ $labels.site }}"
+          region: "{{ $labels.region }}"
+          instance: "{{ $labels.host }}"
+          device_platform: "{{ $labels.device_platform }}_{{ $labels.net_os }}"
+          policy_kind: "interface_flaps"
+          policy_entity: "bgp_peer"
+          policy_action: "tshift"
+        annotations:
+          summary: "Interface Uplink Flaps detected"
+          description: "Device {{ $labels.device }} interface {{ $labels.interface }} is flapping!"

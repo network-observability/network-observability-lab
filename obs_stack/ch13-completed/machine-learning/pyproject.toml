@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "machine-learning"
+version = "0.1.0"
+description = "REST API Service that exposes a webhook endpoint for a Machine Learning service"
+authors = ["Christian Adell <chadell@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pydantic = {version = "1.10.12", extras = ["dotenv"]}
+fastapi = "0.99.1"
+uvicorn = "*"
+python-logging-loki = "*"
+toml = "*"
+
+[tool.machine-learning]
