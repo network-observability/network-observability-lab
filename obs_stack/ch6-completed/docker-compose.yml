@@ -57,7 +57,7 @@ services:
       - network-observability
 
   logstash:
-    image: docker.io/grafana/logstash-output-loki:latest
+    image: docker.io/grafana/logstash-output-loki:main
     command: -f /home/logstash/logstash.cfg
     volumes:
       - ./configs/logstash/logstash.cfg:/home/logstash/logstash.cfg

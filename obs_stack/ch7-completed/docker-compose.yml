@@ -1,13 +1,14 @@
 ---
-volumes:
-  loki_data:
-  prometheus_data:
-  grafana_data:
-
 networks:
   network-observability:
     external: true
     name: network-observability
+
+volumes:
+  nautobot_postgres_data:
+  loki_data:
+  prometheus_data:
+  grafana_data:
 
 version: "3.8"
 services:
@@ -18,6 +19,7 @@ services:
     tty: true
     volumes:
       - ./configs/telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
     ports:
       - 9004:9004
     env_file:
@@ -31,6 +33,7 @@ services:
     tty: true
     volumes:
       - ./configs/telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
     ports:
       - 9005:9005
     env_file:
@@ -53,7 +56,7 @@ services:
       - network-observability
 
   loki:
-    image: docker.io/grafana/loki:main
+    image: docker.io/grafana/loki:latest
     ports:
       - 3001:3001
     command: -config.file=/etc/loki/loki-config.yml
@@ -73,7 +76,18 @@ services:
     tty: true
     volumes:
       - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./configs/prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml
       - prometheus_data:/prometheus
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  promlens:
+    image: docker.io/prom/promlens:main
+    ports:
+      - 9091:9091
+    command: --web.listen-address=:9091
     env_file:
       - ../../.env
     networks:
@@ -85,8 +99,6 @@ services:
       - 3000:3000
     volumes:
       - ./configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
-      - ./configs/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
-      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
       - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
       - grafana_data:/grafana
     environment:
