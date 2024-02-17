@@ -14,3 +14,10 @@ scrape_configs:
 
 rule_files:
   - recording_rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+      - targets:
+          - alertmanager:9093
+      timeout: 5s

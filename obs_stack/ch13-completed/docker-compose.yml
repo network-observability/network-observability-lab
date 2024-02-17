@@ -75,6 +75,7 @@ services:
     tty: true
     volumes:
       - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./configs/prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml
       - prometheus_data:/prometheus
     env_file:
       - ../../.env
@@ -107,7 +108,19 @@ services:
     networks:
       - network-observability
 
-  machine-learning:
+  alertmanager:
+    image: docker.io/prom/alertmanager:latest
+    ports:
+      - 9093:9093
+    command: "--config.file=/etc/alertmanager/alertmanager.yml --cluster.advertise-address=0.0.0.0:9093"
+    volumes:
+      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  machine-learning-webhook:
     build:
       context: "./"
       dockerfile: "./machine-learning.Dockerfile"

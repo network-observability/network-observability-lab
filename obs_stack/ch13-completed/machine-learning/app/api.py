@@ -4,8 +4,6 @@ from typing import Literal
 
 import fastapi
 
-# from prefect.deployments import run_deployment
-# from prefect.settings import PREFECT_API_URL
 from pydantic import BaseModel
 
 # from app import config
@@ -38,12 +36,12 @@ class AlertmanagerWebhook(BaseModel):
     alerts: list[AlertmanagerAlert]
 
 
-@router.post("/v1/api/machine-learning", status_code=204)
+@router.post("/v1/api/machine-learning-webhook", status_code=204)
 def process_webhook(alertmanager_webhook: AlertmanagerWebhook):
     """Process an alertmanager webhook and run a Prefect deployment."""
     log.info(f"Received alertmanager webhook: {alertmanager_webhook.json()}")
     log.info("Alertmanager webhook status is firing, running deployment")
-
+    log.info(alertmanager_webhook.dict())
     # TODO: Add the logic
     # deployment = {
     #     "name": "Network Ops/alertmanager webhook receiver",
@@ -55,4 +53,4 @@ def process_webhook(alertmanager_webhook: AlertmanagerWebhook):
     # log.debug(response)
     # log.info(f"Successfully ran Prefect deployment: {PREFECT_API_URL.value()}")
     log.info(f"Alert status is {alertmanager_webhook.status}, exiting")
-    return
+    return {"message": "Processed webhook"}
