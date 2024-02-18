@@ -11,7 +11,7 @@ groups:
   - name: BGP Neighbor is not established
     rules:
       - alert: BGPNeighborNotEstablished
-        expr: changes(bgp_neighbor_state{device="ceos-01"}[2m]) != 1
+        expr: bgp_neighbor_state{device="ceos-01",neighbor="10.1.2.2"} != 1
         for: 1m
         labels:
           severity: warning
