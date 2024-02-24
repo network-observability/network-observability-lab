@@ -11,7 +11,7 @@ from requests.exceptions import ConnectionError
 
 
 # Define the Nautobot URL and API token
-NAUTOBOT_URL = os.getenv("NAUTOBOT_URL", "")
+NAUTOBOT_URL = "http://nautobot:8080"
 NAUTOBOT_SUPERUSER_API_TOKEN = os.getenv("NAUTOBOT_SUPERUSER_API_TOKEN", "")
 
 
