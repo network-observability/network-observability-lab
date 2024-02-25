@@ -355,7 +355,7 @@
           "type": "prometheus",
           "uid": "P1809F7CD0C75ACF3"
         },
-        "description": "Average Latency of a device",
+        "description": "Overall Memory average usage for the device",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -371,11 +371,11 @@
                 },
                 {
                   "color": "red",
-                  "value": 5
+                  "value": 80
                 }
               ]
             },
-            "unit": "s"
+            "unit": "percent"
           },
           "overrides": []
         },
@@ -385,11 +385,10 @@
           "x": 0,
           "y": 4
         },
-        "id": 6,
+        "id": 4,
         "options": {
-          "colorMode": "value",
-          "graphMode": "area",
-          "justifyMode": "auto",
+          "minVizHeight": 200,
+          "minVizWidth": 200,
           "orientation": "auto",
           "reduceOptions": {
             "calcs": [
@@ -398,8 +397,9 @@
             "fields": "",
             "values": false
           },
-          "textMode": "auto",
-          "wideLayout": true
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true,
+          "sizing": "auto"
         },
         "pluginVersion": "10.2.3",
         "targets": [
@@ -408,16 +408,20 @@
               "type": "prometheus",
               "uid": "P1809F7CD0C75ACF3"
             },
+            "disableTextWrap": false,
             "editorMode": "code",
-            "expr": "ping_average_response_ms{device=\"ceos-02\"}",
+            "expr": "(memory_used{device=\"ceos-02\"} * 100) / (memory_used{device=\"ceos-02\"} + memory_available{device=\"ceos-02\"})",
+            "fullMetaSearch": false,
+            "includeNullMetadata": true,
             "instant": false,
             "legendFormat": "__auto",
             "range": true,
-            "refId": "A"
+            "refId": "A",
+            "useBackend": false
           }
         ],
-        "title": "Latency",
-        "type": "stat"
+        "title": "Avg Mem",
+        "type": "gauge"
       },
       {
         "datasource": {
@@ -478,8 +482,8 @@
               "uid": "P1809F7CD0C75ACF3"
             },
             "disableTextWrap": false,
-            "editorMode": "builder",
-            "expr": "avg(cpu_used{device=\"ceos-02\"})",
+            "editorMode": "code",
+            "expr": "avg(avg_over_time(cpu_used{device=\"ceos-02\"}[2m]))",
             "fullMetaSearch": false,
             "includeNullMetadata": true,
             "instant": false,
@@ -497,11 +501,112 @@
           "type": "prometheus",
           "uid": "P1809F7CD0C75ACF3"
         },
-        "description": "Overall Memory average usage for the device",
+        "description": "Average Latency of a device",
         "fieldConfig": {
           "defaults": {
             "color": {
               "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 12,
+          "x": 12,
+          "y": 4
+        },
+        "id": 6,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "10.2.3",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "ping_average_response_ms{device=\"ceos-02\"}",
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "P1809F7CD0C75ACF3"
+        },
+        "description": "CPU and Memory usage in average for available cores on the device",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": true,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
             },
             "mappings": [],
             "thresholds": {
@@ -522,48 +627,53 @@
           "overrides": []
         },
         "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 12,
-          "y": 4
+          "h": 5,
+          "w": 12,
+          "x": 0,
+          "y": 8
         },
-        "id": 4,
+        "id": 10,
         "options": {
-          "minVizHeight": 200,
-          "minVizWidth": 200,
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "fields": "",
-            "values": false
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
           },
-          "showThresholdLabels": false,
-          "showThresholdMarkers": true,
-          "sizing": "auto"
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          }
         },
-        "pluginVersion": "10.2.3",
         "targets": [
           {
             "datasource": {
               "type": "prometheus",
               "uid": "P1809F7CD0C75ACF3"
             },
-            "disableTextWrap": false,
             "editorMode": "code",
-            "expr": "(memory_used{device=\"ceos-02\"} * 100) / (memory_used{device=\"ceos-02\"} + memory_available{device=\"ceos-02\"})",
-            "fullMetaSearch": false,
-            "includeNullMetadata": true,
+            "expr": "avg(avg_over_time(cpu_used{device=\"ceos-02\"}[2m]))",
             "instant": false,
-            "legendFormat": "__auto",
+            "legendFormat": "CPU Usage",
             "range": true,
-            "refId": "A",
-            "useBackend": false
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "avg((memory_used{device=\"ceos-02\"} * 100) / (memory_used{device=\"ceos-02\"} + memory_available{device=\"ceos-02\"}))",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "Memory Usage",
+            "range": true,
+            "refId": "B"
           }
         ],
-        "title": "Avg Mem",
-        "type": "gauge"
+        "title": "CPU & Mem Usage (Avg)",
+        "type": "timeseries"
       },
       {
         "datasource": {
@@ -591,10 +701,10 @@
           "overrides": []
         },
         "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 18,
-          "y": 4
+          "h": 5,
+          "w": 12,
+          "x": 12,
+          "y": 8
         },
         "id": 5,
         "options": {
@@ -629,6 +739,19 @@
         ],
         "title": "Bandwidth Usage",
         "type": "stat"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 13
+        },
+        "id": 9,
+        "panels": [],
+        "title": "Interfaces Information",
+        "type": "row"
       }
     ],
     "refresh": "",
@@ -647,6 +770,6 @@
     "timezone": "",
     "title": "Device Health",
     "uid": "c78e686b-138b-4deb-b6ae-3239dc10a162",
-    "version": 6,
+    "version": 7,
     "weekStart": ""
   }
