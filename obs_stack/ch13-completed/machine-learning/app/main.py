@@ -26,7 +26,7 @@ def configure():
 
 @app.get("/")
 def index():
-    return {"message": "Working!"}
+    return {"message": "The Machine Learning service is waiting for your requests!"}
 
 
 if __name__ == "__main__":

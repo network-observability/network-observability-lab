@@ -11,6 +11,9 @@ from .rca import (
     ask_openai
 )
 
+from .anomaly import look_for_anomalies
+
+
 router = fastapi.APIRouter()
 log = logging.getLogger("machine-learning")
 
@@ -37,14 +40,21 @@ class AlertmanagerWebhook(BaseModel):
     externalURL: str
     alerts: list[AlertmanagerAlert]
 
-@router.get("/v1/api/prophet")
-def check_anomaly(
-    device: str | None = fastapi.Query(default=None, description="Filter by device name"),
-    interface: str | None = fastapi.Query(default=None, description="Filter by interface name"),
+@router.get("/v1/api/anomalies")
+def check_for_anomalies(
+    device: str = fastapi.Query(default=None, description="Filter by device name"),
+    interface: str = fastapi.Query(default=None, description="Filter by interface name"),
+    t1: float = fastapi.Query(default=None, description="Time when the network change started as a timestamp."),
+    t2: float = fastapi.Query(default=None, description="Time when the network change finished as a timestamp."),
 ):
     log.info(f"Checking if the interface {interface} in device {device} is having a normal activity")
-    status_normal = True
-    return {"message": f"Interface {interface} in {device} traffic is " + "normal" if status_normal else "anormal"}
+    anomalies = look_for_anomalies(device, interface, t1, t2)
+    log.info(f"Detected anomalies: {anomalies}")
+
+    status_normal = True if anomalies.empty else False
+    message = f"Interface {interface} in {device} traffic for {t2} was "
+    message += "normal" if status_normal else "anormal"
+    return {"message": message}
 
 @router.post("/v1/api/rca-webhook", status_code=204)
 def process_webhook(alertmanager_webhook: AlertmanagerWebhook):
