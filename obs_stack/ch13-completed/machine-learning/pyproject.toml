@@ -11,7 +11,10 @@ fastapi = "0.99.1"
 uvicorn = "*"
 python-logging-loki = "*"
 toml = "*"
-openai = "^1.2.4"
+openai = "1.2.4"
+prometheus-api-client = "0.5.4"
+prophet = "1.1.5"
+plotly = "5.19.0"
 
 
 [tool.machine-learning]
