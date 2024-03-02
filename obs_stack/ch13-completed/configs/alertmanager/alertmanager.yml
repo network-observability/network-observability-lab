@@ -19,4 +19,4 @@ receivers:
   - name: machine-learning-webhook
     webhook_configs:
       - send_resolved: true
-        url: http://machine-learning-webhook:9997/v1/api/machine-learning-webhook
+        url: http://machine-learning-webhook:9997/v1/api/rca-webhook

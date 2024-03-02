@@ -128,5 +128,7 @@ services:
     ports:
       - 9997:9997
     tty: true
+    env_file:
+      - ../../.env
     networks:
       - network-observability
