@@ -22,63 +22,6 @@
     name = "uptime"
     oid = "RFC1213-MIB::sysUpTime.0"
 
-  # `interface` measurement
-  [[inputs.snmp.table]]
-    name = "interface"
-
-    [[inputs.snmp.table.field]]
-      name = "name"
-      oid = "IF-MIB::ifDescr"
-      is_tag = true
-
-    [[inputs.snmp.table.field]]
-      name = "oper_status"
-      oid = "IF-MIB::ifOperStatus"
-
-    [[inputs.snmp.table.field]]
-      name = "admin_status"
-      oid = "IF-MIB::ifAdminStatus"
-
-    [[inputs.snmp.table.field]]
-      name = "in_errors_pkts"
-      oid = "IF-MIB::ifInErrors"
-
-    [[inputs.snmp.table.field]]
-      name = "out_errors_pkts"
-      oid = "IF-MIB::ifOutErrors"
-
-    [[inputs.snmp.table.field]]
-      name = "in_discards_pkts"
-      oid = "IF-MIB::ifInDiscards"
-
-    [[inputs.snmp.table.field]]
-      name = "out_discards_pkts"
-      oid = "IF-MIB::ifOutDiscards"
-
-    [[inputs.snmp.table.field]]
-      name = "in_octets"
-      oid = "IF-MIB::ifHCInOctets"
-
-    [[inputs.snmp.table.field]]
-      name = "out_octets"
-      oid = "IF-MIB::ifHCOutOctets"
-
-    [[inputs.snmp.table.field]]
-      name = "out_broadcast_pkts"
-      oid = "IF-MIB::ifHCOutBroadcastPkts"
-
-    [[inputs.snmp.table.field]]
-      name = "in_broadcast_pkts"
-      oid = "IF-MIB::ifHCInBroadcastPkts"
-
-    [[inputs.snmp.table.field]]
-      name = "in_multicast_pkts"
-      oid = "IF-MIB::ifHCOutMulticastPkts"
-
-    [[inputs.snmp.table.field]]
-      name = "out_multicast_pkts"
-      oid = "IF-MIB::ifHCInMulticastPkts"
-
 [[inputs.gnmi]]
   addresses = ["ceos-01:50051"]
   username = "${NETWORK_AGENT_USER}"
@@ -88,6 +31,24 @@
 
   [inputs.gnmi.tags]
     collection_type = "gnmi"
+
+  [[inputs.gnmi.subscription]]
+    name = "interface"
+    path = "/interfaces/interface/state/counters"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+  [[inputs.gnmi.subscription]]
+    name = "interface"
+    path = "/interfaces/interface/state/oper-status"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+  [[inputs.gnmi.subscription]]
+    name = "interface"
+    path = "/interfaces/interface/state/admin-status"
+    subscription_mode = "sample"
+    sample_interval = "10s"
 
   [[inputs.gnmi.subscription]]
     name = "cpu"
