@@ -63,14 +63,9 @@ def main(device_type, host):
     # Execute the show version command on the device
     bgp_output = net_connect.send_command("show ip bgp summary", use_textfsm=True)
     ospf_output = net_connect.send_command("show ip ospf neighbor", use_textfsm=True)
-    # print(ospf_output)
 
     # Print the state_pfxrcd / state_pfxacc value for each BGP neighbor in the influx line protocol format
     for neighbor in bgp_output:
-        # Ignore neighbors that are not in the Established state
-        if not neighbor['state_pfxrcd']:  # type: ignore
-            continue
-
         # Create the measurement, tags, and fields for InfluxDB line protocol format
         measurement = "bgp"
         tags = {
@@ -96,11 +91,11 @@ def main(device_type, host):
         else:
             state = neighbor['state'].upper()  # type: ignore
 
-        fields = {
-            "prefixes_received": int(neighbor['state_pfxrcd']),  # type: ignore
-            "prefixes_accepted": int(neighbor['state_pfxacc']),  # type: ignore
-            "neighbor_state": state,
-        }
+        fields = {"neighbor_state": state}
+
+        if neighbor['state_pfxrcd']:  # type: ignore
+            fields["prefixes_received"] = int(neighbor['state_pfxrcd'])  # type: ignore
+            fields["prefixes_accepted"] = int(neighbor['state_pfxacc'])  # type: ignore
 
         # Generate the line protocol string
         line_protocol = InfluxMetric(measurement, tags, fields)
@@ -110,10 +105,14 @@ def main(device_type, host):
         print(line_protocol)
 
     # Print the ospf_output in the influx line protocol format
+
+    # ospf_output was not parsed
+    if isinstance(ospf_output, str):
+        return
+
     for neighbor in ospf_output:
 
         measurement = "ospf"
-
         # OSPF textfsm template returns 'address' instead of 'ip_address' depending on the template
         address = neighbor.get('ip_address') if neighbor.get('ip_address') else neighbor.get('address')  # type: ignore
         tags = {
