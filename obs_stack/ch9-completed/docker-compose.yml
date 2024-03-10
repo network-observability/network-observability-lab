@@ -63,6 +63,7 @@ services:
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
       - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
+      - ./configs/loki/rules/alerting_rules.yml:/rules/fake/rules.yaml
       - loki_data:/loki:rw
     env_file:
       - ../../.env
