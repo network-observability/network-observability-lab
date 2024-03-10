@@ -39,23 +39,3 @@ groups:
         annotations:
           summary: "[NET] Device {{ $labels.device }}: BGP Session {{ $labels.neighbor }}:{{ $labels.neighbor_asn }} is down"
           description: "BGP session towards {{ $labels.neighbor }}:{{ $labels.neighbor_asn }} on device {{ $labels.device }} is down!"
-
-  - name: Peer Interface Flapping
-    rules:
-      - alert: PeerInterfaceFlapping
-        expr: changes(interface_oper_status{intf_role="peer"}[2m]) > 3
-        for: 1m
-        labels:
-          severity: critical
-          source: stack
-          environment: network-observability-lab
-          metric_name: change(interface_oper_status)
-          device: '{{ $labels.device }}'
-          device_role: '{{ $labels.device_role }}'
-          site: '{{ $labels.site }}'
-          region: '{{ $labels.region }}'
-          instance: '{{ $labels.host }}'
-          device_platform: '{{ $labels.device_platform }}_{{ $labels.net_os }}'
-        annotations:
-          summary: "[NET] Device {{ $labels.device }}: Interface Uplink {{ $labels.name }} is flapping"
-          description: "Interface {{ $labels.name }} on device {{ $labels.device }} is flapping!"
