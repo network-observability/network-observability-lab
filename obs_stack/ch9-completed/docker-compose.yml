@@ -9,6 +9,7 @@ volumes:
   loki_data:
   prometheus_data:
   grafana_data:
+  alertmanager_data:
 
 version: "3.8"
 services:
@@ -76,7 +77,7 @@ services:
     tty: true
     volumes:
       - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./configs/prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml
+      - ./configs/prometheus/rules/:/etc/prometheus/rules/
       - prometheus_data:/prometheus
     env_file:
       - ../../.env
@@ -85,11 +86,13 @@ services:
 
   alertmanager:
     image: docker.io/prom/alertmanager:latest
+    # restart: always
     ports:
       - 9093:9093
-    command: --config.file=/etc/alertmanager/alertmanager.yml
+    command: --config.file=/etc/alertmanager/alertmanager.yml --cluster.advertise-address=0.0.0.0:9093
     volumes:
       - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/data
     env_file:
       - ../../.env
     networks:
@@ -101,6 +104,8 @@ services:
       - 3000:3000
     volumes:
       - ./configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
+      - ./configs/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
       - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
       - grafana_data:/grafana
     environment:

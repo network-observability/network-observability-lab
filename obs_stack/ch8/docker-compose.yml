@@ -89,6 +89,8 @@ services:
       - 3000:3000
     volumes:
       - ./configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
+      - ./configs/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
       - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
       - grafana_data:/grafana
     environment:
