@@ -41,6 +41,6 @@ def look_for_anomalies(device, interface, t1, t2):
 
     # TODO: REMOVE THIS TO RETURN THE RESULTING DATA FRAME
     class MockResponse:
-        emtpy = True
+        empty = True
     return MockResponse()
     ######################################################

@@ -39,10 +39,10 @@ class AlertmanagerWebhook(BaseModel):
 
 @router.get("/v1/api/anomalies")
 def check_for_anomalies(
-    device: str = fastapi.Query(default=None, description="Filter by device name"),
-    interface: str = fastapi.Query(default=None, description="Filter by interface name"),
-    t1: float = fastapi.Query(default=None, description="Time when the network change started as a timestamp."),
-    t2: float = fastapi.Query(default=None, description="Time when the network change finished as a timestamp."),
+    device: str = fastapi.Query(description="Filter by device name"),
+    interface: str = fastapi.Query(description="Filter by interface name"),
+    t1: float = fastapi.Query(description="Time when the network change started as a timestamp."),
+    t2: float = fastapi.Query(description="Time when the network change finished as a timestamp."),
 ):
     log.info(f"Checking if the interface {interface} in device {device} is having a normal activity")
     anomalies = look_for_anomalies(device, interface, t1, t2)
