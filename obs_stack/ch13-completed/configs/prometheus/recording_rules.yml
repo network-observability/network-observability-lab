@@ -1,0 +1,29 @@
+---
+groups:
+  - name: network_traffic_overview
+    rules:
+    - record: device:network_traffic_in_bps:rate_2m
+      expr: sum(rate(interface_in_octets[2m])) by (device) * 8
+    - record: device:network_traffic_out_bps:rate_2m
+      expr: sum(rate(interface_out_octets[2m])) by (device) * 8
+
+
+  - name: BGP Neighbor is not established
+    rules:
+      - alert: BGPNeighborNotEstablished
+        expr: bgp_neighbor_state{device="ceos-01",neighbor="10.1.2.2"} != 1
+        for: 1m
+        labels:
+          severity: warning
+          source: stack
+          environment: Production
+          metric_name: bgp_neighbor_state
+          device: "{{ $labels.device }}"
+          neighbor: "{{ $labels.neighbor }}"
+          site: "{{ $labels.site }}"
+          vrf: "{{ $labels.vrf }}"
+          asn: "{{ $labels.neighbor_asn }}"
+          instance: "{{ $labels.host }}"
+        annotations:
+          summary: "BGP neighobr status flap"
+          description: "Device {{ $labels.device }}: BGP neighbor {{ $labels.neighbor }} for ASN {{ $labels.neighbor_asn }} is not established!"

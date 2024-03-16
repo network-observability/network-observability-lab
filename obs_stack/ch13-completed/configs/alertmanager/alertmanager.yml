@@ -1,0 +1,22 @@
+---
+global:
+  resolve_timeout: 30m
+
+# We use a default route to a non-existant endpoint
+# because alertmanager requires at least one default
+# route/receiver. Note, this is just to make alertmanager
+# happy and does not actually do anything!
+route:
+  receiver: machine-learning-webhook
+  routes:
+    - group_by:
+        - alertname
+      match:
+        source: stack
+      receiver: machine-learning-webhook
+
+receivers:
+  - name: machine-learning-webhook
+    webhook_configs:
+      - send_resolved: true
+        url: http://machine-learning-webhook:9997/v1/api/rca-webhook

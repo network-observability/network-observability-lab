@@ -1,0 +1,134 @@
+---
+networks:
+  network-observability:
+    external: true
+    name: network-observability
+
+volumes:
+  loki_data:
+  prometheus_data:
+  grafana_data:
+
+version: "3.8"
+services:
+
+  telegraf-01:
+    image: docker.io/networktocode/network-agent:1.27-py3.8-v0.4.2-v0.3.10
+    command: telegraf --config /etc/telegraf/telegraf.conf
+    tty: true
+    volumes:
+      - ./configs/telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
+    ports:
+      - 9004:9004
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  telegraf-02:
+    image: docker.io/networktocode/network-agent:1.27-py3.8-v0.4.2-v0.3.10
+    command: telegraf --config /etc/telegraf/telegraf.conf
+    tty: true
+    volumes:
+      - ./configs/telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
+    ports:
+      - 9005:9005
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  logstash:
+    image: docker.io/grafana/logstash-output-loki:main
+    command: -f /home/logstash/logstash.cfg
+    volumes:
+      - ./configs/logstash/logstash.cfg:/home/logstash/logstash.cfg
+    ports:
+      - 1515:1515
+    environment:
+      XPACK_MONITORING_ENABLED: false
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  loki:
+    image: docker.io/grafana/loki:latest
+    ports:
+      - 3001:3001
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
+      - loki_data:/loki:rw
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  prometheus:
+    image: docker.io/prom/prometheus:latest
+    ports:
+      - 9090:9090
+    command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml
+    tty: true
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./configs/prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml
+      - prometheus_data:/prometheus
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  promlens:
+    image: docker.io/prom/promlens:main
+    ports:
+      - 9091:9091
+    command: --web.listen-address=:9091
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  grafana:
+    image: docker.io/grafana/grafana:latest
+    ports:
+      - 3000:3000
+    volumes:
+      - ./configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
+      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - grafana_data:/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  alertmanager:
+    image: docker.io/prom/alertmanager:latest
+    ports:
+      - 9093:9093
+    command: "--config.file=/etc/alertmanager/alertmanager.yml --cluster.advertise-address=0.0.0.0:9093"
+    volumes:
+      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  machine-learning-webhook:
+    build:
+      context: "./"
+      dockerfile: "./machine-learning.Dockerfile"
+    command: "python -m app.main"
+    ports:
+      - 9997:9997
+    tty: true
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
