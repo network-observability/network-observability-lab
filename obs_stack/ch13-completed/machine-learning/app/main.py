@@ -6,7 +6,6 @@ import uvicorn
 from app import config
 from app import api
 
-# from app.log import initialize_logging, APP
 
 dictConfig(config.LogConfig().dict())
 log = logging.getLogger("machine-learning")

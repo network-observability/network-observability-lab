@@ -5,11 +5,7 @@ from datetime import datetime, timedelta
 import fastapi
 from pydantic import BaseModel
 
-from .rca import (
-    retrieve_data_loki,
-    generate_rca_prompt,
-    ask_openai
-)
+from .rca import retrieve_data_loki, generate_rca_prompt, ask_openai
 
 from .anomaly import look_for_anomalies
 
@@ -40,6 +36,7 @@ class AlertmanagerWebhook(BaseModel):
     externalURL: str
     alerts: list[AlertmanagerAlert]
 
+
 @router.get("/v1/api/anomalies")
 def check_for_anomalies(
     device: str = fastapi.Query(default=None, description="Filter by device name"),
@@ -56,6 +53,7 @@ def check_for_anomalies(
     message += "normal" if status_normal else "anormal"
     return {"message": message}
 
+
 @router.post("/v1/api/rca-webhook", status_code=204)
 def process_webhook(alertmanager_webhook: AlertmanagerWebhook):
     """Process an alertmanager webhook to provide a Root Cause Analysis."""
@@ -69,7 +67,7 @@ def process_webhook(alertmanager_webhook: AlertmanagerWebhook):
             query=f'{{device="{device_name}"}}',
             # Look back for 10 minutes
             start_timestamp=datetime.timestamp(now - timedelta(hours=0, minutes=10)),
-            end_time=datetime.timestamp(now)
+            end_time=datetime.timestamp(now),
         )
         log.info(f"Loki logs: {loki_logs}")
 
