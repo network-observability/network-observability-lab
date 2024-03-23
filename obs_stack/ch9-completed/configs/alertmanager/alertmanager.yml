@@ -18,4 +18,4 @@ receivers:
     http_config:
       basic_auth:
         username: api_key
-        password: b8b19602-6588-46d8-b399-e07df5c7d3e8
+        password_file: keep_api_key

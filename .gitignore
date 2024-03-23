@@ -310,3 +310,5 @@ clab-*
 terraform.tfstate
 terraform.tfstate.backup
 local
+
+*keep_api_key
