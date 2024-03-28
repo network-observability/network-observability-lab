@@ -1,0 +1,5 @@
+---
+# Global Settings for Alertmanager
+global:
+  # Time after which an alert is declared resolved (good for demo purposes)
+  resolve_timeout: 30m
