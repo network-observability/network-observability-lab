@@ -20,16 +20,16 @@ groups:
           summary: "[NET] Device {{ $labels.device }}: Interface Uplink {{ $labels.name }} is down"
           description: "Interface {{ $labels.name }} on device {{ $labels.device }} is down!"
 
-  - name: BGP Session Down
+  - name: BGP Neighbor Down
     rules:
-      - alert: BGPSessionDown
-        expr: bgp_session_state == 2
+      - alert: BGPNeighborDown
+        expr: bgp_neighbor_state == 2
         for: 1m
         labels:
           severity: critical
           source: stack
           environment: network-observability-lab
-          metric_name: bgp_session_state
+          metric_name: bgp_neighbor_state
           device: '{{ $labels.device }}'
           device_role: '{{ $labels.device_role }}'
           site: '{{ $labels.site }}'
@@ -37,5 +37,5 @@ groups:
           instance: '{{ $labels.host }}'
           device_platform: '{{ $labels.device_platform }}_{{ $labels.net_os }}'
         annotations:
-          summary: "[NET] Device {{ $labels.device }}: BGP Session {{ $labels.neighbor }}:{{ $labels.neighbor_asn }} is down"
-          description: "BGP session towards {{ $labels.neighbor }}:{{ $labels.neighbor_asn }} on device {{ $labels.device }} is down!"
+          summary: "[NET] Device {{ $labels.device }}: BGP Neighbor {{ $labels.neighbor }}:{{ $labels.neighbor_asn }} is down"
+          description: "BGP Neighbor towards {{ $labels.neighbor }}:{{ $labels.neighbor_asn }} on device {{ $labels.device }} is down!"
