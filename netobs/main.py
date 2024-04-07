@@ -1,4 +1,5 @@
 """Netobs CLI."""
+
 import json
 import os
 import shlex
@@ -60,6 +61,8 @@ class NetObsScenarios(Enum):
     CH8_COMPLETED = "ch8-completed"
     CH9 = "ch9"
     CH9_COMPLETED = "ch9-completed"
+    CH13 = "ch13"
+    CH13_COMPLETED = "ch13-completed"
 
 
 class DockerNetworkAction(Enum):
