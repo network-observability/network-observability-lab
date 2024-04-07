@@ -1,25 +1,26 @@
 """Netobs CLI."""
 
-import os
-import subprocess  # nosec
-import shlex
 import json
+import os
+import shlex
+import subprocess  # nosec
+import time
 from enum import Enum
-from typing import Optional, Any
-from typing_extensions import Annotated
 from pathlib import Path
 from subprocess import CompletedProcess  # nosec
+from typing import Any, Optional
 from urllib.parse import urlparse
 
+import netmiko
+import requests
 import typer
 import yaml
-import requests
+from dotenv import dotenv_values, load_dotenv
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry  # type: ignore
-from dotenv import dotenv_values, load_dotenv
 from rich.console import Console
 from rich.theme import Theme
-
+from typing_extensions import Annotated
 
 load_dotenv(verbose=True, override=True, dotenv_path=Path("./.env"))
 ENVVARS = {**dotenv_values(".env"), **os.environ}
@@ -942,7 +943,7 @@ def vm_destroy():
 # --------------------------------------#
 
 
-@utils_app.command("load-nautobot", help="Load Nautobot data from containerlab topology file")
+@utils_app.command("load-nautobot", rich_help_panel="Nautobot")
 def utils_load_nautobot_data(
     nautobot_token: Annotated[str, typer.Option(help="Nautobot Token", envvar="NAUTOBOT_SUPERUSER_API_TOKEN")],
     topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
@@ -1176,7 +1177,7 @@ def utils_load_nautobot_data(
         console.log(f"Updated Device: [orange1 i]{device['display']}", style="info")
 
 
-@utils_app.command("delete-nautobot", help="Delete Nautobot data from containerlab topology file")
+@utils_app.command("delete-nautobot", rich_help_panel="Nautobot")
 def utils_delete_nautobot_data(
     nautobot_token: Annotated[str, typer.Option(help="Nautobot Token", envvar="NAUTOBOT_SUPERUSER_API_TOKEN")],
     nautobot_url: Annotated[str, typer.Option(help="Nautobot URL", envvar="NAUTOBOT_URL")] = "http://localhost:8080",
@@ -1253,3 +1254,31 @@ def utils_delete_nautobot_data(
         nautobot_client.http_call(url="/api/extras/statuses/", method="delete", json_data=all_statuses["results"])
 
     console.log("Nautobot data deleted", style="info")
+
+
+@utils_app.command("device-interface-flap", rich_help_panel="Network Device")
+def utils_device_interface_flap(
+    device: Annotated[str, typer.Option(help="Device to flap interface", envvar="LAB_DEVICE")],
+    interface: Annotated[str, typer.Option(help="Interface to flap", envvar="LAB_INTERFACE")],
+    count: Annotated[int, typer.Option(help="Number of flaps", envvar="LAB_FLAP_COUNT")] = 1,
+    delay: Annotated[int, typer.Option(help="Delay between flaps", envvar="LAB_FLAP_DELAY")] = 5,
+):
+    """Flap a network device interface."""
+    console.log(f"Flapping interface: [orange1 i]{interface} on device: {device}", style="info")
+    device_conn = netmiko.ConnectHandler(
+        device_type="arista_eos",
+        host=device,
+        username="netobs",
+        password="netobs123",
+    )
+    # Enable the config mode
+    device_conn.enable()
+    device_conn.config_mode()
+    for _ in range(count):
+        console.log("Bringing interface down...", style="info")
+        device_conn.send_config_set([f"interface {interface}", "shutdown"])
+        time.sleep(delay)
+        console.log("Bringing interface up...", style="info")
+        device_conn.send_config_set([f"interface {interface}", "no shutdown"])
+        time.sleep(delay)
+    console.log(f"Flapped interface: [orange1 i]{interface} on device: {device}", style="info")
