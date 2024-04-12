@@ -1,0 +1,27 @@
+[[inputs.gnmi]]
+  # Targets for gNMI plugin - we are using port 50051 as is the port configured for gNMI in the cEOS devices
+  addresses = ["{{ inventory_hostname }}:{{ gnmi_port}}"]
+  # Creds to connect to the device
+  username = "${NETWORK_AGENT_USER}"
+  password = "${NETWORK_AGENT_PASSWORD}"
+  # Retries in case of failure
+  redial = "20s"
+
+
+[[inputs.gnmi.subscription]]
+  # Name of the resulting metric namespace
+  name = "interface"
+  # Specific YANG path for interface counters
+  path = "/interfaces/interface/state/counters"
+  # gNMI subscription mode ("target_defined", "sample", "on_change")
+  subscription_mode = "sample"
+  # Interval to send each sample
+  sample_interval = "10s"
+
+
+[[inputs.gnmi.subscription]]
+  name = "interface"
+  # Specific path to collect interface oper-status
+  path = "/interfaces/interface/state/oper-status"
+  subscription_mode = "sample"
+  sample_interval = "10s"
