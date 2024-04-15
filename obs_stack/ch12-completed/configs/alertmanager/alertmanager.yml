@@ -1,0 +1,18 @@
+---
+global:
+  resolve_timeout: 30m
+
+route:
+  receiver: webhook
+  routes:
+    - group_by:
+        - alertname
+      match:
+        source: stack
+      receiver: webhook
+
+receivers:
+  - name: webhook
+    webhook_configs:
+      - send_resolved: true
+        url: http://webhook:9997/v1/api/webhook
