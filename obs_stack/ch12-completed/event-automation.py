@@ -36,7 +36,7 @@ def get_nautobot_secret() -> str:
     return secret_block.get()
 
 
-@task(task_run_name="[RETRIEVE] {device}", log_prints=True)
+@task(task_run_name="[RETRIEVE] {device}", retries=3, log_prints=True)
 def retrieve_device_info(device: str) -> dict:
     """Retrieve device information from Nautobot.
 
@@ -57,6 +57,7 @@ def retrieve_device_info(device: str) -> dict:
         }
     }
     """
+    print("Retrieving device information")
     response = requests.post(
         url="http://localhost:8080/api/graphql/",
         headers={"Authorization": f"Token {get_nautobot_secret()}"},
