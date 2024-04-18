@@ -192,7 +192,7 @@ def site_health(site: str):
     # Now lets collect the ping response (latency) for each device
     query = f"avg by (device) (ping_average_response_ms{{site=~'{site}'}})"
     for labels, value in collect_metrics(query):
-        devices[labels["device"]]["latency"] = f"{value}ms"
+        devices[labels["device"]]["latency"] = f"{value} ms"
 
     # Now lets collect avg CPU and Memory usage
     query = f"avg by (device) (cpu_used{{site=~'{site}'}})"
@@ -277,7 +277,12 @@ def site_health(site: str):
     for log in log_results:
         _device = log["stream"]
         _time = datetime.datetime.fromtimestamp(float(log["values"][0][0]) / 1000000000).strftime("%Y-%m-%d %H:%M:%S")
-        _message = log["values"][0][1]
+        if log["stream"]["vendor_facility_process"] == "OSPF_ADJACENCY_ESTABLISHED":
+            _message = f"[green i]{log['values'][0][1].strip()}[/]".replace("established", "[bold]established[/]")
+        elif log["stream"]["vendor_facility_process"] == "OSPF_ADJACENCY_TEARDOWN":
+            _message = f"[red]{log['values'][0][1].strip()}[/]"
+        else:
+            _message = log["values"][0][1].strip()
         table.add_row(_device["device"], _time, _message)
 
     # Print the table

@@ -93,7 +93,6 @@ services:
     command: --config.file=/etc/alertmanager/alertmanager.yml --cluster.advertise-address=0.0.0.0:9093
     volumes:
       - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-      - ./configs/alertmanager/keep_api_key:/etc/alertmanager/keep_api_key
       - alertmanager_data:/data
     env_file:
       - ../../.env
@@ -169,5 +168,8 @@ services:
     tty: true
     env_file:
       - ../../.env
+    environment:
+      PREFECT_API_URL: ${PREFECT_URL}
+      PREFECT_API_KEY: ${PREFECT_KEY}
     networks:
       - network-observability

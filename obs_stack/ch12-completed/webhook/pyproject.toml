@@ -11,8 +11,8 @@ dependencies = [
     'pydantic>=2.7.0',
     'pydantic-settings>=2.2.1',
     'fastapi>=0.99.1',
-    'uvicorn>=*',
-    'toml>=*',
+    'uvicorn',
+    'toml',
     'prefect>=2.17.1',
 ]
 

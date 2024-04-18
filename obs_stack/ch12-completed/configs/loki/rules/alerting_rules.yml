@@ -3,20 +3,14 @@ groups:
   - name: Peer Interface Flapping
     rules:
       - alert: PeerInterfaceFlapping
-        expr: sum by(device) (count_over_time({vendor_facility_process="UPDOWN"}[2m])) > 3
+        expr: sum by(device, interface) (count_over_time({vendor_facility_process="UPDOWN"}[2m])) > 3
         for: 1m
         labels:
           severity: critical
-          source: stack
+          source: loki
           environment: network-observability-lab
-          metric_name: change(interface_oper_status)
           device: '{{ $labels.device }}'
-          device_role: '{{ $labels.device_role }}'
           interface: '{{ $labels.interface }}'
-          site: '{{ $labels.site }}'
-          region: '{{ $labels.region }}'
-          instance: '{{ $labels.host }}'
-          device_platform: '{{ $labels.device_platform }}_{{ $labels.net_os }}'
         annotations:
-          summary: "[NET] Device {{ $labels.device }}: Interface Uplink {{ $labels.name }} is flapping"
-          description: "Interface {{ $labels.name }} on device {{ $labels.device }} is flapping!"
+          summary: "[NET] Flappig interface in {{ $labels.device }}/{{ $labels.interface }}"
+          description: "The interface {{ $labels.device }}/{{ $labels.interface }} is flapping"

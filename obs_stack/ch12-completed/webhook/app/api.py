@@ -20,7 +20,7 @@ class AlertmanagerAlert(BaseModel):
     fingerprint: str
 
 
-class AlertmanagerWebhook(BaseModel):
+class AlertmanagerAlertGroup(BaseModel):
     version: str
     groupKey: str
     truncatedAlerts: int
@@ -34,16 +34,15 @@ class AlertmanagerWebhook(BaseModel):
 
 
 @router.post("/v1/api/webhook", status_code=204)
-def process_webhook(alertmanager_webhook: AlertmanagerWebhook):
-    """Process an alertmanager webhook to provide a Root Cause Analysis."""
-    log.info("Alertmanager webhook status is firing, let's provide some educated guesses...")
-    log.info(f"Received alertmanager webhook: {alertmanager_webhook}")
+def process_webhook(alert_group: AlertmanagerAlertGroup):
+    """Process an alertmanager webhook to send data to Prefect for automated workflows."""
+    log.info("Alertmanager webhook status is firing")
+    log.info(f"Received alertmanager webhook: {alert_group}")
 
-    for alert in alertmanager_webhook.alerts:
-        _ = run_deployment(
-            name="alert-receiver",
-            parameters=alert.model_dump(),
-        )
+    _ = run_deployment(
+        name="alert-receiver/alert-receiver",
+        parameters={"alert_group": alert_group.model_dump(mode="json")},
+    )
 
-    log.info(f"Alert status is {alertmanager_webhook.status}, exiting")
+    log.info(f"Alert status is {alert_group.status}, exiting")
     return {"message": "Processed webhook"}
