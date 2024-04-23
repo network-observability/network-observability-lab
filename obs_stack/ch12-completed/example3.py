@@ -5,7 +5,7 @@ import requests
 from rich import print as rprint
 
 
-def retrieve_data_loki(query: str, start_timestamp: int, end_time: int) -> dict:
+def retrieve_data_loki(query: str, start_timestamp: int, end_time: int) -> list[dict]:
     """Retrieve data from Grafana Loki.
     Args:
         query (str): Loki query
@@ -14,8 +14,6 @@ def retrieve_data_loki(query: str, start_timestamp: int, end_time: int) -> dict:
     Returns:
         dict: Loki query result
     """
-    rprint("Retrieving data from Loki...")
-
     response = requests.get(
         url=f"http://localhost:3001/loki/api/v1/query_range",
         params={
@@ -25,17 +23,22 @@ def retrieve_data_loki(query: str, start_timestamp: int, end_time: int) -> dict:
             "limit": 1000,
         },
     )
-    rprint("Data retrieved from Loki")
     return response.json()["data"]["result"]
 
 
 def main():
-    # Retrieve the logs from ceos-01 over the last 10 minutes
-    query = '{device="ceos-01"}'
+    # Retrieve the logs from ceos-02 over the last 30 minutes
+    query = '{device="ceos-02"}'
+
+    # Get the current time and the time 30 minutes ago
     now = datetime.now()
-    start_timestamp = datetime.timestamp(now - timedelta(hours=0, minutes=10))
+    start_timestamp = datetime.timestamp(now - timedelta(minutes=30))
     end_time = datetime.timestamp(now)
+
+    # Retrieve the logs
     loki_results = retrieve_data_loki(query, start_timestamp, end_time)  # type: ignore
+
+    # Print the results
     rprint(loki_results)
 
 
