@@ -151,7 +151,7 @@ def high_bw_links(device: str, threshold: float = 1000.0, watch: bool = False):
 
     Example:
 
-        > python observer.py high-bw-links --device ceos-01 --threshold 1000
+        > python observer.py high-bw-links ceos-01 --threshold 1000
     """
     console.log("Getting links with Bandwidth higher than threshold", style="info")
 
