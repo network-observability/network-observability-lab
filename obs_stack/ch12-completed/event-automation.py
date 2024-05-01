@@ -1,23 +1,13 @@
 import requests
 from prefect import flow, task
+from prefect.blocks.system import Secret
 
 
-def get_nautobot_secret() -> str:
-    """Retrieve the Nautobot API token from the secret store."""
-    secret_block = Secret.load("nautobot-token")
-    return secret_block.get()
-
-
-@task(task_run_name="[RETRIEVE] {device}", retries=3, log_prints=True)
+@task(retries=3, log_prints=True)
 def get_nautobot_intf_id(device: str, interface: str) -> str | None:
-    """Retrieve device information from Nautobot.
+    """Retrieve the Nautobot Interface ID."""
 
-    Args:
-        device (str): The device name.
-
-    Returns:
-        dict: The device information.
-    """
+    # GraphQL query to retrieve the device information
     gql = """
     query($device: [String]) {
         devices(name: $device) {
@@ -29,21 +19,29 @@ def get_nautobot_intf_id(device: str, interface: str) -> str | None:
         }
     }
     """
+    # Retrieve the Nautobot API token from Prefect Block Secret
+    secret_block = Secret.load("nautobot-token")
+    nautobot_token = secret_block.get()
+
+    # Get the device information from Nautobot using GraphQL
     response = requests.post(
         url="http://localhost:8080/api/graphql/",
-        headers={"Authorization": f"Token {get_nautobot_secret()}"},
+        headers={"Authorization": f"Token {nautobot_token}"},
         json={"query": gql, "variables": {"device": device}},
     )
     response.raise_for_status()
+
+    # Parse the response and return the interface ID
     result = response.json()["data"]["devices"][0]
     for intf in result["interfaces"]:
         if intf["name"] == interface:
             return intf["id"]
 
 
-@flow(flow_run_name="Update Nautobot {device}:{interface} - status {status}", log_prints=True)
+@flow(log_prints=True)
 def update_nautobot_intf_state(device: str, interface: str, status: str) -> bool:
     """Update Nautobot with the latest information."""
+
     # Retrieve Nautobot Interface ID
     intf_id = get_nautobot_intf_id(device=device, interface=interface)
 
@@ -57,6 +55,7 @@ def update_nautobot_intf_state(device: str, interface: str, status: str) -> bool
 @flow(log_prints=True)
 def alert_receiver(alert_group: dict):
     """Process the alert."""
+
     # Status of the alert group
     status = alert_group["status"]
 
