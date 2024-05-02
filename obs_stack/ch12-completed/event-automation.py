@@ -19,6 +19,7 @@ def get_nautobot_intf_id(device: str, interface: str) -> str | None:
         }
     }
     """
+
     # Retrieve the Nautobot API token from Prefect Block Secret
     secret_block = Secret.load("nautobot-token")
     nautobot_token = secret_block.get()
@@ -38,18 +39,45 @@ def get_nautobot_intf_id(device: str, interface: str) -> str | None:
             return intf["id"]
 
 
+@task(retries=3, log_prints=True)
+def update_nautobot_intf_state(interface_id: str, status: str) -> bool:
+    """Update the device interface status."""
+
+    # Retrieve the Nautobot API token from Prefect Block Secret
+    secret_block = Secret.load("nautobot-token")
+    nautobot_token = secret_block.get()
+
+    # Mapping Alertmanager status to Nautobot status
+    status = "lab-active" if status == "resolved" else "Alerted"
+
+    # Update the interface status
+    result = requests.patch(
+        url=f"http://localhost:8080/api/dcim/interfaces/{interface_id}/",
+        headers={"Authorization": f"Token {nautobot_token}"},
+        json={"status": status},
+    )
+    result.raise_for_status()
+
+    # Print the result to console
+    print(f"Interface ID {interface_id} status updated to {status}")
+
+    return True
+
+
 @flow(log_prints=True)
-def update_nautobot_intf_state(device: str, interface: str, status: str) -> bool:
+def interface_flapping_processor(device: str, interface: str, status: str) -> bool:
     """Update Nautobot with the latest information."""
 
     # Retrieve Nautobot Interface ID
     intf_id = get_nautobot_intf_id(device=device, interface=interface)
+    if intf_id is None:
+        raise ValueError("Interface not found in Nautobot")
 
     # Print the interface ID
     print(f"Interface: {interface} == ID: {intf_id}")
 
     # Update the device interface status in Nautobot
-    is_good = update_device_intf_status(intf_id=intf_id, status=status)
+    is_good = update_nautobot_intf_state(interface_id=intf_id, status=status)
     return is_good
 
 @flow(log_prints=True)
@@ -71,15 +99,15 @@ def alert_receiver(alert_group: dict):
     if alertgroup_name == "PeerInterfaceFlapping":
         for alert in alerts:
 
-            # Run the peer interface flap workflow
-            result = update_nautobot_intf_state(
+            # Run the interface flapping processor
+            result = interface_flapping_processor(
                 device=alert["labels"]["device"],
                 interface=alert["labels"]["interface"],
                 status=alert_group["status"],
             )
 
             # Print the result to console
-            print(f"Peer Interface Flap Workflow Successful: {result}")
+            print(f"Interface Flapping Processor Result: {result}")
 
     print("Alertmanager Alert Group status processed, exiting")
 
