@@ -1012,7 +1012,7 @@ def utils_load_nautobot_data(
         json_data={
             "name": "lab-active",
             "content_types": ["dcim.device", "dcim.interface", "dcim.location", "ipam.ipaddress", "ipam.prefix"],
-            "color": "#aaf0d1",
+            "color": "aaf0d1",
         },
     )
     console.log(f"Created Status: [orange1 i]{statuses['display']}", style="info")
@@ -1022,7 +1022,7 @@ def utils_load_nautobot_data(
         json_data={
             "name": "Alerted",
             "content_types": ["dcim.device", "dcim.interface", "dcim.location", "ipam.ipaddress", "ipam.prefix"],
-            "color": "#ff5a36",
+            "color": "ff5a36",
         },
     )
     console.log(f"Created Status: [orange1 i]{alerted_statuses['display']}", style="info")
