@@ -6,16 +6,11 @@ from rich import print as rprint
 
 
 def retrieve_data_loki(query: str, start_time: int, end_time: int) -> list[dict]:
-    """Retrieve data from Grafana Loki.
-    Args:
-        query (str): Loki query
-        start_time (int): Start timestamp
-        end_time (int): End timestamp
-    Returns:
-        dict: Loki query result
-    """
+    """Retrieve data from Grafana Loki."""
+
+    # Query Loki and return the results
     response = requests.get(
-        url=f"http://localhost:3001/loki/api/v1/query_range",
+        url="http://localhost:3001/loki/api/v1/query_range",
         params={
             "query": query,
             "start": int(start_time),

@@ -7,7 +7,7 @@ from prefect.blocks.system import Secret
 def get_nautobot_intf_id(device: str, interface: str) -> str | None:
     """Retrieve the Nautobot Interface ID."""
 
-    # GraphQL query to retrieve the device information
+    # GraphQL query to retrieve the device interfaces information
     gql = """
     query($device: [String]) {
         devices(name: $device) {
@@ -66,7 +66,7 @@ def update_nautobot_intf_state(interface_id: str, status: str) -> bool:
 
 @flow(log_prints=True)
 def interface_flapping_processor(device: str, interface: str, status: str) -> bool:
-    """Update Nautobot with the latest information."""
+    """Interface Flapping Event Processor."""
 
     # Retrieve Nautobot Interface ID
     intf_id = get_nautobot_intf_id(device=device, interface=interface)

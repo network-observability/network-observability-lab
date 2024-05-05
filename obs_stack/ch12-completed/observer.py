@@ -41,40 +41,36 @@ def sizeof_fmt(num, suffix="bps") -> str:
     return f"{num:.1f}Y{suffix}"
 
 
-def retrieve_data_prometheus(query: str, url: str = "http://localhost:9090") -> list[dict]:
-    """Collect metrics from Prometheus.
+def get_nautobot_token() -> str:
+    """Retrieve the Nautobot API token from the environment."""
 
-    Args:
-        query (str): The Prometheus query to execute.
-
-    Returns:
-        list[dict]: The Prometheus query result.
-    """
-    prom = PrometheusConnect(url=url, disable_ssl=True)
-    results = prom.custom_query(query=query)
-    if not results:
-        console.log(f"No results returned for query: {query}", style="error")
+    # Retrieve the Nautobot API token
+    token = os.getenv("NAUTOBOT_TOKEN")
+    if not token:
+        console.log("NAUTOBOT_TOKEN environment variable not set", style="error")
         raise typer.Exit(1)
+    return token
 
-    return results
+
+def retrieve_data_prometheus(query: str) -> list[dict]:
+    """Collect metrics from Prometheus."""
+
+    # Create a Prometheus API client
+    prom = PrometheusConnect(url="http://localhost:9090", disable_ssl=True)
+
+    # Query Prometheus and return the results
+    return prom.custom_query(query=query)
 
 
-def retrieve_data_loki(query: str, start_timestamp: int, end_time: int) -> dict:
-    """Retrieve data from Grafana Loki.
+def retrieve_data_loki(query: str, start_time: int, end_time: int) -> list[dict]:
+    """Retrieve data from Grafana Loki."""
 
-    Args:
-        query (str): Loki query
-        start_timestamp (int): Start timestamp
-        end_time (int): End timestamp
-
-    Returns:
-        dict: Loki query result
-    """
+    # Query Loki and return the results
     response = requests.get(
         url=f"http://localhost:3001/loki/api/v1/query_range",
         params={
             "query": query,
-            "start": int(start_timestamp),
+            "start": int(start_time),
             "end": int(end_time),
             "limit": 1000,
         },
@@ -83,14 +79,9 @@ def retrieve_data_loki(query: str, start_timestamp: int, end_time: int) -> dict:
 
 
 def retrieve_device_info(device: str) -> dict:
-    """Retrieve device information from Nautobot.
+    """Retrieve device information from Nautobot."""
 
-    Args:
-        device (str): The device name.
-
-    Returns:
-        dict: The device information.
-    """
+    # GraphQL query to fetch device model and manufacturer
     gql = """
     query($device: [String]) {
         devices(name: $device) {
@@ -103,17 +94,19 @@ def retrieve_device_info(device: str) -> dict:
         }
     }
     """
-    token = os.getenv("NAUTOBOT_TOKEN")
-    if not token:
-        console.log("NAUTOBOT_TOKEN environment variable not set", style="error")
-        raise typer.Exit(1)
 
+    # Retrieve the Nautobot API token
+    token = get_nautobot_token()
+
+    # Get the device information from Nautobot using GraphQL
     response = requests.post(
         url="http://localhost:8080/api/graphql/",
         headers={"Authorization": f"Token {token}"},
         json={"query": gql, "variables": {"device": device}},
     )
     response.raise_for_status()
+
+    # Parse the response and return the device information
     return response.json()["data"]["devices"][0]
 
 
@@ -186,6 +179,7 @@ def site_health(site: str):
     # Collect the device uptime and set a placeholder for BGP information
     query = f"device_uptime{{site=~'{site}'}}"
     metrics = retrieve_data_prometheus(query)
+
     for metric in metrics:
         # Convert time ticks to human readable format
         time_ticks = int(metric["value"][-1]) / 100
@@ -253,14 +247,14 @@ def site_health(site: str):
             devices[device_name]["bgp"]["down"].append(state)
 
     # Device Manufacturer and Model from Nautobot
-    for device in devices.keys():
+    for device_name in devices.keys():
 
         # Get the device manufacturer and model from Nautobot
-        device_info = retrieve_device_info(device)
+        device_info = retrieve_device_info(device_name)
 
         # Store the device's manufacturer and model
-        devices[device]["manufacturer"] = device_info["device_type"]["manufacturer"]["name"]
-        devices[device]["model"] = device_info["device_type"]["model"]
+        devices[device_name]["manufacturer"] = device_info["device_type"]["manufacturer"]["name"]
+        devices[device_name]["model"] = device_info["device_type"]["model"]
 
     # Create initial table of the site health
     table = Table(title=f"Site Health: {site}", show_lines=True)
@@ -299,18 +293,18 @@ def site_health(site: str):
 
     # Now lets collect the logs for the site in the last 15 minutes
     log_results = []
-    for device in devices.keys():
+    for device_name in devices.keys():
 
         # Create the Loki query filtering by device
-        query = f'{{device=~"{device}"}}'
+        query = f'{{device=~"{device_name}"}}'
 
         # Set the start and end time for the query based on the current time and 15 minutes ago
         now = datetime.datetime.now()
-        start_timestamp = datetime.datetime.timestamp(now - datetime.timedelta(minutes=15))
+        start_time = datetime.datetime.timestamp(now - datetime.timedelta(minutes=15))
         end_time = datetime.datetime.timestamp(now)
 
         # Retrieve the logs
-        loki_results = retrieve_data_loki(query, start_timestamp, end_time)  # type: ignore
+        loki_results = retrieve_data_loki(query, start_time, end_time)  # type: ignore
 
         # Add the first 4 logs to the results
         log_results.extend(loki_results[:4])
