@@ -61,6 +61,8 @@ class NetObsScenarios(Enum):
     CH8_COMPLETED = "ch8-completed"
     CH9 = "ch9"
     CH9_COMPLETED = "ch9-completed"
+    CH12 = "ch12"
+    CH12_COMPLETED = "ch12-completed"
     CH13 = "ch13"
     CH13_COMPLETED = "ch13-completed"
 
@@ -804,7 +806,7 @@ def lab_destroy(
 
 
 @lab_app.command("purge")
-def lab_purge():
+def lab_purge(sudo: Annotated[bool, typer.Option(help="Use sudo to run containerlab", envvar="LAB_SUDO")] = False,):
     """Purge all lab environments."""
     console.rule("[b i]PURGING ALL LAB ENVIRONMENTS", style="error")
     console.log("Purging lab environments", style="info")
@@ -812,7 +814,7 @@ def lab_purge():
     # Iterate over all scenarios and destroy them
     for scenario in NetObsScenarios:
         try:
-            lab_destroy(scenario=scenario)
+            lab_destroy(scenario=scenario, sudo=sudo)
         except typer.Exit:
             pass
 
@@ -851,7 +853,7 @@ def lab_prepare(
     console.log(f"Preparing lab environment for scenario: [orange1 i]{scenario.value}", style="info")
 
     # Destroy all other lab environments and network topologies
-    lab_purge()
+    lab_purge(sudo=sudo)
 
     # Deploy containerlab topology
     containerlab_deploy(topology=topology, sudo=sudo)
@@ -1010,9 +1012,20 @@ def utils_load_nautobot_data(
         json_data={
             "name": "lab-active",
             "content_types": ["dcim.device", "dcim.interface", "dcim.location", "ipam.ipaddress", "ipam.prefix"],
+            "color": "aaf0d1",
         },
     )
     console.log(f"Created Status: [orange1 i]{statuses['display']}", style="info")
+    alerted_statuses = nautobot_client.http_call(
+        url="/api/extras/statuses/",
+        method="post",
+        json_data={
+            "name": "Alerted",
+            "content_types": ["dcim.device", "dcim.interface", "dcim.location", "ipam.ipaddress", "ipam.prefix"],
+            "color": "ff5a36",
+        },
+    )
+    console.log(f"Created Status: [orange1 i]{alerted_statuses['display']}", style="info")
 
     # Create Locations
     locations = nautobot_client.http_call(
