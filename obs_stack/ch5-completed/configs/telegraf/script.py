@@ -28,8 +28,21 @@ def influx_line_protocol(measurement, tags, fields):
     return line_protocol
 
 
-def main(device_type, host):
-    """Connect to a device and print the BGP neighbor pfxrcd/pfxacc value in the influx line protocol format."""
+def convert_state(state):
+    """Convert the state to a more readable format."""
+    state_mapping = {
+        "Estab": "ESTABLISHED",
+        "Idle": "IDLE",
+        "Connect": "CONNECT",
+        "Active": "ACTIVE",
+        "opensent": "OPENSENT",
+        "openconfirm": "OPENCONFIRM"
+    }
+    return state_mapping.get(state, state.upper())
+
+
+def netmiko_connect(device_type, host):
+    """Connect to a device using Netmiko."""
     # Define the device to connect to
     device = {
         "device_type": device_type,
@@ -42,28 +55,35 @@ def main(device_type, host):
     # Establish an SSH connection to the device by passing in the device dictionary
     net_connect = ConnectHandler(**device)
 
+    # Return the Netmiko connection object
+    return net_connect
+
+
+def main(device_type, host):
+    """Connect to a device and print the BGP neighbor pfxrcd/pfxacc value in the influx line protocol format."""
+    # Connect to the device
+    net_connect = netmiko_connect(device_type, host)
+
     # Execute the show version command on the device
     output = net_connect.send_command("show ip bgp summary", use_textfsm=True)
 
-    # Print the output of the command
-    # print(output)
-
-    # Print the state_pfxrcd / state_pfxacc value for each BGP neighbor in the influx line protocol format
     for neighbor in output:
-        # Ignore neighbors that are not in the Established state
-        if not neighbor['state_pfxrcd']:  # type: ignore
-            continue
-
         # Create the measurement, tags, and fields for InfluxDB line protocol format
         measurement = "bgp"
         tags = [
             f"neighbor={neighbor['bgp_neigh']}",  # type: ignore
             f"neighbor_asn={neighbor['neigh_as']}",  # type: ignore
             f"vrf={neighbor['vrf']}",  # type: ignore
+            f"device={host}",
         ]
+
+        # Call the convert_state function to get the mapped state
+        state = convert_state(neighbor['state'])  # type: ignore
+
         fields = [
             f"prefixes_received={neighbor['state_pfxrcd']}",  # type: ignore
             f"prefixes_accepted={neighbor['state_pfxacc']}",  # type: ignore
+            f"neighbor_state={state}"
         ]
 
         # Generate the line protocol string
