@@ -32,12 +32,14 @@ def convert_state(state):
     """Convert the state to a more readable format."""
     state_mapping = {
         "Estab": "ESTABLISHED",
+        "Idle(NoIf)": "IDLE",
         "Idle": "IDLE",
         "Connect": "CONNECT",
         "Active": "ACTIVE",
         "opensent": "OPENSENT",
         "openconfirm": "OPENCONFIRM"
     }
+    # Return the mapped state or the original state in uppercase
     return state_mapping.get(state, state.upper())
 
 
@@ -60,15 +62,15 @@ def netmiko_connect(device_type, host):
 
 
 def main(device_type, host):
-    """Connect to a device and print the BGP neighbor pfxrcd/pfxacc value in the influx line protocol format."""
+    """Get BGP neighbor data and print it in Influx line protocol format."""
     # Connect to the device
     net_connect = netmiko_connect(device_type, host)
 
     # Execute the show version command on the device
     output = net_connect.send_command("show ip bgp summary", use_textfsm=True)
 
+    # Iterate over the BGP neighbors and process the data
     for neighbor in output:
-        # Create the measurement, tags, and fields for InfluxDB line protocol format
         measurement = "bgp"
         tags = [
             f"neighbor={neighbor['bgp_neigh']}",  # type: ignore
