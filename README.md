@@ -36,7 +36,7 @@ Alternatively, you can run the following commands to start the network lab and o
 containerlab deploy -t ./containerlab/lab.yml
 
 # Start the observability stack
-docker-compose -f ./obs_stack/docker-compose.yml up -d --remove-orphans
+docker-compose -f ./chapters/docker-compose.yml up -d --remove-orphans
 ```
 
 ---
@@ -80,7 +80,7 @@ Run 'containerlab version upgrade' to upgrade or go check other installation opt
 ─────────────────────────────────────────── End of task: Deploying containerlab topology ───────────────────────────────────────────
 
            Starting service(s): None
-           Running command: docker compose --project-name netobs -f obs_stack/docker-compose.yml --verbose up -d --remove-orphans
+           Running command: docker compose --project-name netobs -f chapters/docker-compose.yml --verbose up -d --remove-orphans
 [+] Building 0.0s (0/0)
 [+] Running 10/10
  ✔ Volume "netobs_grafana-01_data"     Created                                                                                 0.0s
@@ -103,7 +103,7 @@ Showing the logs of the `telegraf-01` container:
 # Show the logs of the telegraf-01 container
 ❯ netobs docker logs --services telegraf-01 --tail 20
 [21:54:21] Showing logs for service(s): ['telegraf-01']
-           Running command: docker compose --project-name netobs -f obs_stack/docker-compose.yml logs --tail=20 telegraf-01
+           Running command: docker compose --project-name netobs -f chapters/docker-compose.yml logs --tail=20 telegraf-01
 netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! Starting Telegraf 1.17.2
 netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! Loaded inputs: gnmi internal net_response snmp
 netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! Loaded aggregators:
