@@ -10,7 +10,7 @@ To run the components of the Observability stack and network devices you must ha
 
 - `docker` and compose installed in your system
 - `containerlab` for the network lab
-- `netobs` (optional) for managing the network lab and observability stack
+- `netobs` for managing the network lab and observability stack
 
 For an automated installation of a virtual machine hosted in Digital Ocean, check out the [netobs-vm setup](./terraform/README.md).
 
