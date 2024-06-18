@@ -16,11 +16,11 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-COPY ./webhook/pyproject.toml /app/
+COPY ./configs/webhook/pyproject.toml /app/
 
 RUN pip --no-cache-dir install .
 
 # Do not break dependency caching before installing project
-COPY ./webhook/app/ /app/
+COPY ./configs/webhook/app/ /app/
 
 WORKDIR /

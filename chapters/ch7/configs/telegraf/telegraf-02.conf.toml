@@ -20,7 +20,8 @@
   # `up` measurement
   [[inputs.snmp.field]]
     name = "uptime"
-    oid = "RFC1213-MIB::sysUpTime.0"
+    # RFC1213-MIB::sysUpTime.0
+    oid = "1.3.6.1.2.1.1.3.0"
 
 [[inputs.gnmi]]
   addresses = ["ceos-02:50051"]

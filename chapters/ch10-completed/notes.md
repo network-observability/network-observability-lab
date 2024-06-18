@@ -5,7 +5,7 @@ The first major solution when looking at simplifying the complexities that come 
 Ansible Environment
 We are going to use the code in ch10 examples<INSERT THE FOLDER> to establish the Ansible environment.
 
-> NOTE: There are many great resources on getting started with Ansible. Especially for how Ansible will be used in this example.  If you are not familiar with Ansible take a look Learning Ansible (https://www.packtpub.com/product/learn-ansible/9781788998758) and Ansible Playbook Essentials (https://www.packtpub.com/product/ansible-playbook-essentials/9781784398293) for further reading. 
+> NOTE: There are many great resources on getting started with Ansible. Especially for how Ansible will be used in this example.  If you are not familiar with Ansible take a look Learning Ansible (https://www.packtpub.com/product/learn-ansible/9781788998758) and Ansible Playbook Essentials (https://www.packtpub.com/product/ansible-playbook-essentials/9781784398293) for further reading.
 
 ```no-highlight
 $ tree
@@ -122,7 +122,7 @@ The first file, which is referenced in the Ansible Playbook file, is the telegra
 
 ```
 
-The rest of the sections make callouts to other component configurations. First, in the if statements are a check to see if the variable is defined. If it is not defined, then there will be a syntax error at this point. The second part of the if statements is a boolean check. As the template is processed by the Jinja2 templating engine, it will combine each of the components. Which will then result in a singular output file. Let’s take a look at each of the individual files. 
+The rest of the sections make callouts to other component configurations. First, in the if statements are a check to see if the variable is defined. If it is not defined, then there will be a syntax error at this point. The second part of the if statements is a boolean check. As the template is processed by the Jinja2 templating engine, it will combine each of the components. Which will then result in a singular output file. Let’s take a look at each of the individual files.
 
 Below is the net_response.j2 file. This is pretty short, and there is not a new line at the end. All of the line spacing between plugins is being handled within the telegraf.conf.j2 file. The only variable in this file is the inventory_hostname to use the DNS entry to get to the Docker container. If you had IP addresses inside the inventory in the ansible_host section, this may be where you would swap out inventory_hostname for ansible_host.
 
@@ -318,13 +318,14 @@ Once the configuration files are completed, the next step is to get the files in
 
 To keep things simpler, we continue with Ansible as a simple orchestrator either Docker containers or a Linux systemd process that would maintain the application. Let’s take a look at how you may use Ansible to automate the execution of Docker containers.
 
-Let’s take a look at the template file that was added now, templates/docker-compose.yml.j2. We just show the section between the Grafana definition and the Logstash definition from the materials on GitHub. 
+Let’s take a look at the template file that was added now, templates/docker-compose.yml.j2. We just show the section between the Grafana definition and the Logstash definition from the materials on GitHub.
 
 ```
       - network-observability <... From Grafana definition ...>
 {% for inventory_host in vars['groups']['telegraf_hosts'] %}
   telegraf-{{ inventory_host }}:
-    image: docker.io/networktocode/network-agent:1.27-py3.8-v0.4.2-v0.3.10
+    build:
+      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:
