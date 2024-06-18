@@ -326,6 +326,8 @@ Let’s take a look at the template file that was added now, templates/docker-co
   telegraf-{{ inventory_host }}:
     build:
       dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:

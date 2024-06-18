@@ -16,6 +16,8 @@ services:
   telegraf-01:
     build:
       dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:
@@ -31,6 +33,8 @@ services:
   telegraf-02:
     build:
       dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:
@@ -163,6 +167,8 @@ services:
     build:
       context: "./"
       dockerfile: "./webhook.Dockerfile"
+      args:
+        PYTHON_VER: ${PYTHON_VER:-3.10}
     command: "python -m app.main"
     ports:
       - 9997:9997
