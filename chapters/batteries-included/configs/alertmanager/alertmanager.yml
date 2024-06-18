@@ -1,32 +1,23 @@
 ---
 global:
-  resolve_timeout: 30m
+  resolve_timeout: 5m
 
-# We use a default route to a non-existant endpoint
-# because alertmanager requires at least one default
-# route/receiver. Note, this is just to make alertmanager
-# happy and does not actually do anything!
 route:
-  receiver: empty_webhook
+  group_by: ['alertname']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'default-receiver'
   routes:
-  - group_by:
-    - alertname
-    match:
-      source: testing
-    receiver: empty_webhook
-  # - group_by:
-  #   - alertname
-  #   match:
-  #     source: stack
-  #   receiver: alerta
-
+      - matchers:
+          - alertname="PeerInterfaceFlapping"
+        receiver: 'webhook-receiver'
 
 receivers:
-- name: empty_webhook
-  webhook_configs:
-  - send_resolved: true
-    url: http://localhost:9999
-# - name: alerta
-#   webhook_configs:
-#   - send_resolved: true
-#     url: http://alerta-01:8080/api/webhooks/prometheus
+  - name: 'default-receiver'
+    # Add configurations for the default receiver here if needed
+
+  - name: 'webhook-receiver'
+    webhook_configs:
+      - url: 'http://webhook:9997/v1/api/webhook'
+        send_resolved: true

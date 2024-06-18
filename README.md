@@ -2,6 +2,8 @@
 
 This repository serves as a valuable resource for constructing and managing an Observability stack within a network lab.
 
+![Modern Network Observability](/pics/netobs-observability.png)
+
 ## Requirements
 
 To run the components of the Observability stack and network devices you must have:

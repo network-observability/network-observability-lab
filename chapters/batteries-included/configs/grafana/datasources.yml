@@ -8,3 +8,14 @@ datasources:
 - name: loki
   type: loki
   url: http://loki:3001
+- name: nautobot
+  type: fifemon-graphql-datasource
+  url: http://nautobot:8080/api/graphql/
+  editable: true
+  jsonData:
+    httpHeaderName1: Authorization
+  secureJsonData:
+    httpHeaderValue1: Token ${NAUTOBOT_SUPERUSER_API_TOKEN}
+- name: infinity
+  type: yesoreyeram-infinity-datasource
+  editable: true

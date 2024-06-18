@@ -1,0 +1,16 @@
+---
+groups:
+  - name: Peer Interface Flapping
+    rules:
+      - alert: PeerInterfaceFlapping
+        expr: sum by(device, interface) (count_over_time({vendor_facility_process="UPDOWN"}[2m])) > 3
+        for: 1m
+        labels:
+          severity: critical
+          source: loki
+          environment: network-observability-lab
+          device: '{{ $labels.device }}'
+          interface: '{{ $labels.interface }}'
+        annotations:
+          summary: "[NET] Flappig interface in {{ $labels.device }}/{{ $labels.interface }}"
+          description: "The interface {{ $labels.device }}/{{ $labels.interface }} is flapping"

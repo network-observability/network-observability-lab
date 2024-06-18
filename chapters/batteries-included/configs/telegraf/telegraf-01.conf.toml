@@ -1,108 +1,46 @@
-################################################################
-#  Collector: telegraf-01
-#  Targets:
-#    [ceos-01]
-#        interface = "gnmi"
-#        interface_ethernet = "gnmi"
-#        bgp = "execd"
-#        cpu = "snmp"
-#        memory = "snmp"
-#        storage = "snmp"
-#        uptime = "snmp"
-#
-################################################################
-[global_tags]
-  environment = "${ENVIRONMENT}"
-
-
 [agent]
   hostname = "telegraf-01"
 
-################################################################
-#  Outputs
-################################################################
+[global_tags]
+  site = "lab-site-01"
+###############################################################################
+#                            DATA COLLECTION                                  #
+###############################################################################
+[[inputs.snmp]]
+  agents = ["ceos-01"]
+  version = 2
+  community = "${SNMP_COMMUNITY}"
+  interval = "60s"
+  timeout = "10s"
+  retries = 3
 
+  [inputs.snmp.tags]
+    collection_type = "snmp"
 
+  # `up` measurement
+  [[inputs.snmp.field]]
+    name = "uptime"
+    oid = "RFC1213-MIB::sysUpTime.0"
 
-
-  # ------------------------------
-  # Prometheus Output
-  # ------------------------------
-
-  [[outputs.prometheus_client]]
-    listen = ":9004"
-    metric_version = 2
-    expiration_interval = "120s"
-    tagexclude = ["index", "agent_host"]
-
-
-################################################################
-#  Inputs
-################################################################
-
-# ---------------------------------------------------------------------
-# Input Internal Plugin
-# ---------------------------------------------------------------------
-# Collect Telegraf Internal Statistics
-# - collection/execution time per plugin
-# - metrics gathered
-# - Memory usage
-# and more
-[[inputs.internal]]
-  collect_memstats = true
-  [inputs.internal.tags]
-    telegraf_type="network_agent"
-
-# ---------------------------------------------------------------------
-# Inputs Definitions
-# ---------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------
-# Input Net Response Plugin
-# ---------------------------------------------------------------------
-[[inputs.net_response]]
-  protocol = "tcp"
-  address = "ceos-01:22"
-
-  [inputs.net_response.tags]
-    collection_method = "tcp_ping"
-    device = "ceos-01"
-    device_role = "router"
-    device_platform = "arista"
-    site = "lab-site-01"
-    region = "lab"
-    net_os = "eos"
-# ------------------------------------------------
-# Input - gNMI  ceos-01
-# ------------------------------------------------
 [[inputs.gnmi]]
   addresses = ["ceos-01:50051"]
   username = "${NETWORK_AGENT_USER}"
   password = "${NETWORK_AGENT_PASSWORD}"
   redial = "20s"
-  tagexclude = [
-      "identifier",
-      "network_instances_network_instance_protocols_protocol_name",
-      "afi_safi_name",
-      "path",
-      "source"
-  ]
+  tagexclude = ["path"]
 
   [inputs.gnmi.tags]
-    collection_method = "gnmi"
-    device = "ceos-01"
-    device_role = "router"
-    device_platform = "arista"
-    site = "lab-site-01"
-    region = "lab"
-    net_os = "eos"
-  # ---------------------------------------------------
-  # Device Interface Counters (gNMI)
-  # ---------------------------------------------------
+    collection_type = "gnmi"
+
   [[inputs.gnmi.subscription]]
     name = "interface"
     path = "/interfaces/interface/state/counters"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+  [[inputs.gnmi.subscription]]
+    name = "interface"
+    path = "/interfaces/interface/state/oper-status"
     subscription_mode = "sample"
     sample_interval = "10s"
 
@@ -113,325 +51,175 @@
     sample_interval = "10s"
 
   [[inputs.gnmi.subscription]]
-    name = "interface"
-    path = "/interfaces/interface/state/oper-status"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-  # ---------------------------------------------------
-  # Device Interface Ethernet Counters (gNMI)
-  # ---------------------------------------------------
-  [[inputs.gnmi.subscription]]
-    name = "interface"
-    path = "/interfaces/interface/ethernet/state/counters"
-    subscription_mode = "sample"
-    sample_interval = "10s"
-  # ----------------------------------------------
-  # Device BGP state and prefixes polling (execd)
-  # ----------------------------------------------
-  [[inputs.execd]]
-  interval = "15s"
-  signal = "SIGHUP"
-  restart_delay = "10s"
-  data_format = "influx"
-  command = [
-    '/usr/local/bin/network_agent',
-    '-h',
-    'ceos-01',
-    '-d',
-    'arista_eos',
-    '-c',
-    'bgp_sessions::http',  ]
-  [inputs.execd.tags]
-    collection_method = "execd"
-    device = "ceos-01"
-    device_role = "router"
-    device_platform = "arista"
-    site = "lab-site-01"
-    region = "lab"
-
-# ------------------------------------------------
-# Input - SNMP  ceos-01
-# ------------------------------------------------
-
-[[inputs.snmp]]
-  agents = ["ceos-01"]
-  version = 2
-  community = "${SNMP_COMMUNITY}"
-  interval = "60s"
-  timeout = "10s"
-  retries = 3
-
-  [inputs.snmp.tags]
-    collection_method = "snmp"
-    device = "ceos-01"
-    device_role = "router"
-    device_platform = "arista"
-    site = "lab-site-01"
-    region = "lab"
-    net_os = "eos"
-
-  # ----------------------------------------------
-  # Device CPU polling (SNMP)
-  # ----------------------------------------------
-  [[inputs.snmp.table]]
     name = "cpu"
+    path = "/components/component/cpu/utilization/state/instant"
+    subscription_mode = "sample"
+    sample_interval = "10s"
 
-    [[inputs.snmp.table.field]]
-      name = "name"
-      oid = "HOST-RESOURCES-MIB::hrDeviceDescr"
-      is_tag = true
-
-    [[inputs.snmp.table.field]]
-      name = "used"
-      oid = "HOST-RESOURCES-MIB::hrProcessorLoad"
-  # ----------------------------------------------
-  # Device Memory polling (SNMP)
-  # ----------------------------------------------
-  [[inputs.snmp.table]]
+  [[inputs.gnmi.subscription]]
     name = "memory"
-
-    # Partition name
-    [[inputs.snmp.table.field]]
-      name = "name"
-      oid = "HOST-RESOURCES-MIB::hrStorageDescr"
-      is_tag = true
-
-    # Size in bytesof the data objects allocated to the partition
-    [[inputs.snmp.table.field]]
-      name = "allocation_units"
-      oid = "HOST-RESOURCES-MIB::hrStorageAllocationUnits"
-
-    # Size of the partition storage represented by the allocation units
-    [[inputs.snmp.table.field]]
-      name = "size_allocation_units"
-      oid = "HOST-RESOURCES-MIB::hrStorageSize"
-
-    # mount of space used by the partition represented by the allocation units
-    [[inputs.snmp.table.field]]
-      name = "used_allocation_units"
-      oid = "HOST-RESOURCES-MIB::hrStorageUsed"
-  # ----------------------------------------------
-  # Device Storage Partition Table polling (SNMP)
-  # ----------------------------------------------
-  [[inputs.snmp.table]]
-    name = "storage"
-    # oid = "HOST-RESOURCES-MIB::hrStorageTable"
-
-    # Partition name
-    [[inputs.snmp.table.field]]
-      name = "name"
-      oid = "HOST-RESOURCES-MIB::hrStorageDescr"
-      is_tag = true
-
-    # Size in bytes of the data objects allocated to the partition
-    [[inputs.snmp.table.field]]
-      name = "allocation_units"
-      oid = "HOST-RESOURCES-MIB::hrStorageAllocationUnits"
-
-    # Size of the partition storage reporesented by the allocation units
-    [[inputs.snmp.table.field]]
-      name = "size_allocation_units"
-      oid = "HOST-RESOURCES-MIB::hrStorageSize"
-
-    # Amount of space used by the partition represented by the allocation units
-    [[inputs.snmp.table.field]]
-      name = "used_allocation_units"
-      oid = "HOST-RESOURCES-MIB::hrStorageUsed"
-  # ------------------------------------------------
-  # Device Uptime - SNMP  ceos-01
-  # ------------------------------------------------
-
-  [[inputs.snmp.field]]
-    name = "uptime"
-    oid = "RFC1213-MIB::sysUpTime.0"
-
-################################################################
-#  Processors
-################################################################
+    path = "/components/component/state/memory"
+    subscription_mode = "sample"
+    sample_interval = "10s"
 
 
+[[inputs.exec]]
+  commands = ["python /etc/telegraf/routing_collector.py arista_eos ceos-01"]
+  interval = "20s"
+  timeout = "15s"
+  data_format = "influx"
 
-  ################################################################
-  #  Data normalization
-  ################################################################
-
-
-  # ---------------------------------------------------
-  # Cleanup Interface Data ingested from GNMI
-  # ---------------------------------------------------
-  [[processors.rename]]
-    order = 1
-    namepass = ["interface"]
-
-    [[processors.rename.replace]]
-      tag = "name"
-      dest = "interface"
-
-    [[processors.rename.replace]]
-      field = "in_crc_errors"
-      dest = "in_fcs_errors"
-
-    [[processors.rename.replace]]
-      field = "in_errors"
-      dest = "in_errors_pkts"
-
-    [[processors.rename.replace]]
-      field = "in_discards"
-      dest = "in_discards_pkts"
-
-    [[processors.rename.replace]]
-      field = "out_errors"
-      dest = "out_errors_pkts"
-
-    [[processors.rename.replace]]
-      field = "out_discards"
-      dest = "out_discards_pkts"
-  # ---------------------------------------------------
-  # Normalize BGP Data
-  # ---------------------------------------------------
-  [[processors.rename]]
-    order = 1
-    namepass = ["bgp*"]
-
-    [[processors.rename.replace]]
-      field = "installed"
-      dest = "prefixes_installed"
-
-    [[processors.rename.replace]]
-      field = "sent"
-      dest = "prefixes_sent"
-
-    [[processors.rename.replace]]
-      field = "received"
-      dest = "prefixes_received"
-
-  [[processors.starlark]]
-    order = 2
-    namepass = ["bgp_session*"]
-    source = '''
-def apply(metric):
-    metric.tags.pop("session_state")
-    return metric
-'''
-
-  [[processors.rename]]
-    order = 3
-    namepass = ["bgp_session*"]
-
-    [[processors.rename.replace]]
-      field = "session_state_code"
-      dest = "state"
-
-  [[processors.rename]]
-    order = 3
-    namepass = ["bgp_session*"]
-
-    [[processors.rename.replace]]
-      measurement = "bgp_sessions"
-      dest = "bgp_session"
-  # ---------------------------------------------------
-  # Normalize the CPU data
-  # ---------------------------------------------------
-  [[processors.rename]]
-    order = 1
-    namepass = ["cpu"]
-
-    [[processors.rename.replace]]
-      field = "instant"
-      dest = "used"
-  # ---------------------------------------------------
-  # Normalize the Memory data
-  # ---------------------------------------------------
-  [[processors.rename]]
-    order = 1
-    namepass = ["memory"]
-
-    [[processors.rename.replace]]
-      field = "available"
-      dest = "free"
-
-    [[processors.rename.replace]]
-      field = "utilized"
-      dest = "used"
-
-  [[processors.starlark]]
-    order = 4
-    namepass = ["memory", "storage"]
-    source = '''
-def apply(metric):
-    if 'allocation_units' in metric.fields:
-        metric.fields['total'] = metric.fields['size_allocation_units'] * metric.fields['allocation_units']
-        metric.fields['used'] = 100 * (metric.fields['used_allocation_units'] * metric.fields['allocation_units']) / metric.fields['total']
-        metric.fields['free'] = 100 - metric.fields['used']
-        for field_type in ['size_allocation_units', 'allocation_units', 'used_allocation_units']:
-            metric.fields.pop(field_type)
-        return metric
-'''
-    [processors.starlark.tagpass]
-      collection_method = ["snmp"]
-      net_os = ["eos"]
+  [inputs.exec.tags]
+    collection_type = "exec"
 
 
+[[inputs.ping]]
+  interval = "10s"
+  count = 3
+  ping_interval = 1.0
+  timeout = 5.0
+  urls = ["ceos-01"]
+
+  [inputs.ping.tags]
+    collection_type = "ping"
+##############################################################################
+#                            DATA NORMALIZATION                              #
+##############################################################################
+[[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["snmp"]
+
+  [[processors.rename.replace]]
+    tag = "agent_host"
+    dest = "device"
+
+  [[processors.rename.replace]]
+    measurement = "snmp"
+    dest = "device"
 
 
-  # ---------------------------------------------------
-  # Normalize Uptime Measurement (SNMP)
-  # ---------------------------------------------------
-  [[processors.rename]]
-    order = 1
-    namepass = ["snmp"]
+[[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["gnmi"]
 
-    [[processors.rename.replace]]
-      measurement = "snmp"
-      dest = "environment"
+  [[processors.rename.replace]]
+    tag = "source"
+    dest = "device"
 
-  # ---------------------------------------------------
-  # Normalize status codes
-  # ---------------------------------------------------
-  [[processors.enum]]
-    order = 5
-    namepass = ["bgp"]
+  # Rename fields for CPU metrics
+  [[processors.rename.replace]]
+    field = "instant"
+    dest = "used"
 
-    [[processors.enum.mapping]]
-      ## Name of the field to map
-      field = "session_state"
+  # Rename fields for Memory metrics
+  [[processors.rename.replace]]
+    field = "utilized"
+    dest = "used"
 
-      [processors.enum.mapping.value_mappings]
-        IDLE = 1
-        CONNECT = 2
-        ACTIVE = 3
-        OPENSENT = 4
-        OPENCONFIRM = 5
-        ESTABLISHED = 6
-  [[processors.enum]]
-    order = 5
-    namepass = ["interface"]
 
-    [[processors.enum.mapping]]
-      ## Name of the field to map
-      field = "oper_status"
-      [processors.enum.mapping.value_mappings]
-        UP = 1
-        DOWN = 2
-        TESTING = 3
-        UNKNOWN = 4
-        DORMANT = 5
-        NOT_PRESENT = 6
-        LOWER_LAYER_DOWN = 7
+[[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["ping"]
 
-    [[processors.enum.mapping]]
-      field = "admin_status"
-      [processors.enum.mapping.value_mappings]
-        UP = 1
-        DOWN = 2
-        TESTING = 3
-  [[processors.enum]]
-    order = 5
-    namepass = ["storage"]
+  [[processors.rename.replace]]
+    tag = "url"
+    dest = "device"
 
-    [[processors.enum.mapping]]
-      tag = "status"
-      [processors.enum.mapping.value_mappings]
-        1 = "READ_ONLY"
-        2 = "RUN_FROM_FLASH"
-        3 = "READ_WRITE"
+
+# Enum processor for interface oper_status and admin_status field values to numbers
+[[processors.enum]]
+  namepass = ["interface"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["snmp", "gnmi"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "oper_status"
+    [processors.enum.mapping.value_mappings]
+      UP = 1
+      DOWN = 2
+      TESTING = 3
+      UNKNOWN = 4
+      DORMANT = 5
+      NOT_PRESENT = 6
+      LOWER_LAYER_DOWN = 7
+
+  [[processors.enum.mapping]]
+    field = "admin_status"
+    [processors.enum.mapping.value_mappings]
+      UP = 1
+      DOWN = 2
+      TESTING = 3
+
+# Enum processor for ospf states
+[[processors.enum]]
+  namepass = ["ospf"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["exec"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "neighbor_state"
+    [processors.enum.mapping.value_mappings]
+      FULL = 1
+      DOWN = 2
+      ATTEMPT = 3
+      INIT = 4
+      2WAY = 5
+      EXTART = 6
+      EXCHANGE = 7
+      LOADING = 7
+
+# Enum processor for bgp states
+[[processors.enum]]
+  namepass = ["bgp"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["exec"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "neighbor_state"
+    [processors.enum.mapping.value_mappings]
+      ESTABLISHED = 1
+      IDLE = 2
+      CONNECT = 3
+      ACTIVE = 4
+      OPENSENT = 5
+      OPENCONFIRM = 6
+      NONEXISTENT = 7
+
+###############################################################################
+#                            DATA ENRICHMENT                                  #
+###############################################################################
+[[processors.regex]]
+  namepass = ["interface"]
+
+  [processors.regex.tagpass]
+      device = ["ceos-01"]
+
+  [[processors.regex.tags]]
+    key = "name"
+    pattern = "^Ethernet.*$"
+    result_key = "intf_role"
+    replacement = "peer"
+
+  [[processors.regex.tags]]
+    key = "name"
+    pattern = "^Management.*$"
+    result_key = "intf_role"
+    replacement = "mgmt"
+
+
+##############################################################################
+#                            DATA OUTPUT                                     #
+##############################################################################
+[[outputs.file]]
+  files = ["stdout"]
+
+
+[[outputs.prometheus_client]]
+  # HTTP port to listen on
+  listen = ":9004"
