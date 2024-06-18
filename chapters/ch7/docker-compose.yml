@@ -10,7 +10,6 @@ volumes:
   prometheus_data:
   grafana_data:
 
-version: "3.8"
 services:
 
   telegraf-01:

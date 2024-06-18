@@ -4,7 +4,6 @@ networks:
     external: true
     name: network-observability
 
-version: "3.8"
 services:
 
   telegraf-01:

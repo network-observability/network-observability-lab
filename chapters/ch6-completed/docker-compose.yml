@@ -7,7 +7,6 @@ networks:
 volumes:
   nautobot_postgres_data:
 
-version: "3.8"
 services:
 
   telegraf-01:
