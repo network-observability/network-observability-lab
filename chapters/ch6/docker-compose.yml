@@ -4,6 +4,9 @@ networks:
     external: true
     name: network-observability
 
+volumes:
+  nautobot_postgres_data:
+
 services:
 
   telegraf-01:
@@ -19,6 +22,9 @@ services:
       - 9004:9004
     env_file:
       - ../../.env
+    depends_on:
+      kafka-01:
+        condition: service_healthy
     networks:
       - network-observability
 
@@ -39,8 +45,27 @@ services:
     networks:
       - network-observability
 
+  telegraf-consumer:
+    build:
+      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
+    command: telegraf --config /etc/telegraf/telegraf.conf
+    tty: true
+    volumes:
+      - ./configs/telegraf/telegraf-consumer.conf.toml:/etc/telegraf/telegraf.conf
+    ports:
+      - 9006:9006
+    env_file:
+      - ../../.env
+    depends_on:
+      kafka-01:
+        condition: service_healthy
+    networks:
+      - network-observability
+
   logstash:
-    image: docker.io/grafana/logstash-output-loki:main
+    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:main}
     command: -f /home/logstash/logstash.cfg
     volumes:
       - ./configs/logstash/logstash.cfg:/home/logstash/logstash.cfg
@@ -50,5 +75,93 @@ services:
       XPACK_MONITORING_ENABLED: false
     env_file:
       - ../../.env
+    networks:
+      - network-observability
+
+  nautobot:
+    image: ${NAUTOBOT_IMAGE:-docker.io/networktocode/nautobot:2.2-py3.10}
+    env_file:
+      - "../../.env"
+    ports:
+      - "8443:8443"
+      - "8080:8080"
+    restart: "unless-stopped"
+    volumes:
+      - ./configs/nautobot/nautobot_config.py:/opt/nautobot/nautobot_config.py
+    networks:
+      - network-observability
+
+  nautobot-redis:
+    image: ${REDIS_IMAGE:-redis:7.2-alpine}
+    command:
+      - "sh"
+      - "-c"
+      - "redis-server --appendonly yes --requirepass $$NAUTOBOT_REDIS_PASSWORD"
+    restart: "unless-stopped"
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  nautobot-postgres:
+    image: ${POSTGRES_IMAGE:-postgres:14}
+    environment:
+      NAUTOBOT_DB_ENGINE: "django.db.backends.postgres"
+      POSTGRES_USER: ${NAUTOBOT_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${NAUTOBOT_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${NAUTOBOT_POSTGRES_DB}
+    volumes:
+      - nautobot_postgres_data:/var/lib/postgresql/data
+    restart: "unless-stopped"
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  zookeeper-01:
+    image: ${ZOOKEEPER_IMAGE:-docker.io/confluentinc/cp-zookeeper:7.6.1}
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+    networks:
+      - network-observability
+
+  kafka-01:
+    image: ${KAFKA_IMAGE:-docker.io/confluentinc/cp-kafka:7.6.1}
+    hostname: kafka-01
+    depends_on:
+      - zookeeper-01
+    ports:
+      - 9092:9092
+      - 29092:29092
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
+      start_period: 10s
+      interval: 5s
+      timeout: 10s
+      retries: 20
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-01:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-01:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - network-observability
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: ${KAFKA_UI_IMAGE:-docker.io/provectuslabs/kafka-ui:v0.7.2}
+    ports:
+      - 9080:9080
+    depends_on:
+      - kafka-01
+    environment:
+      SERVER_PORT: 9080
+      KAFKA_CLUSTERS_0_NAME: telegraf-pipeline
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-01:29092
     networks:
       - network-observability

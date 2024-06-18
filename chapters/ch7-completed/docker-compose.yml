@@ -47,7 +47,7 @@ services:
       - network-observability
 
   logstash:
-    image: docker.io/grafana/logstash-output-loki:main
+    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:main}
     command: -f /home/logstash/logstash.cfg
     volumes:
       - ./configs/logstash/logstash.cfg:/home/logstash/logstash.cfg
@@ -61,7 +61,7 @@ services:
       - network-observability
 
   loki:
-    image: docker.io/grafana/loki:latest
+    image: ${LOKI_IMAGE:-docker.io/grafana/loki:2.9.8}
     ports:
       - 3001:3001
     command: -config.file=/etc/loki/loki-config.yml
@@ -74,7 +74,7 @@ services:
       - network-observability
 
   prometheus:
-    image: docker.io/prom/prometheus:latest
+    image: ${PROMETHEUS_IMAGE:-docker.io/prom/prometheus:v2.52.0}
     ports:
       - 9090:9090
     command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml
@@ -99,7 +99,7 @@ services:
       - network-observability
 
   grafana:
-    image: docker.io/grafana/grafana:latest
+    image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:10.4.4}
     ports:
       - 3000:3000
     volumes:
