@@ -1,0 +1,22 @@
+[agent]
+  hostname = "{{ inventory_hostname }}"
+
+{% if use_net_response is defined and use_net_response -%}
+{% include 'net_response.j2' %}
+{%- endif %}
+
+{% if use_snmp_interfaces is defined and use_snmp_interfaces -%}
+{% include 'snmp_conf.j2' %}
+{%- endif %}
+
+{% if use_gnmi is defined and use_gnmi -%}
+{% include 'gnmi.j2' %}
+{%- endif %}
+
+{% if use_output_file is defined and use_output_file -%}
+{% include 'output_file.j2' %}
+{%- endif %}
+
+{% if use_output_prometheus is defined and use_output_prometheus -%}
+{% include 'output_prometheus.j2' %}
+{%- endif %}

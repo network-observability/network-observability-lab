@@ -1,0 +1,34 @@
+---
+- name: "ANSIBLE PLAY TO GENERATE TELEGRAF CONFIGS"
+  hosts: telegraf_hosts
+  connection: local
+  gather_facts: no
+  vars:
+    # Set defaults for the telegraf configuration, can be overridden in the inventory file
+    snmp_version: "2"
+    snmp_community: "public"
+    snmp_interval: "60s"
+    snmp_timeout: "10s"
+    snmp_retries: "3"
+    use_net_response: true
+    use_output_file: true
+    use_output_prometheus: true
+  tasks:
+    - name: "GENERATE TELEGRAPH CONFIGS"
+      template:
+        src: "telegraf.conf.j2"
+        dest: "outputs/{{ inventory_hostname }}.conf"
+        trim_blocks: "no"
+
+- name: "ANSIBLE PLAY TO GENERATE DOCKER COMPOSE ENVIRONMENT"
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: "DEBUG ANSIBLE_FACTS"
+      debug:
+        var: vars['groups']['telegraf_hosts']
+
+    - name: "DEBUG TO GET TO HOSTVARS OF VARS"
+      debug:
+        var: vars['hostvars']['ceos-02']['prom_port']
