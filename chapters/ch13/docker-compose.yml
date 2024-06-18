@@ -127,8 +127,7 @@ services:
 
   machine-learning-webhook:
     build:
-      context: "./"
-      dockerfile: "./machine-learning.Dockerfile"
+      dockerfile: "./configs/machine-learning/machine-learning.Dockerfile"
       args:
         PYTHON_VER: ${PYTHON_VER:-3.10}
     command: "python -m app.main"

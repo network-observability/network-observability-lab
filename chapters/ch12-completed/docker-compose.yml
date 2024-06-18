@@ -165,8 +165,7 @@ services:
 
   webhook:
     build:
-      context: "./"
-      dockerfile: "./webhook.Dockerfile"
+      dockerfile: "./configs/webhook/webhook.Dockerfile"
       args:
         PYTHON_VER: ${PYTHON_VER:-3.10}
     command: "python -m app.main"
