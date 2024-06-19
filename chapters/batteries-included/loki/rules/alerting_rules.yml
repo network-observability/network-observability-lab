@@ -4,7 +4,7 @@ groups:
     rules:
       - alert: PeerInterfaceFlapping
         expr: sum by(device, interface) (count_over_time({vendor_facility_process="UPDOWN"}[2m])) > 3
-        for: 1m
+        for: 30s
         labels:
           severity: critical
           source: loki
