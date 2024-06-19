@@ -50,6 +50,7 @@ class NetObsScenarios(Enum):
     """NetObs scenarios."""
 
     BATTERIES_INCLUDED = "batteries-included"
+    CH3_COMPLETED = "ch3-completed"
     CH5 = "ch5"
     CH5_COMPLETED = "ch5-completed"
     CH6 = "ch6"

@@ -19,6 +19,7 @@ topology:
         - tcp/80
         - tcp/443
         - udp/161
+        - tcp/5900
     ceos-02:
       kind: ceos
       mgmt-ipv4: 198.51.100.12
@@ -28,6 +29,7 @@ topology:
         - tcp/80
         - tcp/443
         - udp/161
+        - tcp/5900
       # ports:
       #   - 51161:161/udp
 

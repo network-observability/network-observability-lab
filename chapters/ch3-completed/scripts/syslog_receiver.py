@@ -7,7 +7,7 @@ class SyslogHandler(socketserver.BaseRequestHandler):
         print(f"{self.client_address[0]} sent:")
         print(self.data)
 
-with socketserver.TCPServer(("198.51.100.1", 1515), SyslogHandler) as server:
+with socketserver.TCPServer(("0.0.0.0", 1515), SyslogHandler) as server:
     print("... listening for Syslog messages ...")
     # Activate the server; interrupt the program with Ctrl-C
     server.serve_forever()
