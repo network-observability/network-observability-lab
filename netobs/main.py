@@ -49,7 +49,6 @@ app.add_typer(utils_app, name="utils")
 class NetObsScenarios(Enum):
     """NetObs scenarios."""
 
-    SKELETON = "skeleton"
     BATTERIES_INCLUDED = "batteries-included"
     CH5 = "ch5"
     CH5_COMPLETED = "ch5-completed"
@@ -459,10 +458,10 @@ def docker_exec(
     [u]Example:[/u]
 
     To execute a command in a service:
-        [i]netobs docker exec --scenario skeleton --service telegraf-01 --command bash[/i]
+        [i]netobs docker exec --scenario batteries-included --service telegraf-01 --command bash[/i]
 
         To execute a command in a service and verbose mode:
-        [i]netobs docker exec --scenario skeleton --service telegraf-01 --command bash --verbose[/i]
+        [i]netobs docker exec --scenario batteries-included --service telegraf-01 --command bash --verbose[/i]
     """
     console.log(f"Executing command in service: [orange1 i]{service}", style="info")
     run_docker_compose_cmd(
@@ -486,10 +485,10 @@ def docker_debug(
     [u]Example:[/u]
 
     To start all services in debug mode:
-        [i]netobs docker --scenario skeleton debug[/i]
+        [i]netobs docker --scenario batteries-included debug[/i]
 
     To start a specific service in debug mode:
-        [i]netobs docker --scenario skeleton debug telegraf-01[/i]
+        [i]netobs docker --scenario batteries-included debug telegraf-01[/i]
     """
     console.log(f"Starting in debug mode service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
@@ -513,10 +512,10 @@ def docker_start(
     [u]Example:[/u]
 
     To start all services:
-        [i]netobs docker start --scenario skeleton[/i]
+        [i]netobs docker start --scenario batteries-included[/i]
 
     To start a specific service:
-        [i]netobs docker start telegraf-01 --scenario skeleton[/i]
+        [i]netobs docker start telegraf-01 --scenario batteries-included[/i]
     """
     console.log(f"Starting service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
@@ -540,10 +539,10 @@ def docker_stop(
     [u]Example:[/u]
 
     To stop all services:
-        [i]netobs docker stop --scenario skeleton[/i]
+        [i]netobs docker stop --scenario batteries-included[/i]
 
     To stop a specific service:
-        [i]netobs docker stop telegraf-01 --scenario skeleton[/i]
+        [i]netobs docker stop telegraf-01 --scenario batteries-included[/i]
     """
     console.log(f"Stopping service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
@@ -566,10 +565,10 @@ def docker_restart(
     [u]Example:[/u]
 
     To restart all services:
-        [i]netobs docker restart --scenario skeleton[/i]
+        [i]netobs docker restart --scenario batteries-included[/i]
 
     To restart a specific service:
-        [i]netobs docker restart telegraf-01 --scenario skeleton[/i]
+        [i]netobs docker restart telegraf-01 --scenario batteries-included[/i]
     """
     console.log(f"Restarting service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
@@ -594,13 +593,13 @@ def docker_logs(
     [u]Example:[/u]
 
     To show logs for all services:
-        [i]netobs docker logs --scenario skeleton[/i]
+        [i]netobs docker logs --scenario batteries-included[/i]
 
     To show logs for a specific service:
-        [i]netobs docker logs telegraf-01 --scenario skeleton[/i]
+        [i]netobs docker logs telegraf-01 --scenario batteries-included[/i]
 
     To show logs for a specific service and follow the logs and tail 10 lines:
-        [i]netobs docker logs telegraf-01 --scenario skeleton --follow --tail 10[/i]
+        [i]netobs docker logs telegraf-01 --scenario batteries-included --follow --tail 10[/i]
     """
     console.log(f"Showing logs for service(s): [orange1 i]{services}", style="info")
     options = ""
@@ -629,10 +628,10 @@ def docker_ps(
     [u]Example:[/u]
 
     To show all services:
-        [i]netobs docker ps --scenario skeleton[/i]
+        [i]netobs docker ps --scenario batteries-included[/i]
 
     To show a specific service:
-        [i]netobs docker ps telegraf-01 --scenario skeleton[/i]
+        [i]netobs docker ps telegraf-01 --scenario batteries-included[/i]
     """
     console.log(f"Showing containers for service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
@@ -656,16 +655,16 @@ def docker_destroy(
     [u]Example:[/u]
 
     To destroy all services:
-        [i]netobs docker destroy --scenario skeleton[/i]
+        [i]netobs docker destroy --scenario batteries-included[/i]
 
     To destroy a specific service:
-        [i]netobs docker destroy --scenario skeleton[/i]
+        [i]netobs docker destroy --scenario batteries-included[/i]
 
     To destroy a specific service and remove volumes:
-        [i]netobs docker destroy telegraf-01 --volumes --scenario skeleton[/i]
+        [i]netobs docker destroy telegraf-01 --volumes --scenario batteries-included[/i]
 
     To destroy all services and remove volumes:
-        [i]netobs docker destroy --volumes --scenario skeleton[/i]
+        [i]netobs docker destroy --volumes --scenario batteries-included[/i]
     """
     console.log(f"Destroying service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
@@ -691,22 +690,22 @@ def docker_rm(
     [u]Example:[/u]
 
     To remove all services:
-        [i]netobs docker rm --scenario skeleton[/i]
+        [i]netobs docker rm --scenario batteries-included[/i]
 
     To remove a specific service:
-        [i]netobs docker rm telegraf-01 --scenario skeleton[/i]
+        [i]netobs docker rm telegraf-01 --scenario batteries-included[/i]
 
     To remove a specific service and remove volumes:
-        [i]netobs docker rm telegraf-01 --volumes --scenario skeleton[/i]
+        [i]netobs docker rm telegraf-01 --volumes --scenario batteries-included[/i]
 
     To remove all services and remove volumes:
-        [i]netobs docker rm --volumes --scenario skeleton[/i]
+        [i]netobs docker rm --volumes --scenario batteries-included[/i]
 
     To remove all services and force removal of containers:
-        [i]netobs docker rm --force --scenario skeleton[/i]
+        [i]netobs docker rm --force --scenario batteries-included[/i]
 
     To force removal of a specific service and remove volumes:
-        [i]netobs docker rm telegraf-01 --volumes --force --scenario skeleton[/i]
+        [i]netobs docker rm telegraf-01 --volumes --force --scenario batteries-included[/i]
     """
     extra_options = "--stop "
     if force:
@@ -875,10 +874,10 @@ def lab_update(
     [u]Example:[/u]]
 
     To update all services:
-        [i]netobs lab update --scenario skeleton[/i]
+        [i]netobs lab update --scenario batteries-included[/i]
 
     To update a specific service:
-        [i]netobs lab update telegraf-01 --scenario skeleton[/i]
+        [i]netobs lab update telegraf-01 --scenario batteries-included[/i]
     """
     console.log(f"Updating lab environment for scenario: [orange1 i]{scenario.value}", style="info")
 

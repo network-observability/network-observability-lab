@@ -89,7 +89,7 @@ resource "digitalocean_droplet" "netobs_vm" {
     inline = [
         "export PATH=\"$HOME/miniconda/bin:$PATH\"",
         "cd network-observability-lab && git checkout ${var.github_branch}",
-        "netobs lab deploy skeleton"
+        "netobs lab deploy batteries-included"
     ]
   }
 }
