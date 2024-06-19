@@ -1,0 +1,111 @@
+# yamllint disable-file
+---
+
+
+volumes:
+  loki_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  network-observability:
+    external: true
+    name: network-observability
+
+services:
+
+  loki:
+    image: docker.io/grafana/loki:main
+    ports:
+      - 3001:3001
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
+      - loki_data:/loki:rw
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+
+  alertmanager:
+    image: ${ALERTMANAGER_IMAGE:-docker.io/prom/alertmanager:v0.26.0}
+    ports:
+      - 9093:9093
+    command: --config.file=/etc/alertmanager/alertmanager.yml
+    volumes:
+      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:-docker.io/prom/prometheus:v2.52.0}
+    ports:
+      - 9090:9090
+    command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml
+    tty: true
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./configs/prometheus/rules/:/etc/prometheus/rules/
+      - prometheus_data:/prometheus
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  grafana:
+    image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:10.4.4}
+    ports:
+      - 3000:3000
+    volumes:
+      - ./configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
+      - ./configs/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - grafana_data:/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+{% for inventory_host in vars['groups']['telegraf_hosts'] %}
+  telegraf-{{ inventory_host }}:
+    build:
+      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
+    command: telegraf --config /etc/telegraf/telegraf.conf
+    tty: true
+    volumes:
+      - ./outputs/{{ inventory_host }}.conf:/etc/telegraf/telegraf.conf
+    ports:
+      - {{ vars['hostvars'][inventory_host]['prom_port'] }}:{{ vars['hostvars'][inventory_host]['prom_port']}}
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+{% endfor %}
+
+  logstash:
+    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:main}
+    command: -f /home/logstash/logstash.cfg
+    volumes:
+      - ./configs/logstash/logstash.cfg:/home/logstash/logstash.cfg
+      - ./configs/logstash/patterns:/etc/logstash/patterns
+    ports:
+      - 1514:1514
+      - 1515:1515
+      - 1516:1516
+      - 1517:1517
+    environment:
+      XPACK_MONITORING_ENABLED: false
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability

@@ -1,0 +1,104 @@
+---
+networks:
+  network-observability:
+    external: true
+    name: network-observability
+
+volumes:
+  nautobot_postgres_data:
+  loki_data:
+  prometheus_data:
+  grafana_data:
+
+services:
+
+  telegraf-01:
+    build:
+      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
+    command: telegraf --config /etc/telegraf/telegraf.conf
+    tty: true
+    volumes:
+      - ./configs/telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
+    ports:
+      - 9004:9004
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  telegraf-02:
+    build:
+      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
+    command: telegraf --config /etc/telegraf/telegraf.conf
+    tty: true
+    volumes:
+      - ./configs/telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
+    ports:
+      - 9005:9005
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  logstash:
+    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:main}
+    command: -f /home/logstash/logstash.cfg
+    volumes:
+      - ./configs/logstash/logstash.cfg:/home/logstash/logstash.cfg
+    ports:
+      - 1515:1515
+    environment:
+      XPACK_MONITORING_ENABLED: false
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  loki:
+    image: ${LOKI_IMAGE:-docker.io/grafana/loki:2.9.8}
+    ports:
+      - 3001:3001
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
+      - loki_data:/loki:rw
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:-docker.io/prom/prometheus:v2.52.0}
+    ports:
+      - 9090:9090
+    command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml
+    tty: true
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  grafana:
+    image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:10.4.4}
+    ports:
+      - 3000:3000
+    volumes:
+      - ./configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
+      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - grafana_data:/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability

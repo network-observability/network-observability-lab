@@ -1,0 +1,181 @@
+---
+networks:
+  network-observability:
+    external: true
+    name: network-observability
+
+volumes:
+  nautobot_postgres_data:
+  loki_data:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:
+
+services:
+
+  telegraf-01:
+    build:
+      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
+    command: telegraf --config /etc/telegraf/telegraf.conf
+    tty: true
+    volumes:
+      - ./configs/telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
+    ports:
+      - 9004:9004
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  telegraf-02:
+    build:
+      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
+    command: telegraf --config /etc/telegraf/telegraf.conf
+    tty: true
+    volumes:
+      - ./configs/telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
+      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
+    ports:
+      - 9005:9005
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  logstash:
+    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:main}
+    command: -f /home/logstash/logstash.cfg
+    volumes:
+      - ./configs/logstash/logstash.cfg:/home/logstash/logstash.cfg
+    ports:
+      - 1515:1515
+    environment:
+      XPACK_MONITORING_ENABLED: false
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  loki:
+    image: ${LOKI_IMAGE:-docker.io/grafana/loki:2.9.8}
+    ports:
+      - 3001:3001
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
+      - ./configs/loki/rules/alerting_rules.yml:/rules/fake/rules.yaml
+      - loki_data:/loki:rw
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:-docker.io/prom/prometheus:v2.52.0}
+    ports:
+      - 9090:9090
+    command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml
+    tty: true
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./configs/prometheus/rules/:/etc/prometheus/rules/
+      - prometheus_data:/prometheus
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  alertmanager:
+    image: ${ALERTMANAGER_IMAGE:-docker.io/prom/alertmanager:v0.26.0}
+    # restart: always
+    ports:
+      - 9093:9093
+    command: --config.file=/etc/alertmanager/alertmanager.yml --cluster.advertise-address=0.0.0.0:9093
+    volumes:
+      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/data
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  grafana:
+    image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:10.4.4}
+    ports:
+      - 3000:3000
+    volumes:
+      - ./configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
+      - ./configs/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - grafana_data:/grafana
+    environment:
+      GF_INSTALL_PLUGINS: natel-discrete-panel,fifemon-graphql-datasource,yesoreyeram-infinity-datasource,volkovlabs-echarts-panel
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  nautobot:
+    image: ${NAUTOBOT_IMAGE:-docker.io/networktocode/nautobot:2.2-py3.10}
+    env_file:
+      - "../../.env"
+    ports:
+      - "8443:8443"
+      - "8080:8080"
+    restart: "unless-stopped"
+    volumes:
+      - ./configs/nautobot/nautobot_config.py:/opt/nautobot/nautobot_config.py
+    networks:
+      - network-observability
+
+  nautobot-redis:
+    image: ${REDIS_IMAGE:-redis:7.2-alpine}
+    command:
+      - "sh"
+      - "-c"
+      - "redis-server --appendonly yes --requirepass $$NAUTOBOT_REDIS_PASSWORD"
+    restart: "unless-stopped"
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  nautobot-postgres:
+    image: ${POSTGRES_IMAGE:-postgres:14}
+    environment:
+      NAUTOBOT_DB_ENGINE: "django.db.backends.postgres"
+      POSTGRES_USER: ${NAUTOBOT_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${NAUTOBOT_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${NAUTOBOT_POSTGRES_DB}
+    volumes:
+      - nautobot_postgres_data:/var/lib/postgresql/data
+    restart: "unless-stopped"
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  webhook:
+    build:
+      dockerfile: "./configs/webhook/webhook.Dockerfile"
+      args:
+        PYTHON_VER: ${PYTHON_VER:-3.10}
+    command: "python -m app.main"
+    ports:
+      - 9997:9997
+    tty: true
+    env_file:
+      - ../../.env
+    environment:
+      PREFECT_API_URL: ${PREFECT_URL}
+      PREFECT_API_KEY: ${PREFECT_KEY}
+    networks:
+      - network-observability

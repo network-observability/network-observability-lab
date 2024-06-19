@@ -467,7 +467,7 @@ def docker_exec(
     console.log(f"Executing command in service: [orange1 i]{service}", style="info")
     run_docker_compose_cmd(
         action="exec",
-        filename=Path(f"./obs_stack/{scenario.value}/docker-compose.yml"),
+        filename=Path(f"./chapters/{scenario.value}/docker-compose.yml"),
         services=[service],
         command=command,
         verbose=verbose,
@@ -494,7 +494,7 @@ def docker_debug(
     console.log(f"Starting in debug mode service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
         action="up",
-        filename=Path(f"./obs_stack/{scenario.value}/docker-compose.yml"),
+        filename=Path(f"./chapters/{scenario.value}/docker-compose.yml"),
         services=services if services else [],
         verbose=verbose,
         extra_options="--remove-orphans",
@@ -521,7 +521,7 @@ def docker_start(
     console.log(f"Starting service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
         action="up",
-        filename=Path(f"./obs_stack/{scenario.value}/docker-compose.yml"),
+        filename=Path(f"./chapters/{scenario.value}/docker-compose.yml"),
         services=services if services else [],
         verbose=verbose,
         extra_options="-d --remove-orphans",
@@ -548,7 +548,7 @@ def docker_stop(
     console.log(f"Stopping service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
         action="stop",
-        filename=Path(f"./obs_stack/{scenario.value}/docker-compose.yml"),
+        filename=Path(f"./chapters/{scenario.value}/docker-compose.yml"),
         services=services if services else [],
         verbose=verbose,
         task_name="stop stack",
@@ -574,7 +574,7 @@ def docker_restart(
     console.log(f"Restarting service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
         action="restart",
-        filename=Path(f"./obs_stack/{scenario.value}/docker-compose.yml"),
+        filename=Path(f"./chapters/{scenario.value}/docker-compose.yml"),
         services=services if services else [],
         verbose=verbose,
         task_name="restart stack",
@@ -610,7 +610,7 @@ def docker_logs(
         options += f"--tail={tail}"
     run_docker_compose_cmd(
         action="logs",
-        filename=Path(f"./obs_stack/{scenario.value}/docker-compose.yml"),
+        filename=Path(f"./chapters/{scenario.value}/docker-compose.yml"),
         services=services if services else [],
         extra_options=options,
         verbose=verbose,
@@ -637,7 +637,7 @@ def docker_ps(
     console.log(f"Showing containers for service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
         action="ps",
-        filename=Path(f"./obs_stack/{scenario.value}/docker-compose.yml"),
+        filename=Path(f"./chapters/{scenario.value}/docker-compose.yml"),
         services=services if services else [],
         verbose=verbose,
         task_name="show containers",
@@ -670,7 +670,7 @@ def docker_destroy(
     console.log(f"Destroying service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
         action="down",
-        filename=Path(f"./obs_stack/{scenario.value}/docker-compose.yml"),
+        filename=Path(f"./chapters/{scenario.value}/docker-compose.yml"),
         services=services if services else [],
         verbose=verbose,
         extra_options="--volumes --remove-orphans" if volumes else "--remove-orphans",
@@ -716,7 +716,7 @@ def docker_rm(
     console.log(f"Removing service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
         action="rm",
-        filename=Path(f"./obs_stack/{scenario.value}/docker-compose.yml"),
+        filename=Path(f"./chapters/{scenario.value}/docker-compose.yml"),
         services=services if services else [],
         verbose=verbose,
         extra_options=extra_options,
