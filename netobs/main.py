@@ -39,8 +39,8 @@ app.add_typer(docker_app, name="docker")
 lab_app = typer.Typer(help="Overall Lab management related commands.", rich_markup_mode="rich")
 app.add_typer(lab_app, name="lab")
 
-vm_app = typer.Typer(help="Digital Ocean VM management related commands.", rich_markup_mode="rich")
-app.add_typer(vm_app, name="vm")
+setup_app = typer.Typer(help="Lab hosting machine setup related commands.", rich_markup_mode="rich")
+app.add_typer(setup_app, name="setup")
 
 utils_app = typer.Typer(help="Utilities and scripts related commands.", rich_markup_mode="rich")
 app.add_typer(utils_app, name="utils")
@@ -895,49 +895,102 @@ def lab_update(
 #           Digital Ocean VM            #
 # --------------------------------------#
 
+def ansible_command(
+    playbook: str,
+    inventories: list[str],
+    limit: str | None = None,
+    extra_vars: dict | None = None,
+    verbose: int = 0,
+) -> str:
+    """Run an ansible playbook with the given inventories and limit.
 
-@vm_app.command("deploy")
-def vm_deploy():
-    """Deploy a lab VM."""
-    console.log("Deploying lab VM", style="info")
+    Args:
+        playbook (str): The name of the playbook to run.
+        inventories (List[str]): The list of inventories to use.
+        limit (Optional[str], optional): The limit to use. Defaults to None.
+        verbose (int, optional): The verbosity level. Defaults to 0.
 
-    # Terraform init
-    exec_cmd = "terraform -chdir=./terraform/ init"
-    run_cmd(exec_cmd, task_name="terraform init")
+    Returns:
+        str: The ansible command to run.
+    """
+    exec_cmd = f"ansible-playbook setup/{playbook}"
+    for inventory in inventories:
+        exec_cmd += f" -i setup/{inventory}"
 
-    # Terraform validate
-    exec_cmd = "terraform -chdir=./terraform/ validate"
-    run_cmd(exec_cmd, task_name="terraform validate")
+    if limit:
+        exec_cmd += f" -l {limit}"
 
-    # Terraform apply
-    exec_cmd = "terraform -chdir=./terraform/ apply -auto-approve"
-    run_cmd(exec_cmd, task_name="terraform apply")
-    console.log("Lab VM deployed", style="info")
+    if extra_vars:
+        exec_cmd += f' -e "{json.dumps(extra_vars)}"'
 
-    # Get VM IP and SSH command
-    exec_cmd = "terraform -chdir=./terraform/ output -json"
-    result = run_cmd(exec_cmd, task_name="terraform output", capture_output=True)
+    if verbose:
+        exec_cmd += f" -{'v' * verbose}"
 
-    # Parse JSON output
-    result_json = json.loads(result.stdout)
-    vm_endpoints = result_json["vm_endpoints"]["value"]
-    vm_ssh_cmd = result_json["ssh_command"]["value"]
-    console.log("VM Endpoints:", style="info")
-    console.print(vm_endpoints)
-    console.log(f"VM SSH command: [orange1 i]{vm_ssh_cmd}", style="info")
-    console.log("You can now connect to the VM using the above SSH command", style="info")
+    return exec_cmd
 
 
-@vm_app.command("destroy")
-def vm_destroy():
-    """Destroy a lab VM."""
-    console.log("Destroying lab VM", style="info")
+@setup_app.command(rich_help_panel="DigitalOcean", name="deploy")
+def deploy_droplets(
+    limit: Annotated[str | None, typer.Option("-l", "--limit", help="limit to a specific host")] = None,
+    verbose: Annotated[int, typer.Option("--verbose", "-v", count=True)] = 0,
+    extra_vars: Annotated[dict | None, typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")] = None,
+):
+    """Create DigitalOcean Droplets.
 
-    # Terraform destroy
-    exec_cmd = "terraform -chdir=./terraform/ destroy -auto-approve"
-    run_cmd(exec_cmd, task_name="terraform destroy")
+    [u]Example:[/u]
+        [i]> netobs hosts droplets create[/i]
+    """
+    exec_cmd = ansible_command(
+        playbook="deploy_droplets.yaml",
+        inventories=["netobs-demo-inv.yaml"],
+        limit=limit,
+        verbose=verbose,
+        extra_vars=extra_vars,
+    )
+    return run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="create droplets")
 
-    console.log("Lab VM destroyed", style="info")
+# @setup_app.command("deploy")
+# def vm_deploy():
+#     """Deploy a lab VM."""
+#     console.log("Deploying lab VM", style="info")
+
+#     # Terraform init
+#     exec_cmd = "terraform -chdir=./terraform/ init"
+#     run_cmd(exec_cmd, task_name="terraform init")
+
+#     # Terraform validate
+#     exec_cmd = "terraform -chdir=./terraform/ validate"
+#     run_cmd(exec_cmd, task_name="terraform validate")
+
+#     # Terraform apply
+#     exec_cmd = "terraform -chdir=./terraform/ apply -auto-approve"
+#     run_cmd(exec_cmd, task_name="terraform apply")
+#     console.log("Lab VM deployed", style="info")
+
+#     # Get VM IP and SSH command
+#     exec_cmd = "terraform -chdir=./terraform/ output -json"
+#     result = run_cmd(exec_cmd, task_name="terraform output", capture_output=True)
+
+#     # Parse JSON output
+#     result_json = json.loads(result.stdout)
+#     vm_endpoints = result_json["vm_endpoints"]["value"]
+#     vm_ssh_cmd = result_json["ssh_command"]["value"]
+#     console.log("VM Endpoints:", style="info")
+#     console.print(vm_endpoints)
+#     console.log(f"VM SSH command: [orange1 i]{vm_ssh_cmd}", style="info")
+#     console.log("You can now connect to the VM using the above SSH command", style="info")
+
+
+# @setup_app.command("destroy")
+# def vm_destroy():
+#     """Destroy a lab VM."""
+#     console.log("Destroying lab VM", style="info")
+
+#     # Terraform destroy
+#     exec_cmd = "terraform -chdir=./terraform/ destroy -auto-approve"
+#     run_cmd(exec_cmd, task_name="terraform destroy")
+
+#     console.log("Lab VM destroyed", style="info")
 
 
 # --------------------------------------#

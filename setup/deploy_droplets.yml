@@ -1,0 +1,221 @@
+---
+- name: Stand up netobs-droplet
+  hosts: localhost
+  gather_facts: false
+  vars:
+    ansible_connection: local
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_prompt:
+    - name: "do_api_token"
+      prompt: "Enter your DigitalOcean API token"
+      private: true
+
+    - name: "do_ssh_fingerprint"
+      prompt: "Enter the SSH fingerprint"
+      private: false
+
+    - name: "ceos_image"
+      prompt: "Enter the local cEOS container image path"
+      private: false
+
+    - name: "droplet_image"
+      prompt: "Enter the droplet image"
+      private: false
+      default: "ubuntu-22-04-x64"
+
+    - name: "droplet_size"
+      prompt: "Enter the droplet size"
+      private: false
+      default: "s-4vcpu-8gb"
+
+    - name: "droplet_region"
+      prompt: "Enter the droplet region"
+      private: false
+      default: "fra1"
+
+  tasks:
+    - name: Create DigitalOcean Droplets
+      community.digitalocean.digital_ocean_droplet:
+        state: present
+        oauth_token: "{{ do_api_token }}"
+        name: "netobs-droplet"
+        size: "{{ droplet_size }}"
+        image: "{{ droplet_image }}"
+        region: "{{ droplet_region }}"
+        private_networking: true
+        unique_name: true
+        ssh_keys: "{{ do_ssh_fingerprint }}"
+        project: "network-observability-lab"
+        tags:
+          - "netobs"
+      register: droplet
+
+    - name: Wait for droplets to be ready
+      ansible.builtin.wait_for:
+        host: "{{ (item.data.droplet.networks.v4 | selectattr('type', 'equalto', 'public')).0.ip_address | default('<none>', true) }}"
+        port: 22
+        delay: 5
+        timeout: 300
+      loop: "{{ droplet.results }}"
+      loop_control:
+        label: "Droplet {{ item.data.droplet.name }} ready"
+      # when: item.data.droplet.networks.v4.public is defined
+
+    - name: Show Droplet info
+      ansible.builtin.debug:
+        msg: |
+          Droplet ID is {{ item.data.droplet.id }}
+          First Public IPv4 is {{ (item.data.droplet.networks.v4 | selectattr('type', 'equalto', 'public')).0.ip_address | default('<none>', true) }}
+          First Private IPv4 is {{ (item.data.droplet.networks.v4 | selectattr('type', 'equalto', 'private')).0.ip_address | default('<none>', true) }}
+      loop: "{{ droplet.results }}"
+      loop_control:
+        label: "{{ item.data.droplet.name }}"
+
+
+- name: Bootstrap netobs-droplet
+  hosts: "netobs-droplet"
+  gather_facts: false
+  tasks:
+    - name: Wait for connection to netobs-droplet
+      ansible.builtin.wait_for_connection:
+        timeout: 240
+
+    - name: Install or upgrade aptitude
+      ansible.builtin.apt:
+        name: aptitude
+        state: latest
+        only_upgrade: true
+        update_cache: true
+
+    - name: Install or upgrade system dependencies
+      ansible.builtin.apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+          - apache2-utils
+          - git
+          # - bpfcc-tools
+          # - linux-headers-$(uname -r)
+        state: latest
+        only_upgrade: true
+        update_cache: true
+
+    - name: Download Docker
+      ansible.builtin.get_url:
+        url: https://get.docker.com
+        dest: /tmp/get-docker.sh
+        mode: "0755"
+
+    - name: Install Docker
+      ansible.builtin.command:
+        cmd: "get-docker.sh"
+        chdir: "/tmp"
+      register: docker_install
+      changed_when: docker_install.rc != 0
+
+    - name: Install Python packages
+      ansible.builtin.pip:
+        name:
+          - docker
+        state: latest
+      tags:
+        - skip_ansible_lint
+
+    - name: Download Miniconda python environment
+      ansible.builtin.get_url:
+        url: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        # url: https://repo.anaconda.com/miniconda/Miniconda3-py310_23.5.2-0-Linux-x86_64.sh
+        dest: /tmp/install-miniconda.sh
+        mode: "0550"
+
+    - name: Install Miniconda
+      ansible.builtin.shell: bash /tmp/install-miniconda.sh -b -p $HOME/miniconda
+      register: miniconda_install
+      changed_when: miniconda_install.rc != 0
+
+    - name: Remove Miniconda installer
+      ansible.builtin.file:
+        state: absent
+        path: /tmp/install-miniconda.sh
+
+    - name: Add miniconda bin to path
+      ansible.builtin.shell: echo 'export PATH=$HOME/miniconda/bin:$PATH' >> $HOME/.bashrc
+      register: miniconda_path
+      changed_when: miniconda_path.rc != 0
+
+    - name: Create localhost records in /etc/hosts
+      ansible.builtin.lineinfile:
+        state: present
+        path: /etc/hosts
+        regexp: ".*{{ item }}"
+        line: "127.0.0.1 {{ item }}"
+      with_items:
+        - "prometheus"
+        - "grafana"
+        - "loki"
+        - "nautobot"
+
+    - name: Download containerlab
+      ansible.builtin.get_url:
+        url: https://get.containerlab.dev
+        dest: /tmp/get-clab.sh
+        mode: "0755"
+
+    - name: Install containerlab
+      ansible.builtin.command: bash -c /tmp/get-clab.sh
+      register: clab_install
+      changed_when: clab_install.rc != 0
+
+    - name: Copy cEOS container image
+      ansible.builtin.copy:
+        src: "{{ ceos_image }}"
+        dest: /tmp/cEOS.tar
+        mode: "0644"
+
+    - name: Load cEOS container image
+      community.docker.docker_image_load:
+        path: /tmp/cEOS.tar
+      register: ceos_load
+
+    - name: Print the loaded image names
+      ansible.builtin.debug:
+        msg: "Loaded the following images: {{ ceos_load.image_names | join(', ') }}"
+
+
+- name: Setup netobs app
+  hosts: netobs-droplet
+  vars:
+    ansible_python_interpreter: /root/miniconda/bin/python
+  environment:
+    PATH: "/root/miniconda/bin:/root/.local/bin:{{ ansible_env.PATH }}"
+  tasks:
+    - name: Clone network-observability-lab
+      ansible.builtin.git:
+        repo: "{{ lookup('env', 'NETOBS_REPO' | default('https://github.com/network-observability/network-observability-lab.git')) }}"
+        dest: /root/network-observability-lab
+        version: "{{ lookup('env', 'NETOBS_BRANCH' | default('main')) }}"
+
+    - name: Copy .env file
+      ansible.builtin.copy:
+        src: "{{ ansible_playbook_dir }}/.env"
+        dest: /root/network-observability-lab/.env
+        mode: "0644"
+
+    - name: Install network-observability-lab
+      ansible.builtin.shell:
+        cmd: "cd /root/network-observability-lab && pip install ."
+        executable: /bin/bash
+      register: netobs_install
+      changed_when: netobs_install.rc != 0
+
+    - name: Run netobs batteries included
+      ansible.builtin.shell:
+        cmd: "cd /root/network-observability-lab && netobs lab prepare --scenario batteries-included"
+        executable: /bin/bash
+      register: netobs_run
+      changed_when: netobs_run.rc != 0

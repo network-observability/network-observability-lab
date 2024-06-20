@@ -23,7 +23,6 @@ resource "digitalocean_droplet" "netobs_vm" {
     destination = "/tmp/temp.pub"
   }
 
-  # TODO: Add provisioner to copy .env file to VM
   provisioner "file" {
     source      = "../.env"
     destination = "/tmp/.env"
@@ -46,20 +45,42 @@ resource "digitalocean_droplet" "netobs_vm" {
         # Set up SSH keys
         "cat /tmp/temp.pub >> ~/.ssh/authorized_keys",
         "sudo apt-get update -y",
-        "sleep 60",
+        "sleep 30"
+    ]
+  }
+
+  provisioner "remote-exec" {
+    inline = [
         # Install Docker
         "curl -fsSL https://get.docker.com -o get-docker.sh",
         "sudo sh get-docker.sh",
         "sleep 60",
-        # Install Python 3.9 with miniconda
+    ]
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+        # Install Python with miniconda
         "curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o ~/miniconda.sh",
         "bash ~/miniconda.sh -b -p $HOME/miniconda",
         "export PATH=\"$HOME/miniconda/bin:$PATH\"",
         "echo 'export PATH=\"$HOME/miniconda/bin:$PATH\"' >> ~/.bashrc",
+        "sleep 30",
+    ]
+  }
+
+  provisioner "remote-exec" {
+    inline = [
         # Update /etc/hosts
         "cat /tmp/network-observability-lab.txt >> /etc/hosts",
         # Install containerlab
         "bash -c \"$(curl -sL https://get.containerlab.dev)\"",
+        "sleep 60",
+    ]
+  }
+
+  provisioner "remote-exec" {
+    inline = [
         # Install netobs
         "git clone https://github.com/network-observability/network-observability-lab.git",
         "cd network-observability-lab && git checkout main && mv /tmp/.env .env && pip install .",
@@ -89,7 +110,7 @@ resource "digitalocean_droplet" "netobs_vm" {
     inline = [
         "export PATH=\"$HOME/miniconda/bin:$PATH\"",
         "cd network-observability-lab && git checkout ${var.github_branch}",
-        "netobs lab deploy batteries-included"
+        "netobs lab prepare --scenario batteries-included"
     ]
   }
 }
