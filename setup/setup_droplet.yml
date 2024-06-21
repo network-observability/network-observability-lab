@@ -1,91 +1,18 @@
 ---
-- name: Stand up netobs-droplet
-  hosts: localhost
-  gather_facts: false
-  vars:
-    ansible_connection: local
-    ansible_python_interpreter: "{{ ansible_playbook_python }}"
-  vars_prompt:
-    - name: "do_api_token"
-      prompt: "Enter your DigitalOcean API token"
-      private: true
-
-    - name: "do_ssh_fingerprint"
-      prompt: "Enter the SSH fingerprint"
-      private: false
-
-    - name: "ceos_image"
-      prompt: "Enter the local cEOS container image path"
-      private: false
-
-    - name: "droplet_image"
-      prompt: "Enter the droplet image"
-      private: false
-      default: "ubuntu-22-04-x64"
-
-    - name: "droplet_size"
-      prompt: "Enter the droplet size"
-      private: false
-      default: "s-4vcpu-8gb"
-
-    - name: "droplet_region"
-      prompt: "Enter the droplet region"
-      private: false
-      default: "fra1"
-
-  tasks:
-    - name: Create DigitalOcean Droplets
-      community.digitalocean.digital_ocean_droplet:
-        state: present
-        oauth_token: "{{ do_api_token }}"
-        name: "netobs-droplet"
-        size: "{{ droplet_size }}"
-        image: "{{ droplet_image }}"
-        region: "{{ droplet_region }}"
-        private_networking: true
-        unique_name: true
-        ssh_keys: "{{ do_ssh_fingerprint }}"
-        project: "network-observability-lab"
-        tags:
-          - "netobs"
-      register: droplet
-
-    - name: Wait for droplets to be ready
-      ansible.builtin.wait_for:
-        host: "{{ (item.data.droplet.networks.v4 | selectattr('type', 'equalto', 'public')).0.ip_address | default('<none>', true) }}"
-        port: 22
-        delay: 5
-        timeout: 300
-      loop: "{{ droplet.results }}"
-      loop_control:
-        label: "Droplet {{ item.data.droplet.name }} ready"
-      # when: item.data.droplet.networks.v4.public is defined
-
-    - name: Show Droplet info
-      ansible.builtin.debug:
-        msg: |
-          Droplet ID is {{ item.data.droplet.id }}
-          First Public IPv4 is {{ (item.data.droplet.networks.v4 | selectattr('type', 'equalto', 'public')).0.ip_address | default('<none>', true) }}
-          First Private IPv4 is {{ (item.data.droplet.networks.v4 | selectattr('type', 'equalto', 'private')).0.ip_address | default('<none>', true) }}
-      loop: "{{ droplet.results }}"
-      loop_control:
-        label: "{{ item.data.droplet.name }}"
-
-
 - name: Bootstrap netobs-droplet
   hosts: "netobs-droplet"
   gather_facts: false
   tasks:
     - name: Wait for connection to netobs-droplet
       ansible.builtin.wait_for_connection:
-        timeout: 240
+        timeout: 60
 
     - name: Install or upgrade aptitude
       ansible.builtin.apt:
         name: aptitude
         state: latest
-        only_upgrade: true
-        update_cache: true
+      tags:
+        - skip_ansible_lint
 
     - name: Install or upgrade system dependencies
       ansible.builtin.apt:
@@ -102,8 +29,8 @@
           # - bpfcc-tools
           # - linux-headers-$(uname -r)
         state: latest
-        only_upgrade: true
-        update_cache: true
+      tags:
+        - skip_ansible_lint
 
     - name: Download Docker
       ansible.builtin.get_url:
@@ -112,9 +39,7 @@
         mode: "0755"
 
     - name: Install Docker
-      ansible.builtin.command:
-        cmd: "get-docker.sh"
-        chdir: "/tmp"
+      ansible.builtin.command: bash -c /tmp/get-docker.sh
       register: docker_install
       changed_when: docker_install.rc != 0
 
@@ -136,7 +61,9 @@
     - name: Install Miniconda
       ansible.builtin.shell: bash /tmp/install-miniconda.sh -b -p $HOME/miniconda
       register: miniconda_install
-      changed_when: miniconda_install.rc != 0
+      failed_when:
+        - "'ERROR: File or directory already exists' not in miniconda_install.stderr"
+      changed_when: "'ERROR: File or directory already exists' not in miniconda_install.stderr"
 
     - name: Remove Miniconda installer
       ansible.builtin.file:
@@ -173,18 +100,14 @@
 
     - name: Copy cEOS container image
       ansible.builtin.copy:
-        src: "{{ ceos_image }}"
+        src: "{{ lookup('ansible.builtin.env', 'CEOS_IMAGE_PATH') }}"
         dest: /tmp/cEOS.tar
         mode: "0644"
 
-    - name: Load cEOS container image
-      community.docker.docker_image_load:
-        path: /tmp/cEOS.tar
-      register: ceos_load
-
-    - name: Print the loaded image names
-      ansible.builtin.debug:
-        msg: "Loaded the following images: {{ ceos_load.image_names | join(', ') }}"
+    - name: Import cEOS container image
+      ansible.builtin.command: docker import /tmp/cEOS.tar ceos:image
+      register: ceos_import
+      changed_when: ceos_import.rc != 0
 
 
 - name: Setup netobs app
@@ -202,7 +125,7 @@
 
     - name: Copy .env file
       ansible.builtin.copy:
-        src: "{{ ansible_playbook_dir }}/.env"
+        src: "{{ playbook_dir }}/../.env"
         dest: /root/network-observability-lab/.env
         mode: "0644"
 
@@ -216,6 +139,22 @@
     - name: Run netobs batteries included
       ansible.builtin.shell:
         cmd: "cd /root/network-observability-lab && netobs lab prepare --scenario batteries-included"
+        executable: /bin/bash
+      register: netobs_run
+      changed_when: netobs_run.rc != 0
+
+    - name: Wait for Nautobot to come up
+      ansible.builtin.uri:
+        url: "http://localhost:8080/health/"
+        status_code: [200]
+      register: result
+      until: result.status == 200
+      retries: 50
+      delay: 10
+
+    - name: Initialize Nautobot data
+      ansible.builtin.shell:
+        cmd: "cd /root/network-observability-lab && netobs utils load-nautobot"
         executable: /bin/bash
       register: netobs_run
       changed_when: netobs_run.rc != 0

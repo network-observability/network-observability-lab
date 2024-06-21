@@ -1,6 +1,6 @@
 # Using keyed groups and compose for hostvars
 plugin: community.digitalocean.digitalocean
-oauth_token: "{{ do_api_token }}"
+oauth_token: "{{ lookup('ansible.builtin.env', 'DO_API_TOKEN') }}"
 use_extra_vars: true
 attributes:
   - id
@@ -28,6 +28,6 @@ compose:
   distro: "do_image.distribution | lower"
 vars:
   ansible_ssh_user: root
-  ansible_ssh_private_key_file: "{{ lookup('env', 'DO_SSH_KEY') | default('~/.ssh/id_rsa') }}"
+  ansible_ssh_private_key_file: "{{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/id_rsa') }}"
 filters:
   - "'netobs' in do_tags"

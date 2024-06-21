@@ -8,7 +8,7 @@ import time
 from enum import Enum
 from pathlib import Path
 from subprocess import CompletedProcess  # nosec
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 from urllib.parse import urlparse
 
 import netmiko
@@ -23,7 +23,7 @@ from rich.theme import Theme
 from typing_extensions import Annotated
 
 load_dotenv(verbose=True, override=True, dotenv_path=Path("./.env"))
-ENVVARS = {**dotenv_values(".env"), **os.environ}
+ENVVARS = {**dotenv_values(".env"), **dotenv_values(".setup.env"), **os.environ}
 
 custom_theme = Theme({"info": "cyan", "warning": "bold magenta", "error": "bold red", "good": "bold green"})
 
@@ -897,9 +897,9 @@ def lab_update(
 
 def ansible_command(
     playbook: str,
-    inventories: list[str],
+    inventories: list[str] | None = None,
     limit: str | None = None,
-    extra_vars: dict | None = None,
+    extra_vars: str | None = None,
     verbose: int = 0,
 ) -> str:
     """Run an ansible playbook with the given inventories and limit.
@@ -914,14 +914,15 @@ def ansible_command(
         str: The ansible command to run.
     """
     exec_cmd = f"ansible-playbook setup/{playbook}"
-    for inventory in inventories:
-        exec_cmd += f" -i setup/{inventory}"
+    if inventories:
+        for inventory in inventories:
+            exec_cmd += f" -i setup/inventory/{inventory}"
 
     if limit:
         exec_cmd += f" -l {limit}"
 
     if extra_vars:
-        exec_cmd += f' -e "{json.dumps(extra_vars)}"'
+        exec_cmd += f' -e "{extra_vars}"'
 
     if verbose:
         exec_cmd += f" -{'v' * verbose}"
@@ -930,10 +931,9 @@ def ansible_command(
 
 
 @setup_app.command(rich_help_panel="DigitalOcean", name="deploy")
-def deploy_droplets(
-    limit: Annotated[str | None, typer.Option("-l", "--limit", help="limit to a specific host")] = None,
+def deploy_droplet(
     verbose: Annotated[int, typer.Option("--verbose", "-v", count=True)] = 0,
-    extra_vars: Annotated[dict | None, typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")] = None,
+    extra_vars: Annotated[Optional[str], typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")] = None,
 ):
     """Create DigitalOcean Droplets.
 
@@ -941,13 +941,55 @@ def deploy_droplets(
         [i]> netobs hosts droplets create[/i]
     """
     exec_cmd = ansible_command(
-        playbook="deploy_droplets.yaml",
-        inventories=["netobs-demo-inv.yaml"],
-        limit=limit,
+        playbook="create_droplet.yml",
+        inventories=["localhost.yaml"],
         verbose=verbose,
         extra_vars=extra_vars,
     )
-    return run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="create droplets")
+    result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="create droplets")
+    if result.returncode == 0:
+        console.log("Droplets created successfully", style="good")
+    else:
+        console.log("Issues encountered creating droplets", style="warning")
+        raise typer.Abort()
+    console.log("Proceeding to setup the droplets", style="info")
+    exec_cmd = ansible_command(
+        playbook="setup_droplet.yml",
+        inventories=["do_hosts.yaml", "localhost.yaml"],
+        verbose=verbose,
+        extra_vars=extra_vars,
+    )
+    result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="create droplets")
+    if result.returncode == 0:
+        console.log("Droplets setup successfully", style="good")
+    else:
+        console.log("Issues encountered setting up droplets", style="warning")
+        raise typer.Abort()
+
+
+@setup_app.command(rich_help_panel="DigitalOcean", name="destroy")
+def destroy_droplet(
+    verbose: Annotated[int, typer.Option("--verbose", "-v", count=True)] = 0,
+    extra_vars: Annotated[Optional[str], typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")] = None,
+):
+    """Destroy DigitalOcean Droplets.
+
+    [u]Example:[/u]
+        [i]> netobs hosts droplets destroy[/i]
+    """
+    exec_cmd = ansible_command(
+        playbook="destroy_droplet.yml",
+        inventories=["do_hosts.yaml"],
+        verbose=verbose,
+        extra_vars=extra_vars,
+    )
+    result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="destroy droplets")
+    if result.returncode == 0:
+        console.log("Droplets destroyed successfully", style="good")
+    else:
+        console.log("Issues encountered destroying droplets", style="warning")
+        raise typer.Abort()
+
 
 # @setup_app.command("deploy")
 # def vm_deploy():
