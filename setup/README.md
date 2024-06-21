@@ -1,27 +1,31 @@
-# Terraform deployment for `netobs-vm`
+# Remote Machine Setup
 
-This directory contains the process for deploying a remote `netobs-vm` (virtual machine) in Digital Ocean to follow along with the labs stored in this repository.
+This directory contains instructions for deploying a remote droplet (virtual machine) on DigitalOcean to follow along with the labs stored in this repository.
 
-The virtual machine is configured to run the network-observability lab with `netobs` utility tool. If you are following along with the book, you can use this virtual machine to run the labs in the book.
+The virtual machine is configured to run the network observability lab using the `netobs` utility tool. If you are following along with the book, you can use this virtual machine to run the labs presented in the book.
 
 ## Requirements
 
-To run the terraform deployment you must have:
+To run the commands used to deploy and provision a DigitalOcean droplet, you need to have the following:
 
-- `terraform` installed in your system. For information on how to install `terraform`, check out the [official documentation](https://learn.hashicorp.com/tutorials/terraform/install-cli).
-- Create SSH keys for the virtual machine and upload the public key. For information on how to create SSH keys, check out the [official documentation](https://docs.digitalocean.com/products/droplets/how-to/add-ssh-keys/).
-- A Digital Ocean account with an API key. For information on how to create an API key, check out the [official documentation](https://docs.digitalocean.com/reference/api/create-personal-access-token/).
-- Store the Digital Ocean API key in the `TF_VAR_digitalocean_token` environment variable. Examples of how to do this are shown below.
+- **The `netobs` tool installed on your system**: Later in this section, we explain how to install it.
+- **A DigitalOcean account**: IMPORTANT: Deploying a droplet/virtual machine costs money, so we spent a good amount of time automating the setup and removal of the droplet to optimize costs.
+  - **SSH keys to access the virtual machine**: You will need to upload your public key to DigitalOcean and retrieve its SSH fingerprint. For information on how to create SSH keys, check out the [official documentation](https://docs.digitalocean.com/products/droplets/how-to/add-ssh-keys/). This step ensures secure and passwordless access to your droplet.
+  - **A DigitalOcean API key**: This key is necessary to programmatically interact with the DigitalOcean API for tasks like creating and managing droplets. For information on how to create an API key, check out the [official documentation](https://docs.digitalocean.com/reference/api/create-personal-access-token/).
+- **Forked networked-observability-lab repo**: By forking this repository, you are able to make the changes you desire and follow along with the example and tasks presented in the book. For more information on how to fork a GitHub repository see the [official documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo).
+
+Make sure you have these prerequisites ready before proceeding with the setup.
 
 ## Quickstart
 
-For a straightforward deployment of the virtual machine, you can simplify the process by using the `netobs` utility tool. Follow the steps below to get started:
-
-> **Note:** The following commands are expected to run at the root of this repository!. For example at `/root/network-observability-lab/`.
+For a straightforward deployment of the virtual machine, you can run the following commands from your forked repository:
 
 ```bash
+# On your local machine
+git clone https://github.com/<your-user>/network-observability-lab.git
 # Setup environment variables (edit the .env file to your liking)
 cp example.env .env
+cp example.setup.env .setup.env
 
 # Edit the .env file to replace the Digital Ocean API key (using vim for example).
 # For example: TF_VAR_digitalocean_token=<DIGITAL_OCEAN_API_KEY>
