@@ -20,7 +20,7 @@ services:
       - 3001:3001
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
-      - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml
       - loki_data:/loki:rw
     env_file:
       - ../../.env
@@ -34,7 +34,7 @@ services:
       - 9093:9093
     command: --config.file=/etc/alertmanager/alertmanager.yml
     volumes:
-      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
     env_file:
       - ../../.env
     networks:
@@ -47,8 +47,8 @@ services:
     command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml
     tty: true
     volumes:
-      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./configs/prometheus/rules/:/etc/prometheus/rules/
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/rules/:/etc/prometheus/rules/
       - prometheus_data:/prometheus
     env_file:
       - ../../.env
@@ -60,10 +60,10 @@ services:
     ports:
       - 3000:3000
     volumes:
-      - ./configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
-      - ./configs/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
-      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
-      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - grafana_data:/grafana
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
@@ -76,7 +76,7 @@ services:
 {% for inventory_host in vars['groups']['telegraf_hosts'] %}
   telegraf-{{ inventory_host }}:
     build:
-      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      dockerfile: "./telegraf/telegraf.Dockerfile"
       args:
         TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
     command: telegraf --config /etc/telegraf/telegraf.conf
@@ -96,8 +96,8 @@ services:
     image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:main}
     command: -f /home/logstash/logstash.cfg
     volumes:
-      - ./configs/logstash/logstash.cfg:/home/logstash/logstash.cfg
-      - ./configs/logstash/patterns:/etc/logstash/patterns
+      - ./logstash/logstash.cfg:/home/logstash/logstash.cfg
+      - ./logstash/patterns:/etc/logstash/patterns
     ports:
       - 1514:1514
       - 1515:1515

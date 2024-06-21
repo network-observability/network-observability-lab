@@ -31,6 +31,10 @@
         state: latest
       tags:
         - skip_ansible_lint
+      retries: 3
+      delay: 10
+      register: apt_install
+      until: apt_install is succeeded
 
     - name: Download Docker
       ansible.builtin.get_url:
@@ -41,6 +45,8 @@
     - name: Install Docker
       ansible.builtin.command: bash -c /tmp/get-docker.sh
       register: docker_install
+      retries: 3
+      delay: 10
       changed_when: docker_install.rc != 0
 
     - name: Install Python packages
@@ -63,6 +69,7 @@
       register: miniconda_install
       failed_when:
         - "'ERROR: File or directory already exists' not in miniconda_install.stderr"
+        - "'installation finished.' not in miniconda_install.stdout"
       changed_when: "'ERROR: File or directory already exists' not in miniconda_install.stderr"
 
     - name: Remove Miniconda installer
