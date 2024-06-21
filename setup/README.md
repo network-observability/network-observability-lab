@@ -20,157 +20,58 @@ Make sure you have these prerequisites ready before proceeding with the setup.
 
 For a straightforward deployment of the virtual machine, you can run the following commands from your forked repository:
 
-```bash
-# On your local machine
+```shell
+# On your local machine clone your forked repository
 git clone https://github.com/<your-user>/network-observability-lab.git
+
 # Setup environment variables (edit the .env file to your liking)
 cp example.env .env
 cp example.setup.env .setup.env
 
-# Edit the .env file to replace the Digital Ocean API key (using vim for example).
-# For example: TF_VAR_digitalocean_token=<DIGITAL_OCEAN_API_KEY>
-vim .env
+# Edit the .setup.env file to replace the DigitalOcean API key among the others listed there.
+vim .setup.env
 
-# Install the python dependencies
+# Install netobs
 pip install .
 
-# Start the terraform deployment (this will take a few minutes)
-netobs vm deploy
+# Spin up the DigitalOcean droplet build process
+netobs setup deploy
 ```
 
-`netobs` will kick off a Terraform deployment process to stand up and configure the Digital Ocean VM. Here is an example output of the `netobs vm deploy` command:
+Running netobs will initiate Ansible playbooks to set up and configure the DigitalOcean droplet. It will prompt you for details about the droplet's specifications and location, providing default values:
+
+- **Droplet image**: The OS image for the droplet. We recommend using ubuntu. Most labs in this book are tested on Debian distributions.
+- **Droplet size**: Specifies the resources for the droplet. We suggest using s-4cpu for a balance of performance and cost. For faster builds, you may opt for higher specs.
+- **Droplet region**: Choose a DigitalOcean site near you. Refer to this list for available regions.
+The Ansible playbook will use the .setup.env environment variables and specified droplet details to build, provision, and configure the droplet with netobs and containerlab, running the batteries-included lab.
+
+To explore or perform the labs presented in the book, connect to the droplet using SSH. You can get the details on how to connect by running the command `netobs setup list`:
 
 ```bash
-$ netobs vm deploy
-# .... output omitted for brevity
-[06:33:29] Successfully ran: terraform apply
-──────────────────────────────────────────────── End of task: terraform apply ────────────────────────────────────────────────
+❯ netobs setup list
 
-           Lab VM deployed
-           Running command: terraform -chdir=./terraform/ output -json
-           Successfully ran: terraform output
-─────────────────────────────────────────────── End of task: terraform output ────────────────────────────────────────────────
+TASK [Show SSH command] ****************************************************************
+ok: [netobs-droplet] => {}
 
-           VM IP: netobs-vm: <digital-ocean-vm-ip>
-           VM SSH command: ssh -i ~/.ssh/id_rsa_do root@<digital-ocean-vm-ip>
+MSG:
+
+ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa root@<droplet-ip>
 ```
 
-At this point, it will print out the IP address of the VM and the SSH command to connect to it. You can now connect to the VM and start the network-observability lab.
+## Remove Droplet
 
-Alternatively, if you don't want to install the `netobs` utility, you can run the following commands to start the terraform deployment:
+To completely destroy the droplet, use the following command:
 
 ```bash
-# Export the Digital Ocean API key
-export TF_VAR_digitalocean_token=<DIGITAL_OCEAN_API_KEY>
-
-# Change directory to the terraform deployment
-cd terraform
-
-# Start the terraform deployment
-terraform init
-
-# Validate the terraform deployment
-terraform validate
-
-# Check the the terraform deployment plan (optional)
-terraform plan
-
-# Start the terraform deployment
-terraform apply
+netobs setup destroy
 ```
 
-## Destroy VM
-
-To destroy the VM, you can run the following commands:
-
-```bash
-netobs vm destroy
-```
-
-This will destroy the VM. Here is an example output of the `netobs vm destroy` command:
-
-```bash
-$ netobs vm destroy
-# .... output omitted for brevity
-digitalocean_firewall.netobs: Destroying... [id=714669cf-1ac1-46ae-84b3-aaabbbccc]
-digitalocean_firewall.netobs: Destruction complete after 1s
-digitalocean_droplet.netobs_vm: Destroying... [id=361165777]
-digitalocean_droplet.netobs_vm: Still destroying... [id=361165777, 10s elapsed]
-digitalocean_droplet.netobs_vm: Still destroying... [id=361165777, 20s elapsed]
-digitalocean_droplet.netobs_vm: Destruction complete after 21s
-
-Destroy complete! Resources: 2 destroyed.
-[06:52:36] Successfully ran: terraform destroy
-─────────────────────────────────────────────── End of task: terraform destroy ───────────────────────────────────────────────
-
-           Lab VM destroyed
-```
-
-Alternatively, you can run the following commands:
-
-```bash
-# Export the Digital Ocean API key
-export TF_VAR_digitalocean_token=<DIGITAL_OCEAN_API_KEY>
-
-# Change directory to the terraform deployment
-cd terraform
-
-# Destroy the terraform deployment
-terraform destroy
-```
-
-## Customizing the VM
-
-If you want to customize the VM, you can edit the `terraform/terraform.tfvars` file to your liking. For example, you can change the VM size, region, and other settings. For example:
-
-```ini
-# terraform/terraform.tfvars
-
-# Change Digital Ocean region to FRA1
-region = "fra1"
-
-# Select a larger VM size
-size = "s-4vcpu-8gb"
-```
-
-You can also modify parameters like the SSH key path and the SSH key name used in your Digital Ocean account. The default values are set to follow the examples in the book.
-
-After you have made the changes, you can run the following commands to apply the changes:
-
-```bash
-netobs vm deploy
-```
-
-Alternatively, you can run the following commands:
-
-```bash
-# Export the Digital Ocean API key
-export TF_VAR_digitalocean_token=<DIGITAL_OCEAN_API_KEY>
-
-# Change directory to the terraform deployment
-cd terraform
-
-# Start the terraform deployment
-terraform apply
-```
+This action is irreversible, so ensure you commit any changes to your forked repository before proceeding.
 
 ## Troubleshooting
 
-If you run into any issues with the terraform deployment, you can run the following commands to get more information:
+If you encounter issues with the Ansible deployment, use the --verbose flag for detailed output:
 
 ```bash
-# Export the Digital Ocean API key
-export TF_VAR_digitalocean_token=<DIGITAL_OCEAN_API_KEY>
-
-# Change directory to the terraform deployment
-cd terraform
-
-# Check the terraform deployment plan
-terraform plan
-
-# Check the terraform deployment state
-terraform state list
-
-# Check the terraform deployment state for a specific resource
-terraform state show <resource-name>
+netobs setup deploy --verbose
 ```

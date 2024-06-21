@@ -938,7 +938,7 @@ def deploy_droplet(
     """Create DigitalOcean Droplets.
 
     [u]Example:[/u]
-        [i]> netobs hosts droplets create[/i]
+        [i]> netobs setup deploy[/i]
     """
     exec_cmd = ansible_command(
         playbook="create_droplet.yml",
@@ -975,7 +975,7 @@ def destroy_droplet(
     """Destroy DigitalOcean Droplets.
 
     [u]Example:[/u]
-        [i]> netobs hosts droplets destroy[/i]
+        [i]> netobs setup destroy[/i]
     """
     exec_cmd = ansible_command(
         playbook="destroy_droplet.yml",
@@ -989,6 +989,20 @@ def destroy_droplet(
     else:
         console.log("Issues encountered destroying droplets", style="warning")
         raise typer.Abort()
+
+
+@setup_app.command(rich_help_panel="DigitalOcean", name="show")
+def show_droplet():
+    """Show the DigitalOcean Droplet SSH command.
+
+    [u]Example:[/u]
+        [i]> netobs setup list[/i]
+    """
+    exec_cmd = ansible_command(
+        playbook="list_droplet.yml",
+        inventories=["do_hosts.yaml"],
+    )
+    return run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="test")
 
 
 # --------------------------------------#
