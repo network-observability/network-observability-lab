@@ -1,6 +1,5 @@
 """Netobs CLI."""
 
-import json
 import os
 import shlex
 import subprocess  # nosec
@@ -8,7 +7,7 @@ import time
 from enum import Enum
 from pathlib import Path
 from subprocess import CompletedProcess  # nosec
-from typing import Any, Optional, Dict
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 import netmiko
