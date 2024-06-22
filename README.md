@@ -1,51 +1,78 @@
 # Network Observability Lab
 
-This repository serves as a valuable resource for constructing and managing an Observability stack within a network lab.
+This repository contains the resources for building and managing an observability stack within a network lab environment, specifically designed for the "Modern Network Observability" book. It includes scripts, configuration files, and documentation to set up and operate various observability tools like Prometheus, Grafana Loki, and others, helping you implement and learn about network observability practices in a practical, hands-on manner.
 
 ![Modern Network Observability](/pics/netobs-observability.png)
 
+The repository includes all the lab scenarios from the book, which progressively cover topics from metrics and logs collection all the way to leveraging AI for improving observability practices. More specifically:
+
+- **Data Collection Methods (Chapter 3)**: Learn different ways to gather network data, like using SNMP and gNMI.
+- **Metrics and Logs Collection (Chapter 5)**: Collect important metrics and logs from network devices with tools like Telegraf and Logstash.
+- **Data Normalization, Enrichment, and Distribution (Chapter 6)**: Transform raw data into useful formats and share it across systems.
+- **Storage and Querying with PromQL and LogQL (Chapter 7)**: Store data and use powerful query languages to search through metrics and logs.
+- **Visualization (Chapter 8)**: Create dashboards and reports to make data easy to understand using Grafana.
+- **Alerting (Chapter 9)**: Set up alerts to monitor and quickly respond to network problems.
+- **Scripts and Event-Driven Automation with Observability Events and Data (Chapter 12)**: Automate reports and actions based on data developing scripts, CLI tools and using event-driven systems.
+- **AI for Enhanced Observability (Chapter 13)**: Use AI to predict problems, find anomalies, and improve network management.
+
 ## Requirements
 
-To run the components of the Observability stack and network devices you must have:
+The lab environments are designed to set up a small network and an attached observability stack. Developed and tested on Debian-based systems, we provide [setup](setup/README.md) documentation to guide you through automatic setup on a DigitalOcean droplet. This process will provision, install dependencies, and configure the environment automatically. But if you want to host the lab environment, ensure the following:
 
-- `docker` and compose installed in your system
-- `containerlab` for the network lab
-- `netobs` for managing the network lab and observability stack
+- `docker` installed (version `26.1.1` or above)
+- `containerlab` for the network lab (version `0.54.2` or above)
+- `netobs` for managing the network lab and observability stack (installed with this repository, more details later)
 
-For an automated installation of a virtual machine hosted in Digital Ocean, check out the [netobs-vm setup](./terraform/README.md).
+## Quickstart
 
-### Quickstart
+To get started with the network lab and observability stack, you need to:
 
-To get started with the network lab and observability stack, you can run the following commands:
+1. Copy the necessary environment variables to configure the components used withing the lab scenarios.
 
 ```bash
 # Setup environment variables (edit the .env file to your liking)
 cp example.env .env
-
-# Install the python dependencies
-pip install .
-
-# Start the network lab
-netobs lab deploy
 ```
 
-`netobs` is a utility tool that provides functions to interact and manage the network lab and observability stack in the repository. It is designed to simplify the process of managing and monitoring network infrastructure by providing a set of helpful commands and utilities.
-
-Alternatively, you can run the following commands to start the network lab and observability stack:
+2. Install the `netobs` utility command that helps manage the entire lab environment.
 
 ```bash
-# Start the containerlab
-containerlab deploy -t ./containerlab/lab.yml
+# Install the python dependencies
+pip install .
+```
 
-# Start the observability stack
-docker-compose -f ./chapters/docker-compose.yml up -d --remove-orphans
+3. Test everything is working by deploying lab that hast most of the components configured and ready to go.
+
+```bash
+# Start the network lab
+netobs lab deploy --scenario batteries-included
 ```
 
 ---
 
-### Examples of `netobs` commands
+## Managing Lab Environment with `netobs`
 
-Deploy the network lab and observability stack:
+The `netobs` utility tool simplifies managing and monitoring the network lab and observability stack set up within this repository. It provides a suite of commands designed to streamline various tasks associated with your network infrastructure.
+
+### Top-Level Commands
+
+The `netobs` utility includes five main commands to help manage the environment:
+
+- **`netobs setup`**: Manages the overall setup of a remote DigitalOcean droplet hosting this repository and its lab environment. This command simplifies the process of preparing a hosting environment for users.
+
+- **`netobs containerlab`**: Manages the `containerlab` pre-configured setup. All lab scenarios presented in the chapters operate under this network lab configuration.
+
+- **`netobs docker`**: Manages the Docker Compose setups for each lab scenario. It ensures the appropriate containers are running for each specific lab exercise.
+
+- **`netobs lab`**: A wrapper utility that combines `netobs containerlab` and various `netobs docker` commands to perform major actions. For example:
+  - `netobs lab purge`: Cleans up all running environments.
+  - `netobs lab prepare --scenario ch7`: Purges any scenario that is up and prepares the environment for Chapter 7.
+
+- **`netobs utils`**: Contains utility commands for interacting with the lab environment. This includes scripts for enabling/disabling an interface on a network device to simulate interface flapping and other useful actions.
+
+### Example Usage
+
+For instance, the `netobs lab deploy` command builds and starts a `containerlab` environment along with the observability stack. This command sets up the entire lab scenario, ensuring that all necessary components are up and running.
 
 ```bash
 # Start the network lab
@@ -53,25 +80,16 @@ Deploy the network lab and observability stack:
 [21:50:42] Deploying lab environment
            Network create: network-observability
            Running command: docker network create --driver=bridge  --subnet=198.51.100.0/24 network-observability
-9b4f25c69a21796cd563e09fba341087f0a4b8c4e38872b0ed701e61d3d3f2c8
            Successfully ran: network create
 ─────────────────────────────────────────────────── End of task: network create ────────────────────────────────────────────────────
 
            Deploying containerlab topology
            Topology file: containerlab/lab.yml
            Running command: sudo containerlab deploy -t containerlab/lab.yml
-INFO[0000] Containerlab v0.36.1 started
-INFO[0000] Parsing & checking topology file: lab.yml
-INFO[0000] Creating lab directory: /home/netpanda/projects/network-observability/modern-network-observability-lab/clab-lab
 INFO[0000] Creating container: "ceos-01"
 INFO[0000] Creating container: "ceos-02"
 INFO[0001] Creating virtual wire: ceos-01:eth2 <--> ceos-02:eth2
 INFO[0001] Creating virtual wire: ceos-01:eth1 <--> ceos-02:eth1
-INFO[0001] Running postdeploy actions for Arista cEOS 'ceos-02' node
-INFO[0001] Running postdeploy actions for Arista cEOS 'ceos-01' node
-INFO[0031] Adding containerlab host entries to /etc/hosts file
-INFO[0031] 🎉 New containerlab version 0.41.2 is available! Release notes: https://containerlab.dev/rn/0.41/#0412
-Run 'containerlab version upgrade' to upgrade or go check other installation options at https://containerlab.dev/install/
 +---+---------+--------------+----------------+------+---------+------------------+--------------+
 | # |  Name   | Container ID |     Image      | Kind |  State  |   IPv4 Address   | IPv6 Address |
 +---+---------+--------------+----------------+------+---------+------------------+--------------+
@@ -81,72 +99,14 @@ Run 'containerlab version upgrade' to upgrade or go check other installation opt
 [21:51:14] Successfully ran: Deploying containerlab topology
 ─────────────────────────────────────────── End of task: Deploying containerlab topology ───────────────────────────────────────────
 
-           Starting service(s): None
            Running command: docker compose --project-name netobs -f chapters/docker-compose.yml --verbose up -d --remove-orphans
 [+] Building 0.0s (0/0)
 [+] Running 10/10
  ✔ Volume "netobs_grafana-01_data"     Created                                                                                 0.0s
- ✔ Volume "netobs_loki-01_data"        Created                                                                                 0.0s
  ✔ Volume "netobs_prometheus-01_data"  Created                                                                                 0.0s
  ✔ Container netobs-grafana-01-1       Started                                                                                 0.7s
- ✔ Container netobs-logstash-01-1      Started                                                                                 1.2s
- ✔ Container netobs-loki-01-1          Started                                                                                 1.1s
  ✔ Container netobs-prometheus-01-1    Started                                                                                 1.3s
- ✔ Container netobs-alertmanager-01-1  Started                                                                                 0.8s
- ✔ Container netobs-telegraf-01-1      Started                                                                                 0.9s
  ✔ Container netobs-telegraf-02-1      Started                                                                                 1.0s
 [21:51:16] Successfully ran: start stack
 ───────────────────────────────────────────────────── End of task: start stack ─────────────────────────────────────────────────────
 ```
-
-Showing the logs of the `telegraf-01` container:
-
-```bash
-# Show the logs of the telegraf-01 container
-❯ netobs docker logs --services telegraf-01 --tail 20
-[21:54:21] Showing logs for service(s): ['telegraf-01']
-           Running command: docker compose --project-name netobs -f chapters/docker-compose.yml logs --tail=20 telegraf-01
-netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! Starting Telegraf 1.17.2
-netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! Loaded inputs: gnmi internal net_response snmp
-netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! Loaded aggregators:
-netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! Loaded processors: enum (3x) rename (5x)
-netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! Loaded outputs: prometheus_client
-netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! Tags enabled: environment=lab host=telegraf-01
-netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! [agent] Config: Interval:10s, Quiet:false, Hostname:"telegraf-01", Flush Interval:10s
-netobs-telegraf-01-1  | 2023-06-04T21:51:15Z I! [outputs.prometheus_client] Listening on http://[::]:9004/metrics
-           Successfully ran: show logs
-────────────────────────────────────────────────────── End of task: show logs ──────────────────────────────────────────────────────
-```
-
----
-
-### Grafana Access
-
-To access Grafana, you can use the following credentials:
-
-- Username: `netobs`
-- Password: `netobs123`
-
-Now you can access Grafana at `http://<host_ip>:3000`
-
-<p float="left">
-  <img src="./pics/grafana-home.png" width="800" />
-</p>
-<p float="left">
-  <img src="./pics/grafana-datasources.png" width="400" />
-  <img src="./pics/grafana-explore.png" width="400" />
-</p>
-
----
-
-### Prometheus Access
-
-To access Prometheus at `http://<host_ip>:9090`
-
-<p float="left">
-  <img src="./pics/prometheus-home.png" width="800" />
-</p>
-<p float="left">
-  <img src="./pics/prometheus-targets.png" width="400" />
-  <img src="./pics/prometheus-rules.png" width="400" />
-</p>

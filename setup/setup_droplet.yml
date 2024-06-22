@@ -1,0 +1,167 @@
+---
+- name: Bootstrap netobs-droplet
+  hosts: "netobs-droplet"
+  gather_facts: false
+  tasks:
+    - name: Wait for connection to netobs-droplet
+      ansible.builtin.wait_for_connection:
+        timeout: 60
+
+    - name: Install or upgrade aptitude
+      ansible.builtin.apt:
+        name: aptitude
+        state: latest
+      tags:
+        - skip_ansible_lint
+
+    - name: Install or upgrade system dependencies
+      ansible.builtin.apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+          - apache2-utils
+          - git
+          # - bpfcc-tools
+          # - linux-headers-$(uname -r)
+        state: latest
+      tags:
+        - skip_ansible_lint
+      retries: 3
+      delay: 10
+      register: apt_install
+      until: apt_install is succeeded
+
+    - name: Download Docker
+      ansible.builtin.get_url:
+        url: https://get.docker.com
+        dest: /tmp/get-docker.sh
+        mode: "0755"
+
+    - name: Install Docker
+      ansible.builtin.command: bash -c /tmp/get-docker.sh
+      register: docker_install
+      retries: 3
+      delay: 10
+      changed_when: docker_install.rc != 0
+
+    - name: Install Python packages
+      ansible.builtin.pip:
+        name:
+          - docker
+        state: latest
+      tags:
+        - skip_ansible_lint
+
+    - name: Download Miniconda python environment
+      ansible.builtin.get_url:
+        url: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        # url: https://repo.anaconda.com/miniconda/Miniconda3-py310_23.5.2-0-Linux-x86_64.sh
+        dest: /tmp/install-miniconda.sh
+        mode: "0550"
+
+    - name: Install Miniconda
+      ansible.builtin.shell: bash /tmp/install-miniconda.sh -b -p $HOME/miniconda
+      register: miniconda_install
+      failed_when:
+        - "'ERROR: File or directory already exists' not in miniconda_install.stderr"
+        - "'installation finished.' not in miniconda_install.stdout"
+      changed_when: "'ERROR: File or directory already exists' not in miniconda_install.stderr"
+
+    - name: Remove Miniconda installer
+      ansible.builtin.file:
+        state: absent
+        path: /tmp/install-miniconda.sh
+
+    - name: Add miniconda bin to path
+      ansible.builtin.shell: echo 'export PATH=$HOME/miniconda/bin:$PATH' >> $HOME/.bashrc
+      register: miniconda_path
+      changed_when: miniconda_path.rc != 0
+
+    - name: Create localhost records in /etc/hosts
+      ansible.builtin.lineinfile:
+        state: present
+        path: /etc/hosts
+        regexp: ".*{{ item }}"
+        line: "127.0.0.1 {{ item }}"
+      with_items:
+        - "prometheus"
+        - "grafana"
+        - "loki"
+        - "nautobot"
+
+    - name: Download containerlab
+      ansible.builtin.get_url:
+        url: https://get.containerlab.dev
+        dest: /tmp/get-clab.sh
+        mode: "0755"
+
+    - name: Install containerlab
+      ansible.builtin.command: bash -c /tmp/get-clab.sh
+      register: clab_install
+      changed_when: clab_install.rc != 0
+
+    - name: Copy cEOS container image
+      ansible.builtin.copy:
+        src: "{{ lookup('ansible.builtin.env', 'CEOS_IMAGE_PATH') }}"
+        dest: /tmp/cEOS.tar
+        mode: "0644"
+
+    - name: Import cEOS container image
+      ansible.builtin.command: docker import /tmp/cEOS.tar ceos:image
+      register: ceos_import
+      changed_when: ceos_import.rc != 0
+
+
+- name: Setup netobs app
+  hosts: netobs-droplet
+  vars:
+    ansible_python_interpreter: /root/miniconda/bin/python
+  environment:
+    PATH: "/root/miniconda/bin:/root/.local/bin:{{ ansible_env.PATH }}"
+  tasks:
+    - name: Clone network-observability-lab
+      ansible.builtin.git:
+        repo: "{{ lookup('env', 'NETOBS_REPO' | default('https://github.com/network-observability/network-observability-lab.git')) }}"
+        dest: /root/network-observability-lab
+        version: "{{ lookup('env', 'NETOBS_BRANCH' | default('main')) }}"
+
+    - name: Copy .env file
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../.env"
+        dest: /root/network-observability-lab/.env
+        mode: "0644"
+
+    - name: Install network-observability-lab
+      ansible.builtin.shell:
+        cmd: "cd /root/network-observability-lab && pip install ."
+        executable: /bin/bash
+      register: netobs_install
+      changed_when: netobs_install.rc != 0
+
+    - name: Run netobs batteries included
+      ansible.builtin.shell:
+        cmd: "cd /root/network-observability-lab && netobs lab prepare --scenario batteries-included"
+        executable: /bin/bash
+      register: netobs_run
+      changed_when: netobs_run.rc != 0
+
+    - name: Wait for Nautobot to come up
+      ansible.builtin.uri:
+        url: "http://localhost:8080/health/"
+        status_code: [200]
+      register: result
+      until: result.status == 200
+      retries: 50
+      delay: 10
+
+    - name: Initialize Nautobot data
+      ansible.builtin.shell:
+        cmd: "cd /root/network-observability-lab && netobs utils load-nautobot"
+        executable: /bin/bash
+      register: netobs_run
+      changed_when: netobs_run.rc != 0

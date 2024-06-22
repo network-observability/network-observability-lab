@@ -15,14 +15,14 @@ services:
 
   telegraf-01:
     build:
-      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      dockerfile: "./telegraf/telegraf.Dockerfile"
       args:
         TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:
-      - ./configs/telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
-      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
+      - ./telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
+      - ./telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
     ports:
       - 9004:9004
     env_file:
@@ -32,14 +32,14 @@ services:
 
   telegraf-02:
     build:
-      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      dockerfile: "./telegraf/telegraf.Dockerfile"
       args:
         TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:
-      - ./configs/telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
-      - ./configs/telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
+      - ./telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
+      - ./telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
     ports:
       - 9005:9005
     env_file:
@@ -51,7 +51,7 @@ services:
     image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:main}
     command: -f /home/logstash/logstash.cfg
     volumes:
-      - ./configs/logstash/logstash.cfg:/home/logstash/logstash.cfg
+      - ./logstash/logstash.cfg:/home/logstash/logstash.cfg
     ports:
       - 1515:1515
     environment:
@@ -67,8 +67,8 @@ services:
       - 3001:3001
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
-      - ./configs/loki/loki-config.yml:/etc/loki/loki-config.yml
-      - ./configs/loki/rules/alerting_rules.yml:/rules/fake/rules.yaml
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml
+      - ./loki/rules/alerting_rules.yml:/rules/fake/rules.yaml
       - loki_data:/loki:rw
     env_file:
       - ../../.env
@@ -82,8 +82,8 @@ services:
     command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml
     tty: true
     volumes:
-      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./configs/prometheus/rules/:/etc/prometheus/rules/
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/rules/:/etc/prometheus/rules/
       - prometheus_data:/prometheus
     env_file:
       - ../../.env
@@ -97,7 +97,7 @@ services:
       - 9093:9093
     command: --config.file=/etc/alertmanager/alertmanager.yml --cluster.advertise-address=0.0.0.0:9093
     volumes:
-      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
       - alertmanager_data:/data
     env_file:
       - ../../.env
@@ -109,10 +109,10 @@ services:
     ports:
       - 3000:3000
     volumes:
-      - ./configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
-      - ./configs/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
-      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
-      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - grafana_data:/grafana
     environment:
       GF_INSTALL_PLUGINS: natel-discrete-panel,fifemon-graphql-datasource,yesoreyeram-infinity-datasource,volkovlabs-echarts-panel
@@ -132,7 +132,7 @@ services:
       - "8080:8080"
     restart: "unless-stopped"
     volumes:
-      - ./configs/nautobot/nautobot_config.py:/opt/nautobot/nautobot_config.py
+      - ./nautobot/nautobot_config.py:/opt/nautobot/nautobot_config.py
     networks:
       - network-observability
 
@@ -165,7 +165,7 @@ services:
 
   webhook:
     build:
-      dockerfile: "./configs/webhook/webhook.Dockerfile"
+      dockerfile: "./webhook/webhook.Dockerfile"
       args:
         PYTHON_VER: ${PYTHON_VER:-3.10}
     command: "python -m app.main"

@@ -1,7 +1,7 @@
 from pygnmi.client import gNMIclient
 import json
 
-paths = ['openconfig-interfaces:interfaces']
+paths = ['openconfig:interfaces']
 
 with gNMIclient(
     target=("ceos-01", 50051),

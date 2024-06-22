@@ -1,0 +1,10 @@
+pyshark
+pyebpf
+pygnmi
+scapy
+netmiko
+flask
+opentelemetry-api
+opentelemetry-sdk
+requests
+pysnmp

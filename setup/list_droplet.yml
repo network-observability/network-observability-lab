@@ -1,0 +1,8 @@
+---
+- name: Show Inventory
+  hosts: "netobs-droplet"
+  gather_facts: false
+  tasks:
+    - name: Show SSH command
+      ansible.builtin.debug:
+        msg: "ssh -o StrictHostKeyChecking=no -i {{ lookup('ansible.builtin.env', 'SSH_KEY_PATH') }} root@{{ ansible_host }}"

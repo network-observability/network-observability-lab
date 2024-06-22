@@ -11,13 +11,13 @@ services:
 
   telegraf-01:
     build:
-      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      dockerfile: "./telegraf/telegraf.Dockerfile"
       args:
         TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:
-      - ./configs/telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
+      - ./telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
     ports:
       - 9004:9004
     env_file:
@@ -30,14 +30,14 @@ services:
 
   telegraf-02:
     build:
-      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      dockerfile: "./telegraf/telegraf.Dockerfile"
       args:
         TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:
-      - ./configs/telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
-      - ./configs/telegraf/script.py:/etc/telegraf/script.py
+      - ./telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
+      - ./telegraf/script.py:/etc/telegraf/script.py
     ports:
       - 9005:9005
     env_file:
@@ -47,13 +47,13 @@ services:
 
   telegraf-consumer:
     build:
-      dockerfile: "./configs/telegraf/telegraf.Dockerfile"
+      dockerfile: "./telegraf/telegraf.Dockerfile"
       args:
         TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
     command: telegraf --config /etc/telegraf/telegraf.conf
     tty: true
     volumes:
-      - ./configs/telegraf/telegraf-consumer.conf.toml:/etc/telegraf/telegraf.conf
+      - ./telegraf/telegraf-consumer.conf.toml:/etc/telegraf/telegraf.conf
     ports:
       - 9006:9006
     env_file:
@@ -68,7 +68,7 @@ services:
     image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:main}
     command: -f /home/logstash/logstash.cfg
     volumes:
-      - ./configs/logstash/logstash.cfg:/home/logstash/logstash.cfg
+      - ./logstash/logstash.cfg:/home/logstash/logstash.cfg
     ports:
       - 1515:1515
     environment:
@@ -87,7 +87,7 @@ services:
       - "8080:8080"
     restart: "unless-stopped"
     volumes:
-      - ./configs/nautobot/nautobot_config.py:/opt/nautobot/nautobot_config.py
+      - ./nautobot/nautobot_config.py:/opt/nautobot/nautobot_config.py
     networks:
       - network-observability
 

@@ -1,0 +1,20 @@
+---
+networks:
+  network-observability:
+    external: true
+    name: network-observability
+
+services:
+  ch3:
+    build:
+      dockerfile: "./ch3.Dockerfile"
+      args:
+        PYTHON_VER: ${PYTHON_VER:-3.10}
+    tty: true
+    privileged: true
+    ports:
+      - 1515:1515
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability

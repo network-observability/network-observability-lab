@@ -1,0 +1,57 @@
+---
+- name: Stand up netobs-droplet
+  hosts: localhost
+  gather_facts: false
+  vars:
+    ansible_connection: local
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_prompt:
+    - name: "droplet_image"
+      prompt: "Enter the droplet image"
+      private: false
+      default: "ubuntu-22-04-x64"
+
+    - name: "droplet_size"
+      prompt: "Enter the droplet size"
+      private: false
+      default: "s-4vcpu-8gb"
+
+    - name: "droplet_region"
+      prompt: "Enter the droplet region"
+      private: false
+      default: "fra1"
+
+  tasks:
+    - name: Create DigitalOcean Droplets
+      community.digitalocean.digital_ocean_droplet:
+        state: present
+        oauth_token: "{{ lookup('ansible.builtin.env', 'DO_API_TOKEN') }}"
+        name: "netobs-droplet"
+        size: "{{ droplet_size }}"
+        image: "{{ droplet_image }}"
+        region: "{{ droplet_region }}"
+        private_networking: true
+        unique_name: true
+        ssh_keys: "{{ lookup('ansible.builtin.env', 'DO_SSH_FINGERPRINT') }}"
+        project: "network-observability-lab"
+        tags:
+          - "netobs"
+      register: droplet_result
+
+    # - debug:
+    #     var: droplet_result
+
+    - name: Wait for droplets to be ready
+      ansible.builtin.wait_for:
+        host: "{{ (droplet_result.data.droplet.networks.v4 | selectattr('type', 'equalto', 'public')).0.ip_address | default('<none>', true) }}"
+        port: 22
+        delay: 5
+        timeout: 300
+
+    - name: Show Droplet info
+      ansible.builtin.debug:
+        msg: |
+          Droplet ID is {{ droplet_result.data.droplet.id }}
+          Public IPv4 is {{ (droplet_result.data.droplet.networks.v4 | selectattr('type', 'equalto', 'public')).0.ip_address | default('<none>', true) }}
+      tags:
+        - skip_ansible_lint

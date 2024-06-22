@@ -1,0 +1,13 @@
+---
+- name: Destroy Droplet in DigitalOcean
+  hosts: netobs-droplet
+  gather_facts: false
+  tasks:
+
+    - name: "Destroy Droplet"
+      delegate_to: localhost
+      community.digitalocean.digital_ocean_droplet:
+        state: absent
+        oauth_token: "{{ lookup('ansible.builtin.env', 'DO_API_TOKEN') }}"
+        name: "{{ inventory_hostname }}"
+        unique_name: true
