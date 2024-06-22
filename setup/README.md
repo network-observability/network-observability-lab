@@ -21,8 +21,9 @@ Make sure you have these prerequisites ready before proceeding with the setup.
 For a straightforward deployment of the virtual machine, you can run the following commands from your forked repository:
 
 ```shell
-# On your local machine clone your forked repository
+# On your local machine clone your forked repository and go to its root location
 git clone https://github.com/<your-user>/network-observability-lab.git
+cd network-observability-lab
 
 # Setup environment variables (edit the .env file to your liking)
 cp example.env .env
