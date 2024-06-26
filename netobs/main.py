@@ -28,7 +28,7 @@ custom_theme = Theme({"info": "cyan", "warning": "bold magenta", "error": "bold 
 
 console = Console(color_system="truecolor", log_path=False, record=True, theme=custom_theme, force_terminal=True)
 
-app = typer.Typer(help="Run commands for setup and testing", rich_markup_mode="rich")
+app = typer.Typer(help="Run commands for setup and testing", rich_markup_mode="rich", add_completion=False)
 containerlab_app = typer.Typer(help="Containerlab related commands.", rich_markup_mode="rich")
 app.add_typer(containerlab_app, name="containerlab")
 
