@@ -15,6 +15,8 @@ The repository includes all the lab scenarios from the book, which progressively
 - **Scripts and Event-Driven Automation with Observability Events and Data (Chapter 12)**: Automate reports and actions based on data developing scripts, CLI tools and using event-driven systems.
 - **AI for Enhanced Observability (Chapter 13)**: Use AI to predict problems, find anomalies, and improve network management.
 
+---
+
 ## Requirements
 
 The lab environments are designed to set up a small network and an attached observability stack. Developed and tested on Debian-based systems, we provide [setup](setup/README.md) documentation to guide you through automatic setup on a DigitalOcean droplet. This process will provision, install dependencies, and configure the environment automatically. But if you want to host the lab environment, ensure the following:
