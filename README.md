@@ -16,13 +16,6 @@ The repository includes all the lab scenarios from the book, which progressively
 - **AI for Enhanced Observability (Chapter 13)**: Use AI to predict problems, find anomalies, and improve network management.
 
 ---
-<div align=center>
-<a href="https://codespaces.new/network-observability/network-observability-lab?quickstart=1">
-<img src="https://github.com/network-observability/network-observability-lab/blob/df/gh-codespaces/pics/codespace-button.svg" style="width:50%"/></a>
-
-</div>
-
----
 
 ## Requirements
 
