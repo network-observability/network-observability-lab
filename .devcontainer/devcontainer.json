@@ -3,7 +3,7 @@
         "dockerfile": "Dockerfile",
         "context": ".."
     },
-    "remoteUser": "vscode",
+    // "remoteUser": "vscode",
     "hostRequirements": {
         "cpus": 4,
         "memory": "8gb",
