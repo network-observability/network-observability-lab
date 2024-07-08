@@ -27,6 +27,6 @@ jobs:
       uses: devcontainers/ci@v0.3
       with:
         imageName: ghcr.io/network-observability-lab/netobs-devcontainer
-        cacheFrom: ghcr.io/network-observability-lab/netobs-devcontainer
+        # cacheFrom: ghcr.io/network-observability-lab/netobs-devcontainer
         # tags: yourusername/yourrepository:tag  # Replace with your Docker image tag
         push: always
