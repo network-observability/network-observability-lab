@@ -28,6 +28,8 @@ jobs:
         echo "Hello, World!"
         ls -al
         echo $PWD
+        echo "Aver"
+        ls -al /home/runner/work/network-observability-lab/network-observability-lab/.devcontainer/devcontainer.json
 
     - name: Build and push devcontainer image
       uses: devcontainers/ci@v0.3
