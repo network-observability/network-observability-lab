@@ -26,7 +26,7 @@ jobs:
     - name: local test
       uses: devcontainers/ci@v0.3
       with:
-        imageName: ghcr.io/network-observability-lab/netobs-devcontainer
+        # imageName: ghcr.io/network-observability-lab/netobs-devcontainer
         runCmd: |
           echo "Hello, World!"
           ls -al
