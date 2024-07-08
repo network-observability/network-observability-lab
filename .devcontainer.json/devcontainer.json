@@ -1,7 +1,7 @@
 {
     "build": {
-        "dockerfile": "Dockerfile",
-        "context": ".."
+        "dockerfile": "Dockerfile"
+        // "context": ".."
     },
     "remoteUser": "vscode",
     "hostRequirements": {
@@ -9,7 +9,7 @@
         "memory": "8gb",
         "storage": "32gb"
     },
-    "workspaceMount": "source=${localWorkspaceFolder},target=/${containerWorkspaceFolder},type=bind",
+    // "workspaceMount": "source=${localWorkspaceFolder},target=/${containerWorkspaceFolder},type=bind",
     "customizations": {
         "vscode": {
             "extensions": [
