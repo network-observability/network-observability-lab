@@ -23,6 +23,15 @@ jobs:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GH_TOKEN }}
 
+    - name: local test
+      uses: devcontainers/ci@v0.3
+      with:
+        imageName: ghcr.io/network-observability-lab/netobs-devcontainer
+        runCmd: |
+          echo "Hello, World!"
+          ls -al
+          echo $PWD
+
     - name: Build and push devcontainer image
       uses: devcontainers/ci@v0.3
       with:
@@ -31,4 +40,3 @@ jobs:
         # cacheFrom: ghcr.io/network-observability-lab/netobs-devcontainer
         # tags: yourusername/yourrepository:tag  # Replace with your Docker image tag
         push: always
-        runCmd: make ci-build
