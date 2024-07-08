@@ -4,5 +4,7 @@ COPY . /netobs
 
 WORKDIR /netobs
 
+RUN chmod -R 777 .
+
 RUN pip install --upgrade pip && \
     pip install .
