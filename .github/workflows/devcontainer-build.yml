@@ -24,13 +24,10 @@ jobs:
         password: ${{ secrets.GH_TOKEN }}
 
     - name: local test
-      uses: devcontainers/ci@v0.3
-      with:
-        # imageName: ghcr.io/network-observability-lab/netobs-devcontainer
-        runCmd: |
-          echo "Hello, World!"
-          ls -al
-          echo $PWD
+      run: |
+        echo "Hello, World!"
+        ls -al
+        echo $PWD
 
     - name: Build and push devcontainer image
       uses: devcontainers/ci@v0.3
