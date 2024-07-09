@@ -7,11 +7,19 @@ on:
 
 jobs:
   netobs-devcontainer:
+    # permissions: write-all
     runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: local test
+      run: |
+        echo "Hello, World!"
+        ls -al
+        echo $PWD
+        ls -al /home/runner/work/network-observability-lab/network-observability-lab/.devcontainer/devcontainer.json
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -23,18 +31,11 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GH_TOKEN }}
 
-    - name: local test
-      run: |
-        echo "Hello, World!"
-        ls -al
-        echo $PWD
-        ls -al /home/runner/work/network-observability-lab/network-observability-lab/.devcontainer/devcontainer.json
-
     - name: Build and push devcontainer image
       uses: devcontainers/ci@v0.3
       with:
-        imageName: ghcr.io/network-observability-lab/netobs-devcontainer
+        imageName: ghcr.io/network-observability/netobs-devcontainer
         imageTag: latest
-        # cacheFrom: ghcr.io/network-observability-lab/netobs-devcontainer
+        # cacheFrom: ghcr.io/network-observability/netobs-devcontainer
         # tags: yourusername/yourrepository:tag  # Replace with your Docker image tag
         push: always
