@@ -446,6 +446,32 @@ def containerlab_inspect(
 # --------------------------------------#
 
 
+@docker_app.command(rich_help_panel="Docker Stack Management", name="build")
+def docker_build(
+    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
+    services: Annotated[list[str], typer.Option(help="Service(s) to build")] = [],
+    verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
+):
+    """Build necessary containers.
+
+    [u]Example:[/u]
+
+    To build all services:
+        [i]netobs docker build --scenario batteries-included[/i]
+
+    To build a specific service:
+        [i]netobs docker build telegraf-01 --scenario batteries-included[/i]
+    """
+    console.log(f"Building service(s): [orange1 i]{services}", style="info")
+    run_docker_compose_cmd(
+        action="build",
+        filename=Path(f"./chapters/{scenario.value}/docker-compose.yml"),
+        services=services if services else [],
+        verbose=verbose,
+        task_name="build stack",
+    )
+
+
 @docker_app.command(rich_help_panel="Docker Stack Management", name="exec")
 def docker_exec(
     service: Annotated[str, typer.Argument(help="Service to execute command")],

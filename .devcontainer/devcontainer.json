@@ -6,5 +6,6 @@
         "memory": "8gb",
         "storage": "32gb"
     },
-    "postCreateCommand": "pip install ."
+    "postCreateCommand": "pip install . && cp example.env .env && netobs docker build",
+    "postStartCommand": "netobs docker start"
 }
