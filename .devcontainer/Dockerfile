@@ -1,4 +1,4 @@
-FROM ghcr.io/srl-labs/containerlab/clab-devcontainer:0.55.1
+FROM ghcr.io/srl-labs/containerlab/clab-devcontainer:0.55.0
 
 USER vscode
 

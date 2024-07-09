@@ -1,16 +1,17 @@
 {
     "build": {
-        "dockerfile": "Dockerfile",
+        "dockerfile": "./Dockerfile",
         "context": ".."
     },
     "remoteUser": "vscode",
+    "containerUser": "vscode",
     "hostRequirements": {
         "cpus": 4,
         "memory": "8gb",
         "storage": "32gb"
     },
-    "workspaceMount": "source=${localWorkspaceFolder},target=/${containerWorkspaceFolder},type=bind",
-    "workspaceFolder": "/netobs",
+    // "workspaceMount": "source=${localWorkspaceFolder},target=/${containerWorkspaceFolder},type=bind",
+    // "workspaceFolder": "/netobs",
     "customizations": {
         "vscode": {
             "extensions": [
