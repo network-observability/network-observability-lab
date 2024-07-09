@@ -10,4 +10,4 @@ COPY . /netobs
 RUN pip install --upgrade pip && \
     pip install .
 
-ENTRYPOINT [ "zsh" ]
+CMD [ "zsh" ]
