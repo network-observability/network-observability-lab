@@ -1,13 +1,19 @@
 FROM ghcr.io/srl-labs/containerlab/clab-devcontainer:0.55.1
 
-USER vscode
+# USER vscode
 
-WORKDIR /netobs
+# WORKDIR /netobs
 
 # COPY --chown=vscode:vscode --chmod=700 . /netobs
-COPY . /netobs
+# # COPY . /netobs
 
-RUN pip install --upgrade pip && \
-    pip install .
+# RUN pip install --upgrade pip && \
+#     pip install . && \
+#     cp example.env .env && \
+#     netobs docker build
 
-CMD [ "zsh" ]
+COPY ./build/cEOS64-lab-4.32.0.1F.tar cEOS64-lab-4.32.0.1F.tar
+
+# RUN docker load -i cEOS64-lab-4.32.0.1F.tar
+# RUN docker import cEOS64-lab-4.32.0.1F.tar ceos:image && \
+#     rm cEOS64-lab-4.32.0.1F.tar
