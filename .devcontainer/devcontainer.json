@@ -1,26 +1,16 @@
 {
-    "image": "ghcr.io/network-observability/netobs-devcontainer:all-in-one-test",
-    // "image": "ghcr.io/srl-labs/containerlab/clab-devcontainer:0.55.1",
-    "remoteUser": "vscode",
-    // "containerUser": "vscode",
+    "build": {
+        "dockerfile": "./Dockerfile",
+        "context": ".."
+    },
     "features": {
         "ghcr.io/devcontainers/features/docker-in-docker:2": {
             "version": "latest",
             "dockerDashComposeVersion": "none"
+        },
+        "ghcr.io/devcontainers/features/sshd:1": {
+            "version": "latest"
         }
-        // // Add sshd to support gh cli codespace cp.
-        // "ghcr.io/devcontainers/features/sshd:1": {
-        //     "version": "latest"
-        // },
-        // "ghcr.io/devcontainers/features/go:1": {
-        //     "version": "1.21"
-        // }
     },
-    "hostRequirements": {
-        "cpus": 4,
-        "memory": "8gb",
-        "storage": "32gb"
-    },
-    "postCreateCommand": "pip install . && cp example.env .env && netobs docker build"
-    // "postStartCommand": "netobs docker start"
+    "postCreateCommand": "cp example.env .env && netobs docker build"
 }
