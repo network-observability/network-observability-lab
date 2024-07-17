@@ -1,0 +1,16 @@
+{
+    "build": {
+        "dockerfile": "./Dockerfile",
+        "context": ".."
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "version": "latest",
+            "dockerDashComposeVersion": "none"
+        },
+        "ghcr.io/devcontainers/features/sshd:1": {
+            "version": "latest"
+        }
+    },
+    "postCreateCommand": "cp example.env .env && netobs docker build"
+}

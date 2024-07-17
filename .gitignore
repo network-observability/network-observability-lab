@@ -313,3 +313,6 @@ terraform.tfstate.backup
 local
 
 *keep_api_key
+
+# Dev Containers
+.devcontainer/dev
