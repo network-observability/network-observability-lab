@@ -25,6 +25,16 @@ The lab environments are designed to set up a small network and an attached obse
 - `docker` installed (version `26.1.1` or above)
 - `containerlab` for the network lab (version `0.54.2` or above)
 - `netobs` for managing the network lab and observability stack (installed with this repository, more details later)
+- Arista `cEOS` images for the `containerlab` environment. You can open an account and download them at [arista.com](https://www.arista.com)
+
+### Prepare cEOS image
+
+After downloading the image, use the following command to import them as Docker images:
+
+```bash
+# Import cEOS images as Docker images
+docker import <path-to-image>/cEOS64-lab-<version>.tar.xz ceos:image
+```
 
 ## Quickstart
 
