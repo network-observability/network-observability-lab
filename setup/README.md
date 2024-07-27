@@ -6,13 +6,38 @@ The virtual machine is configured to run the network observability lab using the
 
 ## Requirements
 
+This guide is using DigitalOcean as the cloud provider and is important to know that charges may incur. To set up an Ubuntu droplet, you must first meet certain requirements and follow these steps:
+
+1. **Create a Digital Ocean account**: Go to their website and create an account if you don't have one already. You can use this [link](https://www.digitalocean.com/try/free-trial-offer).
+2. **Create an SSH key pair and upload SSH public keys**: For information on how to create SSH keys, check out the [official documentation](https://docs.digitalocean.com/products/droplets/how-to/add-ssh-keys/). This step ensures secure and passwordless access to your droplet. For example on you local machine, you can use the following command to create an SSH key pair:
+
+```bash
+$ ssh-keygen -t rsa -b 4096 -C "network-observability-lab" -f ~/.ssh/id_rsa_do
+```
+
+This will create an SSH key pair in the `~/.ssh` folder with the name `id_rsa_do` and `id_rsa_do.pub` as the public key. After it is created you can copy and upload the public key over to your DigitalOcean account.
+
+Next, go to your DigitalOcean account control panel and click the “Settings” menu and then “Security”. Then click “Add SSH Key” and paste the content of the public key file. The name field is optional, but you can use `network-observability-lab` as the name. Then click “Add SSH Key”.
+
+You can use this [link](https://docs.digitalocean.com/products/droplets/how-to/add-ssh-keys/to-account/) for more instructions and other alternatives available.
+
+3. **Fork the Git Repository and Install the netobs Tool**: By forking this repository, you are able to make the changes you desire and follow along with the example and tasks presented in the book. For more information on how to fork a GitHub repository see the [official documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo). The netobs tool needs to be installed on your local machine, referred to as the “control” machine. This is necessary because it requires data from the network-observability-lab repository to set up a ready-to-go environment.
+
+On your local machine install the netobs tool:
+
+```bash
+# Install netobs
+pip install .
+```
+
+
 To run the commands used to deploy and provision a DigitalOcean droplet, you need to have the following:
 
-- **The `netobs` tool installed on your system**: Later in this section, we explain how to install it.
 - **A DigitalOcean account**: IMPORTANT: Deploying a droplet/virtual machine costs money, so we spent a good amount of time automating the setup and removal of the droplet to optimize costs.
   - **SSH keys to access the virtual machine**: You will need to upload your public key to DigitalOcean and retrieve its SSH fingerprint. For information on how to create SSH keys, check out the [official documentation](https://docs.digitalocean.com/products/droplets/how-to/add-ssh-keys/). This step ensures secure and passwordless access to your droplet.
   - **A DigitalOcean API key**: This key is necessary to programmatically interact with the DigitalOcean API for tasks like creating and managing droplets. For information on how to create an API key, check out the [official documentation](https://docs.digitalocean.com/reference/api/create-personal-access-token/).
 - **Forked networked-observability-lab repo**: By forking this repository, you are able to make the changes you desire and follow along with the example and tasks presented in the book. For more information on how to fork a GitHub repository see the [official documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo).
+- **The `netobs` tool installed on your system**: Later in this section, we explain how to install it.
 
 Make sure you have these prerequisites ready before proceeding with the setup.
 
