@@ -20,7 +20,7 @@ The repository includes all the lab scenarios from the book, which progressively
 
 ## Requirements
 
-The lab environments are designed to set up a small network and an attached observability stack. Developed and tested on Debian-based systems, we provide [setup](setup/README.md) documentation to guide you through automatic setup on a DigitalOcean droplet. This process will provision, install dependencies, and configure the environment automatically. But if you want to host the lab environment, ensure the following:
+The lab environments are designed to set up a small network and an attached observability stack. Developed and tested on Debian-based systems, we provide **[setup](setup/README.md) documentation to guide** you through automatic setup on a DigitalOcean droplet. This process will provision, install dependencies, and configure the environment automatically. But if you want to host the lab environment, ensure the following:
 
 - `docker` installed (version `26.1.1` or above)
 - `containerlab` for the network lab (version `0.54.2` or above)
