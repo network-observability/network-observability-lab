@@ -20,12 +20,14 @@ The repository includes all the lab scenarios from the book, which progressively
 
 ## Requirements
 
-The lab environments are designed to set up a small network and an attached observability stack. Developed and tested on Debian-based systems, we provide [setup](setup/README.md) documentation to guide you through automatic setup on a DigitalOcean droplet. This process will provision, install dependencies, and configure the environment automatically. But if you want to host the lab environment, ensure the following:
+The lab environments are designed to set up a small network and an attached observability stack. Developed and tested on Debian-based systems, we provide **[setup](setup/README.md) documentation to guide** you through automatic setup on a DigitalOcean droplet. This process will provision, install dependencies, and configure the environment automatically. But if you want to host the lab environment, ensure the following:
 
 - `docker` installed (version `26.1.1` or above)
 - `containerlab` for the network lab (version `0.54.2` or above)
 - `netobs` for managing the network lab and observability stack (installed with this repository, more details later)
 - Arista `cEOS` images for the `containerlab` environment. You can open an account and download them at [arista.com](https://www.arista.com)
+
+For detailed setup instructions, please refer to the [setup README](./setup/README.md). It provides a comprehensive guide on installing the lab environment on a DigitalOcean Droplet.
 
 ### Prepare cEOS image
 
