@@ -49,7 +49,7 @@ The Ansible playbook will use the .setup.env environment variables and specified
 To explore or perform the labs presented in the book, connect to the droplet using SSH. You can get the details on how to connect by running the command `netobs setup list`:
 
 ```bash
-❯ netobs setup list
+❯ netobs setup show
 
 TASK [Show SSH command] ****************************************************************
 ok: [netobs-droplet] => {}

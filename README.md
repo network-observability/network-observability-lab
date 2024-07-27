@@ -27,6 +27,8 @@ The lab environments are designed to set up a small network and an attached obse
 - `netobs` for managing the network lab and observability stack (installed with this repository, more details later)
 - Arista `cEOS` images for the `containerlab` environment. You can open an account and download them at [arista.com](https://www.arista.com)
 
+For detailed setup instructions, please refer to the [setup README](./setup/README.md). It provides a comprehensive guide on installing the lab environment on a DigitalOcean Droplet.
+
 ### Prepare cEOS image
 
 After downloading the image, use the following command to import them as Docker images:
