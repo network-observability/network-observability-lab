@@ -4,6 +4,8 @@ This directory contains instructions for deploying a remote droplet (virtual mac
 
 The virtual machine is configured to run the network observability lab using the `netobs` utility tool. If you are following along with the book, you can use this virtual machine to run the labs presented in the book.
 
+![Overall Lab Environment](./../pics/overall-lab-environment.png)
+
 ## Requirements
 
 This guide uses DigitalOcean as the cloud provider, and it's important to note that charges may apply. The process employs the `netobs` utility to wrap Ansible playbooks for configuring the DigitalOcean droplet. A "control" machine, usually your local machine, is required to execute the commands and initiate the setup process.
@@ -153,6 +155,38 @@ Alternatively, you can connect to your Grafana instance by navigating to `http:/
 
 During your interaction with the environment, you might change configurations, experiment with different metrics, create alerts or visualizations, or simulate various network conditions to see how the observability stack responds.
 
+### Connecting Visual Studio Code to Your DigitalOcean Droplet
+
+If you use [Visual Studio Code](https://code.visualstudio.com/) (VSCode), you can connect to your DigitalOcean droplet over SSH, allowing you to modify the lab environment directly. This setup is particularly useful if you're following along with the chapters of the book, as it enables you to configure, save, and run commands directly from the VSCode application.
+
+1. **Open Visual Studio Code**: Launch VSCode on your local machine.
+2. **Navigate to the Remote Explorer**: On the left sidebar, click on the "Remote Explorer" tab. Under "SSH," click the "+" sign or right-click and select "New Remote."
+3. **Set Up SSH Connection**: This action will prompt you to enter the SSH connection command. You can obtain this command by running `netobs setup show` on your local or "control" machine. The output will resemble the following command:
+
+   ```bash
+   ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_do root@<droplet-ip-address>
+   ```
+
+   Copy and paste this command into VSCode's prompt.
+
+4. **Save the SSH Configuration**: Follow the prompts to save this new remote connection to your SSH configuration. Once connected, go to "Explorer" > "Open Folder," and navigate to your forked repository folder (`/root/network-observability-lab/`).
+
+5. **Access Your Workspace**: You are now connected to your droplet and within your forked repository. Open the "Terminal" tab in VSCode and check the status of the `batteries-included` scenario by running the following command:
+
+   ```bash
+   netobs docker ps
+   ```
+
+This setup provides a dedicated workspace where you can freely change, add, or delete configurations and components to test different scenarios.
+
+For more detailed information on connecting remotely using VSCode, refer to the [official VSCode documentation](https://code.visualstudio.com/docs/remote/ssh).
+
+### Note About the Lab Chapters
+
+The book is designed to guide you through a series of configuration tasks relevant to each chapter. Most chapters include their own scenario setup, along with a completed version of the configuration. For example, in Chapter 5, you might find Logstash and Telegraf configuration files that are intentionally left blank. It's your task to configure them as part of the chapter's exercises. The completed version of Chapter 5 includes all necessary configurations for the lab.
+
+It's important to note that even if you set up a lab environment for a specific chapter using the command `netobs lab prepare --scenario ch5`, components like Telegraf or Logstash may not be fully operational due to the incomplete configuration files. By following the chapter's content and instructions, you will learn how to update these components and observe the impact on your observability stack.
+
 ## Removing the Lab Environment
 
 Once you've finished experimenting and learning with your lab environment, you may want to tear it down, especially if you're using resources in a cloud environment where running costs are a consideration.
@@ -162,9 +196,6 @@ The process of tearing down your lab environment is referred to as 'destroying' 
 To destroy a lab scenario **on the DigitalOcean droplet**, you can use the following commands:
 
 ```bash
-# On your droplet go to your forked repository
-cd network-observability-lab
-
 # Remove the batteries-included scenario components
 netobs lab destroy --scenario batteries-included
 
