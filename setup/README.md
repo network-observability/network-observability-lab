@@ -4,6 +4,24 @@ This directory contains instructions for deploying a remote droplet (virtual mac
 
 The virtual machine is configured to run the network observability lab using the `netobs` utility tool. If you are following along with the book, you can use this virtual machine to run the labs presented in the book.
 
+![Overall Lab Environment](./../pics/overall-lab-environment.png)
+
+- [Remote Machine Setup](#remote-machine-setup)
+  - [Requirements](#requirements)
+    - [1. Create a Digital Ocean account](#1-create-a-digital-ocean-account)
+    - [2. Fork and Clone the Git Repository](#2-fork-and-clone-the-git-repository)
+    - [3. Install the `netobs` tool](#3-install-the-netobs-tool)
+    - [4. Setup environment files](#4-setup-environment-files)
+    - [5. Download the Arista cEOS images](#5-download-the-arista-ceos-images)
+    - [6. Create a Digital Ocean API token](#6-create-a-digital-ocean-api-token)
+    - [7. Create an SSH key pair and retrieve its fingerprint](#7-create-an-ssh-key-pair-and-retrieve-its-fingerprint)
+    - [8. Pointing to the Forked Repository for Installation](#8-pointing-to-the-forked-repository-for-installation)
+    - [9. Create a Digital Ocean droplet](#9-create-a-digital-ocean-droplet)
+  - [Interacting with the Lab Scenarios](#interacting-with-the-lab-scenarios)
+    - [Connecting Visual Studio Code to Your DigitalOcean Droplet](#connecting-visual-studio-code-to-your-digitalocean-droplet)
+    - [Note About the Lab Chapters](#note-about-the-lab-chapters)
+  - [Removing the Lab Environment](#removing-the-lab-environment)
+
 ## Requirements
 
 This guide uses DigitalOcean as the cloud provider, and it's important to note that charges may apply. The process employs the `netobs` utility to wrap Ansible playbooks for configuring the DigitalOcean droplet. A "control" machine, usually your local machine, is required to execute the commands and initiate the setup process.
@@ -14,7 +32,7 @@ Go to their website and create an account if you don't have one already. You can
 
 ### 2. Fork and Clone the Git Repository
 
-By forking this git repository, you are able to make the changes you desire and follow along with the example and tasks presented in the book. To fork the repository, click the "Fork" button at the top right of this page and follow the instructions. For more information on how to fork a GitHub repository see the [official documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo).
+By forking this git repository, you are able to make the changes you desire and follow along with the example and tasks presented in the book. To fork the repository, click the "Fork" button at the top right of [the repository page](https://github.com/network-observability/network-observability-lab) and follow the instructions. For more information on how to fork a GitHub repository see the [official documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo).
 
 After creating your fork, on your local or "control" machine clone your forked repository:
 
@@ -76,21 +94,41 @@ This will create an SSH key pair in the `~/.ssh` folder with the name `id_rsa_do
 
 Next, go to your DigitalOcean account control panel and click the "Settings" menu and then "Security". Then click "Add SSH Key" and paste the content of the public key file. The name field is optional, but you can use `network-observability-lab` as the name. Then click "Add SSH Key".
 
-Finally, copy the fingerprint value for the SSH key and save it in the `DO_SSH_FINGERPRINT` environment variable in `.setup.env`. This step ensures your SSH key is included in the DigitalOcean droplet build process, allowing you access post-creation.
+Next, copy the fingerprint value of your SSH key and save it in the `DO_SSH_FINGERPRINT` environment variable in the `.setup.env` file.
 
-### 8. Create a Digital Ocean droplet
+If you followed the previous command or specified a custom name for your SSH private key file, copy its location and save it under the `SSH_KEY_PATH` variable in the `.setup.env` file. For example:
+
+```bash
+SSH_KEY_PATH="~/.ssh/id_rsa_do"
+```
+
+This step ensures that your SSH key is included in the DigitalOcean droplet build process, granting you access after the droplet is created.
+
+### 8. Pointing to the Forked Repository for Installation
+
+You need to configure the setup process to install your forked repository when creating and provisioning the DigitalOcean droplet. To do this, set the following environment variable in your `.setup.env` file:
+
+```bash
+NETOBS_REPO="https://github.com/<your-username>/network-observability-lab.git"
+```
+
+Additionally, you can specify a particular branch to be installed by setting the `NETOBS_BRANCH` variable. By default is going to use the `main` branch.
+
+### 9. Create a Digital Ocean droplet
 
 You're now ready to begin setting up the DigitalOcean droplet. Use the command `netobs setup deploy` to start the process. This script will initiate an Ansible playbook that will prompt you to specify the characteristics of your droplet, such as its size, region, and other details. Follow the prompts similar to those shown in the figure below, and the provisioning will commence, setting up the environment automatically.
 
 On your local or "control" machine run the command to setup the droplet:
 
 ```bash
-# Go to your forked repository
-cd network-obervability-lab
+# Go to your forked repository and check netobs command capabilities
+netobs --help
 
 # Deploy DigitalOcean Droplet
 netobs setup deploy
 ```
+
+The setup playbook will ask for the droplet image, its size and region to be deployed. It comes with default values, but you can change them if you prefer a bigger droplet size or region, for more information see [here](https://slugs.do-api.dev/).
 
 The playbooks executed by `netobs setup deploy` are designed to be idempotent, meaning you can run the command again without adverse effects if you encounter issues (such as DigitalOcean API problems). Just ensure you use the same variables as initially prompted. Once the setup completes, use the `netobs setup show` command to display an SSH command that will allow you to quickly access your droplet.
 
@@ -104,7 +142,15 @@ At this point, the droplet is fully set up with Docker, Containerlab, and the ne
 ## Interacting with the Lab Scenarios
 
 Now, you can start exploring and interacting with your lab environment. It includes various network devices and observability stack components, each of which is accessible and manageable. For network devices, you can use SSH or other network management protocols to connect to them. This allows you to modify configurations, run diagnostic commands, and test different network setups.
-Here's an example of how to connect to an Arista cEOS network device using SSH:
+
+Here's an example of how to connect to an Arista cEOS network device using SSH. First connect to the DigitalOcean droplet:
+
+```bash
+# Use the command output from the `netobs setup show` command from before
+ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_do root@<droplet-ip-address>
+```
+
+Then connect to a device, for example `ceos-01`:
 
 ```bash
 # Connect to ceos-01 via Cli utility command
@@ -115,11 +161,47 @@ docker exec -it ceos-01 Cli
 ssh netobs@ceos-01
 ```
 
-Regarding the observability stack components like Telegraf, Prometheus, Grafana, and others, you can interact with them primarily through their web interfaces, APIs, or command-line interfaces (if available). For example, to access the Prometheus web interface, open a web browser and navigate to the IP address of your droplet and the port on which your Prometheus service is running (http://<droplet-ip-address>:9090). You can then write queries such as `interface_admin_status` in the query panel.
+Regarding the observability stack components like Telegraf, Prometheus, Grafana, and others, you can interact with them primarily through their web interfaces, APIs, or command-line interfaces (if available). For example, to access the Prometheus web interface, open a web browser and navigate to the IP address of your droplet and the port on which your Prometheus service is running (`http://<droplet-ip-address>:9090`). You can then write queries such as `interface_admin_status` in the query panel.
 
 ![Prometheus Web Interface](./../pics/prometheus-web-interface.png)
 
+Alternatively, you can connect to your Grafana instance by navigating to `http://<droplet-ip-address>:3000`. Use the credentials provided in the `.env` file to log in. Once logged in, go to "Dashboards" > "Device Health" to access a comprehensive dashboard that monitors your devices:
+
+![Grafana Device Health Dashboard](./../pics/grafana-device-dashboard.png)
+
 During your interaction with the environment, you might change configurations, experiment with different metrics, create alerts or visualizations, or simulate various network conditions to see how the observability stack responds.
+
+### Connecting Visual Studio Code to Your DigitalOcean Droplet
+
+If you use [Visual Studio Code](https://code.visualstudio.com/) (VSCode), you can connect to your DigitalOcean droplet over SSH, allowing you to modify the lab environment directly. This setup is particularly useful if you're following along with the chapters of the book, as it enables you to configure, save, and run commands directly from the VSCode application.
+
+1. **Open Visual Studio Code**: Launch VSCode on your local machine.
+2. **Navigate to the Remote Explorer**: On the left sidebar, click on the "Remote Explorer" tab. Under "SSH," click the "+" sign or right-click and select "New Remote."
+3. **Set Up SSH Connection**: This action will prompt you to enter the SSH connection command. You can obtain this command by running `netobs setup show` on your local or "control" machine. The output will resemble the following command:
+
+   ```bash
+   ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_do root@<droplet-ip-address>
+   ```
+
+   Copy and paste this command into VSCode's prompt.
+
+4. **Save the SSH Configuration**: Follow the prompts to save this new remote connection to your SSH configuration. Once connected, go to "Explorer" > "Open Folder," and navigate to your forked repository folder (`/root/network-observability-lab/`).
+
+5. **Access Your Workspace**: You are now connected to your droplet and within your forked repository. Open the "Terminal" tab in VSCode and check the status of the `batteries-included` scenario by running the following command:
+
+   ```bash
+   netobs docker ps
+   ```
+
+This setup provides a dedicated workspace where you can freely change, add, or delete configurations and components to test different scenarios.
+
+For more detailed information on connecting remotely using VSCode, refer to the [official VSCode documentation](https://code.visualstudio.com/docs/remote/ssh).
+
+### Note About the Lab Chapters
+
+The book is designed to guide you through a series of configuration tasks relevant to each chapter. Most chapters include their own scenario setup, along with a completed version of the configuration. For example, in Chapter 5, you might find Logstash and Telegraf configuration files that are intentionally left blank. It's your task to configure them as part of the chapter's exercises. The completed version of Chapter 5 includes all necessary configurations for the lab.
+
+It's important to note that even if you set up a lab environment for a specific chapter using the command `netobs lab prepare --scenario ch5`, components like Telegraf or Logstash may not be fully operational due to the incomplete configuration files. By following the chapter's content and instructions, you will learn how to update these components and observe the impact on your observability stack.
 
 ## Removing the Lab Environment
 
@@ -127,16 +209,17 @@ Once you've finished experimenting and learning with your lab environment, you m
 
 The process of tearing down your lab environment is referred to as 'destroying' the environment. It involves deleting all the components that were created, freeing up the resources they were using, and essentially returning your system to the state it was in before the environment was deployed.
 
-To destroy the lab scenario you can use the following commands:
+To destroy a lab scenario **on the DigitalOcean droplet**, you can use the following commands:
 
 ```bash
-# Remove the batteries-included scenario
+# Remove the batteries-included scenario components
 netobs lab destroy --scenario batteries-included
+
 # Remove ALL scenarios setup (useful when you might not remember which one was up)
 netobs lab purge
 ```
 
- To remove the remote DigitalOcean droplet, you can run the command `netobs setup destroy`. This will delete the droplet from your account, which is useful when you have finished the labs for the day.
+ To remove the remote DigitalOcean droplet, you can run the command `netobs setup destroy` **on your local or "control" machine**. This will delete the droplet from your account, which is useful when you have finished the labs for the day.
 
  ```bash
  # Delete the DigitalOcean Droplet
