@@ -21,4 +21,5 @@ ENV PATH=/opt/conda/bin:$PATH
 # Verify the installation
 RUN conda --version
 
-RUN pip --no-cache-dir install netmiko
+RUN pip install --upgrade pip && \
+    pip --no-cache-dir install netmiko jmespath
