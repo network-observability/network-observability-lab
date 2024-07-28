@@ -6,6 +6,22 @@ The virtual machine is configured to run the network observability lab using the
 
 ![Overall Lab Environment](./../pics/overall-lab-environment.png)
 
+- [Remote Machine Setup](#remote-machine-setup)
+  - [Requirements](#requirements)
+    - [1. Create a Digital Ocean account](#1-create-a-digital-ocean-account)
+    - [2. Fork and Clone the Git Repository](#2-fork-and-clone-the-git-repository)
+    - [3. Install the `netobs` tool](#3-install-the-netobs-tool)
+    - [4. Setup environment files](#4-setup-environment-files)
+    - [5. Download the Arista cEOS images](#5-download-the-arista-ceos-images)
+    - [6. Create a Digital Ocean API token](#6-create-a-digital-ocean-api-token)
+    - [7. Create an SSH key pair and retrieve its fingerprint](#7-create-an-ssh-key-pair-and-retrieve-its-fingerprint)
+    - [8. Pointing to the Forked Repository for Installation](#8-pointing-to-the-forked-repository-for-installation)
+    - [9. Create a Digital Ocean droplet](#9-create-a-digital-ocean-droplet)
+  - [Interacting with the Lab Scenarios](#interacting-with-the-lab-scenarios)
+    - [Connecting Visual Studio Code to Your DigitalOcean Droplet](#connecting-visual-studio-code-to-your-digitalocean-droplet)
+    - [Note About the Lab Chapters](#note-about-the-lab-chapters)
+  - [Removing the Lab Environment](#removing-the-lab-environment)
+
 ## Requirements
 
 This guide uses DigitalOcean as the cloud provider, and it's important to note that charges may apply. The process employs the `netobs` utility to wrap Ansible playbooks for configuring the DigitalOcean droplet. A "control" machine, usually your local machine, is required to execute the commands and initiate the setup process.
