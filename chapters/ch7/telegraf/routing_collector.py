@@ -1,8 +1,8 @@
 """BGP neighbor state_pfxrcd/state_pfxacc to InfluxDB line protocol script."""
 import os
 import sys
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
 from netmiko import ConnectHandler
 
@@ -45,7 +45,6 @@ class InfluxMetric:
         )
 
 
-
 def main(device_type, host):
     """Connect to a device and print the BGP neighbor pfxrcd/pfxacc value in the influx line protocol format."""
     # Define the device to connect to
@@ -69,33 +68,33 @@ def main(device_type, host):
         # Create the measurement, tags, and fields for InfluxDB line protocol format
         measurement = "bgp"
         tags = {
-            "neighbor": neighbor['bgp_neigh'],  # type: ignore
-            "neighbor_asn": neighbor['neigh_as'],  # type: ignore
-            "vrf": neighbor['vrf'],  # type: ignore
+            "neighbor": neighbor["bgp_neigh"],  # type: ignore
+            "neighbor_asn": neighbor["neigh_as"],  # type: ignore
+            "vrf": neighbor["vrf"],  # type: ignore
             "device": host,
         }
 
         # Convert the state to a more readable format
-        if "Estab" in neighbor['state']:  # type: ignore
+        if "Estab" in neighbor["state"]:  # type: ignore
             state = "ESTABLISHED"
-        elif "Idle" in neighbor['state']:  # type: ignore
+        elif "Idle" in neighbor["state"]:  # type: ignore
             state = "IDLE"
-        elif "Connect" in neighbor['state']:  # type: ignore
+        elif "Connect" in neighbor["state"]:  # type: ignore
             state = "CONNECT"
-        elif "Active" in neighbor['state']:  # type: ignore
+        elif "Active" in neighbor["state"]:  # type: ignore
             state = "ACTIVE"
-        elif "opensent" in neighbor['state'].lower():  # type: ignore
+        elif "opensent" in neighbor["state"].lower():  # type: ignore
             state = "OPENSENT"
-        elif "openconfirm" in neighbor['state'].lower():  # type: ignore
+        elif "openconfirm" in neighbor["state"].lower():  # type: ignore
             state = "OPENCONFIRM"
         else:
-            state = neighbor['state'].upper()  # type: ignore
+            state = neighbor["state"].upper()  # type: ignore
 
         fields = {"neighbor_state": state}
 
-        if neighbor['state_pfxrcd']:  # type: ignore
-            fields["prefixes_received"] = int(neighbor['state_pfxrcd'])  # type: ignore
-            fields["prefixes_accepted"] = int(neighbor['state_pfxacc'])  # type: ignore
+        if neighbor["state_pfxrcd"]:  # type: ignore
+            fields["prefixes_received"] = int(neighbor["state_pfxrcd"])  # type: ignore
+            fields["prefixes_accepted"] = int(neighbor["state_pfxacc"])  # type: ignore
 
         # Generate the line protocol string
         line_protocol = InfluxMetric(measurement, tags, fields)
@@ -111,20 +110,19 @@ def main(device_type, host):
         return
 
     for neighbor in ospf_output:
-
         measurement = "ospf"
         # OSPF textfsm template returns 'address' instead of 'ip_address' depending on the template
-        address = neighbor.get('ip_address') if neighbor.get('ip_address') else neighbor.get('address')  # type: ignore
+        address = neighbor.get("ip_address") if neighbor.get("ip_address") else neighbor.get("address")  # type: ignore
         tags = {
             "neighbor": address,
-            "interface": neighbor['interface'],  # type: ignore
-            "neighbor_id": neighbor['neighbor_id'],  # type: ignore
-            "instance": neighbor['instance'],  # type: ignore
-            "vrf": neighbor['vrf'],  # type: ignore
+            "interface": neighbor["interface"],  # type: ignore
+            "neighbor_id": neighbor["neighbor_id"],  # type: ignore
+            "instance": neighbor["instance"],  # type: ignore
+            "vrf": neighbor["vrf"],  # type: ignore
             "device": host,
         }
 
-        state = neighbor['state'].replace("/BDR", "").replace("/DR", "")  # type: ignore
+        state = neighbor["state"].replace("/BDR", "").replace("/DR", "")  # type: ignore
         fields = {
             "neighbor_state": state.upper(),
         }

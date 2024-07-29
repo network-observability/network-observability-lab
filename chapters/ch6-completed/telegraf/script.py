@@ -1,13 +1,12 @@
+import fileinput
 import os
 import sys
-import fileinput
 from dataclasses import dataclass
 from typing import Optional
 
-import requests
 import jmespath
+import requests
 from requests.exceptions import ConnectionError
-
 
 # Define the Nautobot URL and API token
 NAUTOBOT_URL = "http://nautobot:8080"
@@ -31,14 +30,25 @@ query ($device_name: [String]) {
 }
 """
 
-def parse_line(line):
+
+def parse_line(line: str) -> dict:
+    """
+    Parse a line of InfluxDB Line Protocol and return a dictionary with the
+    measurement, tags, fields, and optional timestamp.
+
+    Args:
+        line (str): Line of InfluxDB Line Protocol to parse
+
+    Returns:
+        dict: Dictionary with measurement, tags, fields, and optional time
+    """
     # Split the line into main components: measurement+tags, fields, and optional time
     parts = line.split(" ")
 
     # Extract measurement and tags
     measurement_and_tags = parts[0]
-    if ',' in measurement_and_tags:
-        measurement, tags_str = measurement_and_tags.split(',', 1)
+    if "," in measurement_and_tags:
+        measurement, tags_str = measurement_and_tags.split(",", 1)
     else:
         measurement = measurement_and_tags
         tags_str = ""
@@ -46,19 +56,19 @@ def parse_line(line):
     # Parse tags
     tags = {}
     if tags_str:
-        for tag in tags_str.split(','):
-            key, value = tag.split('=')
+        for tag in tags_str.split(","):
+            key, value = tag.split("=")
             tags[key] = value
 
     # Extract and parse fields
     fields_str = parts[1]
     fields = {}
-    for field in fields_str.split(','):
-        key, value = field.split('=')
+    for field in fields_str.split(","):
+        key, value = field.split("=")
         # Determine field type
         if value.startswith('"') and value.endswith('"'):
             fields[key] = value[1:-1]  # String field
-        elif '.' in value:
+        elif "." in value:
             fields[key] = float(value)  # Float field
         else:
             try:
@@ -72,12 +82,7 @@ def parse_line(line):
     else:
         time = None
 
-    return {
-        'measurement': measurement,
-        'tags': tags,
-        'fields': fields,
-        'time': time
-    }
+    return {"measurement": measurement, "tags": tags, "fields": fields, "time": time}
 
 
 @dataclass

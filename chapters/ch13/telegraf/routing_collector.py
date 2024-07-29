@@ -1,9 +1,8 @@
 """BGP neighbor state_pfxrcd/state_pfxacc to InfluxDB line protocol script."""
-
 import os
 import sys
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
 from netmiko import ConnectHandler
 
@@ -93,7 +92,7 @@ def main(device_type, host):
 
         fields = {"neighbor_state": state}
 
-        if neighbor["state_pfxrcd"]:
+        if neighbor["state_pfxrcd"]:  # type: ignore
             fields["prefixes_received"] = int(neighbor["state_pfxrcd"])  # type: ignore
             fields["prefixes_accepted"] = int(neighbor["state_pfxacc"])  # type: ignore
 
@@ -111,7 +110,6 @@ def main(device_type, host):
         return
 
     for neighbor in ospf_output:
-
         measurement = "ospf"
         # OSPF textfsm template returns 'address' instead of 'ip_address' depending on the template
         address = neighbor.get("ip_address") if neighbor.get("ip_address") else neighbor.get("address")  # type: ignore
