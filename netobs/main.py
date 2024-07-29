@@ -448,10 +448,10 @@ def containerlab_inspect(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="build")
 def docker_build(
-    services: Annotated[list[str], typer.Argument(help="Service(s) to build")],
     scenario: Annotated[
         NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
     ],
+    services: Annotated[Optional[list[str]], typer.Argument(help="Service(s) to show")] = None,
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Build necessary containers.
@@ -506,10 +506,10 @@ def docker_exec(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="debug")
 def docker_debug(
-    services: Annotated[list[str], typer.Argument(help="Service(s) to run in debug mode")],
     scenario: Annotated[
         NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
     ],
+    services: Annotated[Optional[list[str]], typer.Argument(help="Service(s) to show")] = None,
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Start docker compose in debug mode.
@@ -535,10 +535,10 @@ def docker_debug(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="start")
 def docker_start(
-    services: Annotated[list[str], typer.Argument(help="Service(s) to start")],
     scenario: Annotated[
         NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
     ],
+    services: Annotated[Optional[list[str]], typer.Argument(help="Service(s) to show")] = None,
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Start all containers.
@@ -564,10 +564,10 @@ def docker_start(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="stop")
 def docker_stop(
-    services: Annotated[list[str], typer.Argument(help="Service(s) to stop")],
     scenario: Annotated[
         NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
     ],
+    services: Annotated[Optional[list[str]], typer.Argument(help="Service(s) to show")] = None,
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Stop all containers.
@@ -592,10 +592,10 @@ def docker_stop(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="restart")
 def docker_restart(
-    services: Annotated[list[str], typer.Argument(help="Service(s) to restart")],
     scenario: Annotated[
         NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
     ],
+    services: Annotated[Optional[list[str]], typer.Argument(help="Service(s) to show")] = None,
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Restart all containers.
@@ -620,10 +620,10 @@ def docker_restart(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="logs")
 def docker_logs(
-    services: Annotated[list[str], typer.Argument(help="Service(s) to show logs")],
     scenario: Annotated[
         NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
     ],
+    services: Annotated[Optional[list[str]], typer.Argument(help="Service(s) to show")] = None,
     follow: Annotated[bool, typer.Option("-f", "--follow", help="Follow logs")] = False,
     tail: Optional[int] = typer.Option(None, "-t", "--tail", help="Number of lines to show"),
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
@@ -659,10 +659,10 @@ def docker_logs(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="ps")
 def docker_ps(
-    services: Annotated[list[str], typer.Argument(help="Service(s) to show")],
     scenario: Annotated[
         NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
     ],
+    services: Annotated[Optional[list[str]], typer.Argument(help="Service(s) to show")] = None,
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Show containers.
@@ -687,10 +687,10 @@ def docker_ps(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="destroy")
 def docker_destroy(
-    services: Annotated[list[str], typer.Argument(help="Service(s) to destroy")],
     scenario: Annotated[
         NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
     ],
+    services: Annotated[Optional[list[str]], typer.Argument(help="Service(s) to show")] = None,
     volumes: Annotated[bool, typer.Option(help="Remove volumes")] = False,
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
@@ -723,10 +723,10 @@ def docker_destroy(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="rm")
 def docker_rm(
-    services: Annotated[list[str], typer.Argument(help="Service(s) to remove")],
     scenario: Annotated[
         NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
     ],
+    services: Annotated[Optional[list[str]], typer.Argument(help="Service(s) to show")] = None,
     volumes: Annotated[bool, typer.Option(help="Remove volumes")] = False,
     force: Annotated[bool, typer.Option(help="Force removal of containers")] = False,
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
