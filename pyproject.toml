@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netobs"
-version = "0.0.13"
+version = "0.0.14"
 description = "Utilities and Management Tools for Network Observability Book"
 requires-python = ">=3.9"
 license = {text = "MIT"}
@@ -14,7 +14,6 @@ classifiers = [
 dependencies = [
     'typer[all]>=0.12.3',
     'python-dotenv>=1.0.0',
-    'line-protocol-parser>=1.1.1',
     'jmespath>=1.0.1',
     'PyYAML>=6.0.1',
     'netmiko>=4.3.0',
@@ -36,28 +35,8 @@ netobs = "netobs.main:app"
 [tool.setuptools.dynamic]
 readme = {file = ["README.md"]}
 
-[tool.black]
-line-length = 120
-target-version = ['py39', 'py310', 'py311']
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-)
-'''
-
 [tool.ruff]
+line-length = 120
 # Enable Pyflakes `E` and `F` codes by default.
 select = [
     "E",  # pycodestyle errors

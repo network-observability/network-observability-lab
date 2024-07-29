@@ -448,8 +448,10 @@ def containerlab_inspect(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="build")
 def docker_build(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
-    services: Annotated[list[str], typer.Option(help="Service(s) to build")] = [],
+    services: Annotated[list[str], typer.Argument(help="Service(s) to build")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Build necessary containers.
@@ -459,8 +461,8 @@ def docker_build(
     To build all services:
         [i]netobs docker build --scenario batteries-included[/i]
 
-    To build a specific service:
-        [i]netobs docker build telegraf-01 --scenario batteries-included[/i]
+    To build a specific services:
+        [i]netobs docker build telegraf-01 telegraf-02 --scenario batteries-included[/i]
     """
     console.log(f"Building service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
@@ -475,7 +477,9 @@ def docker_build(
 @docker_app.command(rich_help_panel="Docker Stack Management", name="exec")
 def docker_exec(
     service: Annotated[str, typer.Argument(help="Service to execute command")],
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     command: Annotated[str, typer.Argument(help="Command to execute")] = "bash",
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
@@ -484,10 +488,10 @@ def docker_exec(
     [u]Example:[/u]
 
     To execute a command in a service:
-        [i]netobs docker exec --scenario batteries-included --service telegraf-01 --command bash[/i]
+        [i]netobs docker exec telegraf-01 --scenario batteries-included --command bash[/i]
 
         To execute a command in a service and verbose mode:
-        [i]netobs docker exec --scenario batteries-included --service telegraf-01 --command bash --verbose[/i]
+        [i]netobs docker exec telegraf-01 --scenario batteries-included --command bash --verbose[/i]
     """
     console.log(f"Executing command in service: [orange1 i]{service}", style="info")
     run_docker_compose_cmd(
@@ -502,8 +506,10 @@ def docker_exec(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="debug")
 def docker_debug(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
-    services: Annotated[list[str], typer.Option(help="Service(s) to run in debug mode")] = [],
+    services: Annotated[list[str], typer.Argument(help="Service(s) to run in debug mode")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Start docker compose in debug mode.
@@ -511,10 +517,10 @@ def docker_debug(
     [u]Example:[/u]
 
     To start all services in debug mode:
-        [i]netobs docker --scenario batteries-included debug[/i]
+        [i]netobs docker debug --scenario batteries-included[/i]
 
     To start a specific service in debug mode:
-        [i]netobs docker --scenario batteries-included debug telegraf-01[/i]
+        [i]netobs docker debug telegraf-01 --scenario batteries-included[/i]
     """
     console.log(f"Starting in debug mode service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
@@ -529,8 +535,10 @@ def docker_debug(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="start")
 def docker_start(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
-    services: Annotated[list[str], typer.Option(help="Service(s) to start")] = [],
+    services: Annotated[list[str], typer.Argument(help="Service(s) to start")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Start all containers.
@@ -556,8 +564,10 @@ def docker_start(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="stop")
 def docker_stop(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
-    services: Annotated[list[str], typer.Option(help="Service(s) to stop")] = [],
+    services: Annotated[list[str], typer.Argument(help="Service(s) to stop")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Stop all containers.
@@ -568,7 +578,7 @@ def docker_stop(
         [i]netobs docker stop --scenario batteries-included[/i]
 
     To stop a specific service:
-        [i]netobs docker stop telegraf-01 --scenario batteries-included[/i]
+        [i]netobs docker stop telegraf-01 telegraf-02 --scenario batteries-included[/i]
     """
     console.log(f"Stopping service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
@@ -582,8 +592,10 @@ def docker_stop(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="restart")
 def docker_restart(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
-    services: Annotated[list[str], typer.Option(help="Service(s) to restart")] = [],
+    services: Annotated[list[str], typer.Argument(help="Service(s) to restart")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Restart all containers.
@@ -594,7 +606,7 @@ def docker_restart(
         [i]netobs docker restart --scenario batteries-included[/i]
 
     To restart a specific service:
-        [i]netobs docker restart telegraf-01 --scenario batteries-included[/i]
+        [i]netobs docker restart telegraf-01 logstash --scenario batteries-included[/i]
     """
     console.log(f"Restarting service(s): [orange1 i]{services}", style="info")
     run_docker_compose_cmd(
@@ -608,8 +620,10 @@ def docker_restart(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="logs")
 def docker_logs(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
-    services: Annotated[list[str], typer.Option(help="Service(s) to show logs")] = [],
+    services: Annotated[list[str], typer.Argument(help="Service(s) to show logs")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     follow: Annotated[bool, typer.Option("-f", "--follow", help="Follow logs")] = False,
     tail: Optional[int] = typer.Option(None, "-t", "--tail", help="Number of lines to show"),
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
@@ -645,8 +659,10 @@ def docker_logs(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="ps")
 def docker_ps(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
-    services: Annotated[list[str], typer.Option(help="Service(s) to show")] = [],
+    services: Annotated[list[str], typer.Argument(help="Service(s) to show")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
     """Show containers.
@@ -671,8 +687,10 @@ def docker_ps(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="destroy")
 def docker_destroy(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
-    services: Annotated[list[str], typer.Option(help="Service(s) to destroy")] = [],
+    services: Annotated[list[str], typer.Argument(help="Service(s) to destroy")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     volumes: Annotated[bool, typer.Option(help="Remove volumes")] = False,
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
 ):
@@ -705,8 +723,10 @@ def docker_destroy(
 
 @docker_app.command(rich_help_panel="Docker Stack Management", name="rm")
 def docker_rm(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
-    services: Annotated[list[str], typer.Option(help="Service(s) to remove")] = [],
+    services: Annotated[list[str], typer.Argument(help="Service(s) to remove")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     volumes: Annotated[bool, typer.Option(help="Remove volumes")] = False,
     force: Annotated[bool, typer.Option(help="Force removal of containers")] = False,
     verbose: Annotated[bool, typer.Option(help="Verbose mode")] = False,
@@ -779,7 +799,9 @@ def docker_network(
 
 @lab_app.command("deploy")
 def lab_deploy(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
         "./containerlab/lab.yml"
     ),
@@ -812,7 +834,9 @@ def lab_deploy(
 
 @lab_app.command("destroy")
 def lab_destroy(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
         "./containerlab/lab.yml"
     ),
@@ -831,7 +855,9 @@ def lab_destroy(
 
 
 @lab_app.command("purge")
-def lab_purge(sudo: Annotated[bool, typer.Option(help="Use sudo to run containerlab", envvar="LAB_SUDO")] = False,):
+def lab_purge(
+    sudo: Annotated[bool, typer.Option(help="Use sudo to run containerlab", envvar="LAB_SUDO")] = False,
+):
     """Purge all lab environments."""
     console.rule("[b i]PURGING ALL LAB ENVIRONMENTS", style="error")
     console.log("Purging lab environments", style="info")
@@ -848,7 +874,9 @@ def lab_purge(sudo: Annotated[bool, typer.Option(help="Use sudo to run container
 
 @lab_app.command("show")
 def lab_show(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
         "./containerlab/lab.yml"
     ),
@@ -868,7 +896,9 @@ def lab_show(
 
 @lab_app.command("prepare")
 def lab_prepare(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
     topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
         "./containerlab/lab.yml"
     ),
@@ -891,9 +921,10 @@ def lab_prepare(
 
 @lab_app.command("update")
 def lab_update(
-    scenario: Annotated[NetObsScenarios, typer.Option(help="Scenario to execute command", envvar="LAB_SCENARIO")],
-    # services: Optional[list[str]] = typer.Option(None, help="Service(s) to update"),
-    services: Annotated[list[str], typer.Option(help="Service(s) to update")] = [],
+    services: Annotated[list[str], typer.Argument(help="Service(s) to update")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
 ):
     """Update the service(s) of a lab scenario.
 
@@ -903,7 +934,7 @@ def lab_update(
         [i]netobs lab update --scenario batteries-included[/i]
 
     To update a specific service:
-        [i]netobs lab update telegraf-01 --scenario batteries-included[/i]
+        [i]netobs lab update telegraf-01 telegraf-02 --scenario batteries-included[/i]
     """
     console.log(f"Updating lab environment for scenario: [orange1 i]{scenario.value}", style="info")
 
@@ -919,6 +950,7 @@ def lab_update(
 # --------------------------------------#
 #           Digital Ocean VM            #
 # --------------------------------------#
+
 
 def ansible_command(
     playbook: str,
@@ -958,7 +990,9 @@ def ansible_command(
 @setup_app.command(rich_help_panel="DigitalOcean", name="deploy")
 def deploy_droplet(
     verbose: Annotated[int, typer.Option("--verbose", "-v", count=True)] = 0,
-    extra_vars: Annotated[Optional[str], typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")] = None,
+    extra_vars: Annotated[
+        Optional[str], typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")
+    ] = None,
 ):
     """Create DigitalOcean Droplets.
 
@@ -995,7 +1029,9 @@ def deploy_droplet(
 @setup_app.command(rich_help_panel="DigitalOcean", name="destroy")
 def destroy_droplet(
     verbose: Annotated[int, typer.Option("--verbose", "-v", count=True)] = 0,
-    extra_vars: Annotated[Optional[str], typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")] = None,
+    extra_vars: Annotated[
+        Optional[str], typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")
+    ] = None,
 ):
     """Destroy DigitalOcean Droplets.
 
