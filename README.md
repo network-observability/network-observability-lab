@@ -1,4 +1,5 @@
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/network-observability/network-observability-lab?quickstart=1&devcontainer_path=.devcontainer%2Fbatteries-included%2Fdevcontainer.json)
+
 # Network Observability Lab
 
 This repository contains the resources for building and managing an observability stack within a network lab environment, specifically designed for the "Modern Network Observability" book. It includes scripts, configuration files, and documentation to set up and operate various observability tools like Prometheus, Grafana Loki, and others, helping you implement and learn about network observability practices in a practical, hands-on manner.
@@ -42,7 +43,7 @@ docker import <path-to-image>/cEOS64-lab-<version>.tar.xz ceos:image
 
 To get started with the network lab and observability stack, you need to:
 
-1. Copy the necessary environment variables to configure the components used withing the lab scenarios.
+1. Copy the necessary environment variables to configure the components used within the lab scenarios.
 
 ```bash
 # Setup environment variables (edit the .env file to your liking)
@@ -56,7 +57,7 @@ cp example.env .env
 pip install .
 ```
 
-3. Test everything is working by deploying lab that hast most of the components configured and ready to go.
+3. Test everything is working by deploying a lab that has most of the components configured and ready to go.
 
 ```bash
 # Start the network lab
@@ -80,6 +81,7 @@ The `netobs` utility includes five main commands to help manage the environment:
 - **`netobs docker`**: Manages the Docker Compose setups for each lab scenario. It ensures the appropriate containers are running for each specific lab exercise.
 
 - **`netobs lab`**: A wrapper utility that combines `netobs containerlab` and various `netobs docker` commands to perform major actions. For example:
+
   - `netobs lab purge`: Cleans up all running environments.
   - `netobs lab prepare --scenario ch7`: Purges any scenario that is up and prepares the environment for Chapter 7.
 

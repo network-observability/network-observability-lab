@@ -6,7 +6,7 @@ WORKDIR /usr/src/app
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y git libpcap-dev tshark inetutils-ping bpfcc-tools && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y git libpcap-dev tshark inetutils-ping && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/* && \
