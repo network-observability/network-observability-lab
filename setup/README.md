@@ -32,7 +32,7 @@ Go to their website and create an account if you don't have one already. You can
 
 ### 2. Fork and Clone the Git Repository
 
-By forking this git repository, you are able to make the changes you desire and follow along with the example and tasks presented in the book. To fork the repository, click the "Fork" button at the top right of [the repository page](https://github.com/network-observability/network-observability-lab) and follow the instructions. For more information on how to fork a GitHub repository see the [official documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo).
+By forking this git repository, you are able to make the changes you desire and follow along with the examples and tasks presented in the book. To fork the repository, click the "Fork" button at the top right of [the repository page](https://github.com/network-observability/network-observability-lab) and follow the instructions. For more information on how to fork a GitHub repository see the [official documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo).
 
 After creating your fork, on your local or "control" machine clone your forked repository:
 
@@ -84,7 +84,7 @@ You need to create a Personal Access Token (PAT) for DigitalOcean. Follow the in
 
 ### 7. Create an SSH key pair and retrieve its fingerprint
 
-For information on how to create SSH keys, check out the [official documentation](https://docs.digitalocean.com/products/droplets/how-to/add-ssh-keys/). This step ensures secure and passwordless access to your droplet. For example on you local machine, you can use the following command to create an SSH key pair:
+For information on how to create SSH keys, check out the [official documentation](https://docs.digitalocean.com/products/droplets/how-to/add-ssh-keys/). This step ensures secure and passwordless access to your droplet. For example on your local machine, you can use the following command to create an SSH key pair:
 
 ```bash
 ssh-keygen -t rsa -b 4096 -C "network-observability-lab" -f ~/.ssh/id_rsa_do
@@ -118,7 +118,7 @@ Additionally, you can specify a particular branch to be installed by setting the
 
 You're now ready to begin setting up the DigitalOcean droplet. Use the command `netobs setup deploy` to start the process. This script will initiate an Ansible playbook that will prompt you to specify the characteristics of your droplet, such as its size, region, and other details. Follow the prompts similar to those shown in the figure below, and the provisioning will commence, setting up the environment automatically.
 
-On your local or "control" machine run the command to setup the droplet:
+On your local or "control" machine run the command to set the droplet up:
 
 ```bash
 # Go to your forked repository and check netobs command capabilities
@@ -143,14 +143,14 @@ At this point, the droplet is fully set up with Docker, Containerlab, and the ne
 
 Now, you can start exploring and interacting with your lab environment. It includes various network devices and observability stack components, each of which is accessible and manageable. For network devices, you can use SSH or other network management protocols to connect to them. This allows you to modify configurations, run diagnostic commands, and test different network setups.
 
-Here's an example of how to connect to an Arista cEOS network device using SSH. First connect to the DigitalOcean droplet:
+Here's an example of how to connect to an Arista cEOS network device using SSH. First, connect to the DigitalOcean droplet:
 
 ```bash
 # Use the command output from the `netobs setup show` command from before
 ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_do root@<droplet-ip-address>
 ```
 
-Then connect to a device, for example `ceos-01`:
+Then connect to a device, for example, `ceos-01`:
 
 ```bash
 # Connect to ceos-01 via Cli utility command
@@ -219,9 +219,9 @@ netobs lab destroy --scenario batteries-included
 netobs lab purge
 ```
 
- To remove the remote DigitalOcean droplet, you can run the command `netobs setup destroy` **on your local or "control" machine**. This will delete the droplet from your account, which is useful when you have finished the labs for the day.
+To remove the remote DigitalOcean droplet, you can run the command `netobs setup destroy` **on your local or "control" machine**. This will delete the droplet from your account, which is useful when you have finished the labs for the day.
 
- ```bash
- # Delete the DigitalOcean Droplet
- netobs setup destroy
- ```
+```bash
+# Delete the DigitalOcean Droplet
+netobs setup destroy
+```
