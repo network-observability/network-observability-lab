@@ -67,6 +67,7 @@ services:
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
       - ./loki/loki-config.yml:/etc/loki/loki-config.yml
+      - ./loki/rules/:/rules/fake/
       - loki_data:/loki:rw
     env_file:
       - ../../.env
@@ -77,11 +78,11 @@ services:
     image: ${PROMETHEUS_IMAGE:-docker.io/prom/prometheus:v2.52.0}
     ports:
       - 9090:9090
-    command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml
+    command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml --web.enable-remote-write-receiver
     tty: true
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml
+      - ./prometheus/rules/:/etc/prometheus/rules/
       - prometheus_data:/prometheus
     env_file:
       - ../../.env
