@@ -78,7 +78,10 @@ services:
     image: ${PROMETHEUS_IMAGE:-docker.io/prom/prometheus:v2.52.0}
     ports:
       - 9090:9090
-    command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml --web.enable-remote-write-receiver
+    command:
+    - --storage.tsdb.retention.size=512MB
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --web.enable-remote-write-receiver
     tty: true
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
