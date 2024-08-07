@@ -80,9 +80,9 @@ services:
     ports:
       - 9090:9090
     command:
-    - "--storage.tsdb.retention.size=512MB"
-    - "--config.file=/etc/prometheus/prometheus.yml"
-    - "--web.enable-remote-write-receiver"
+    - --storage.tsdb.retention.size=512MB
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --web.enable-remote-write-receiver
     tty: true
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
