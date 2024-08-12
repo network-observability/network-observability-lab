@@ -25,6 +25,13 @@ schema_config:
         prefix: index_
         period: 24h
 
+ruler:
+  wal:
+    dir: /loki/ruler-walwal
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true
 
 analytics:
  reporting_enabled: false
