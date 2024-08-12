@@ -101,6 +101,7 @@ services:
     command: --config.file=/etc/alertmanager/alertmanager.yml --cluster.advertise-address=0.0.0.0:9093
     volumes:
       - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./alertmanager/keep_api_key:/etc/alertmanager/keep_api_key
       - alertmanager_data:/data
     env_file:
       - ../../.env
