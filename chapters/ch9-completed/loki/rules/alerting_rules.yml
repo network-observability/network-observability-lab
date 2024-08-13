@@ -7,15 +7,10 @@ groups:
         for: 1m
         labels:
           severity: critical
-          source: stack
+          source: loki
           environment: network-observability-lab
-          metric_name: change(interface_oper_status)
           device: '{{ $labels.device }}'
-          device_role: '{{ $labels.device_role }}'
-          site: '{{ $labels.site }}'
-          region: '{{ $labels.region }}'
-          instance: '{{ $labels.host }}'
-          device_platform: '{{ $labels.device_platform }}_{{ $labels.net_os }}'
+          interface: '{{ $labels.interface }}'
         annotations:
           summary: "[NET] Device {{ $labels.device }}: Interface Uplink {{ $labels.name }} is flapping"
           description: "Interface {{ $labels.name }} on device {{ $labels.device }} is flapping!"

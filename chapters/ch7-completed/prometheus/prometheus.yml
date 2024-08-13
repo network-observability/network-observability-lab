@@ -13,4 +13,4 @@ scrape_configs:
 
 
 rule_files:
-  - recording_rules.yml
+  - rules/*.yml

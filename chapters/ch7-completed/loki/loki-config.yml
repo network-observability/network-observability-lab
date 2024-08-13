@@ -15,13 +15,6 @@ common:
     kvstore:
       store: inmemory
 
-# query_range:
-#   results_cache:
-#     cache:
-#       embedded_cache:
-#         enabled: true
-#         max_size_mb: 100
-
 schema_config:
   configs:
     - from: 2020-10-24
@@ -32,18 +25,21 @@ schema_config:
         prefix: index_
         period: 24h
 
-# compactor:
-#   compaction_interval: 10m
-#   retention_enabled: true
-#   retention_delete_delay: 2h
-#   retention_delete_worker_count: 150
-
-# limits_config:
-#   reject_old_samples: true
-#   reject_old_samples_max_age: 168h
-
 ruler:
-  alertmanager_url: http://localhost:9093
+  wal:
+    dir: /loki/ruler-wal
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true
+  storage:
+    type: local
+    local:
+      directory: /rules
+  remote_write:
+    enabled: true
+    client:
+      url: http://prometheus:9090/api/v1/write
 
 analytics:
  reporting_enabled: false

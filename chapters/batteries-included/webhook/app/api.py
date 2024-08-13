@@ -39,10 +39,16 @@ def process_webhook(alert_group: AlertmanagerAlertGroup):
     log.info("Alertmanager webhook status is firing")
     log.info(f"Received alertmanager webhook: {alert_group}")
 
-    _ = run_deployment(
-        name="alert-receiver/alert-receiver",
-        parameters={"alert_group": alert_group.model_dump(mode="json")},
-    )
+    error = ""
+    try:
+        _ = run_deployment(
+            name="alert-receiver/alert-receiver",
+            parameters={"alert_group": alert_group.model_dump(mode="json")},
+        )
 
-    log.info(f"Alert status is {alert_group.status}, exiting")
-    return {"message": "Processed webhook"}
+        log.info(f"Alert status is {alert_group.status}, exiting")
+    except Exception as e:
+        log.error("AQUI AQUI AQUI")
+        log.error(f"Error running deployment: {e}")
+        error = str(e)
+    return {"message": "Processed webhook"} if not error else {"error": error}

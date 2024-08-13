@@ -130,7 +130,14 @@ netobs setup deploy
 
 The setup playbook will ask for the droplet image, its size and region to be deployed. It comes with default values, but you can change them if you prefer a bigger droplet size or region, for more information see [here](https://slugs.do-api.dev/).
 
-The playbooks executed by `netobs setup deploy` are designed to be idempotent, meaning you can run the command again without adverse effects if you encounter issues (such as DigitalOcean API problems). Just ensure you use the same variables as initially prompted. Once the setup completes, use the `netobs setup show` command to display an SSH command that will allow you to quickly access your droplet.
+> **IMPORTANT:** If you encounter issues, such as when trying to install packages on the droplet, you may see messages like the following:
+> ```shell
+> E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 1555 (apt-get)
+> E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), is another process using it?
+> ```
+> In such cases, simply run the command again. The playbooks executed by `netobs setup deploy` are designed to be idempotent, meaning you can rerun the command without causing any adverse effects. This is particularly useful if you encounter issues like DigitalOcean API problems. Just make sure to use the same variables as initially prompted.
+
+Once the setup completes, use the `netobs setup show` command to display an SSH command that will allow you to quickly access your droplet.
 
 ```bash
 # Check droplet SSH command and IP address

@@ -48,7 +48,7 @@ services:
       - network-observability
 
   logstash:
-    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:main}
+    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:3.0.1}
     command: -f /home/logstash/logstash.cfg
     volumes:
       - ./logstash/logstash.cfg:/home/logstash/logstash.cfg
@@ -62,13 +62,13 @@ services:
       - network-observability
 
   loki:
-    image: ${LOKI_IMAGE:-docker.io/grafana/loki:2.9.8}
+    image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.0.1}
     ports:
       - 3001:3001
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
       - ./loki/loki-config.yml:/etc/loki/loki-config.yml
-      - ./loki/rules/alerting_rules.yml:/rules/fake/rules.yaml
+      - ./loki/rules/:/rules/fake/
       - loki_data:/loki:rw
     env_file:
       - ../../.env
@@ -79,7 +79,10 @@ services:
     image: ${PROMETHEUS_IMAGE:-docker.io/prom/prometheus:v2.52.0}
     ports:
       - 9090:9090
-    command: --storage.tsdb.retention.size=512MB --config.file=/etc/prometheus/prometheus.yml
+    command:
+    - --storage.tsdb.retention.size=512MB
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --web.enable-remote-write-receiver
     tty: true
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -98,6 +101,7 @@ services:
     command: --config.file=/etc/alertmanager/alertmanager.yml --cluster.advertise-address=0.0.0.0:9093
     volumes:
       - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./alertmanager/keep_api_key:/etc/alertmanager/keep_api_key
       - alertmanager_data:/data
     env_file:
       - ../../.env

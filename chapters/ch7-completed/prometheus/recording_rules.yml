@@ -1,8 +1,0 @@
----
-groups:
-  - name: network_traffic_overview
-    rules:
-    - record: device:network_traffic_in_bps:rate_2m
-      expr: sum(rate(interface_in_octets[2m])) by (device) * 8
-    - record: device:network_traffic_out_bps:rate_2m
-      expr: sum(rate(interface_out_octets[2m])) by (device) * 8
