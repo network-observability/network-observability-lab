@@ -16,7 +16,7 @@ dependencies = [
     'python-dotenv>=1.0.0',
     'jmespath>=1.0.1',
     'PyYAML>=6.0.1',
-    'netmiko>=4.3.0',
+    'netmiko==4.3.0',
     'prometheus-api-client>=0.5.5',
     'prefect>=2.17.1',
     'ansible>=10.1.0',
