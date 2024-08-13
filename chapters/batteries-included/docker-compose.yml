@@ -48,7 +48,7 @@ services:
       - network-observability
 
   logstash:
-    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:main}
+    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:3.0.1}
     command: -f /home/logstash/logstash.cfg
     volumes:
       - ./logstash/logstash.cfg:/home/logstash/logstash.cfg
@@ -62,7 +62,7 @@ services:
       - network-observability
 
   loki:
-    image: ${LOKI_IMAGE:-docker.io/grafana/loki:2.9.8}
+    image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.0.1}
     ports:
       - 3001:3001
     command: -config.file=/etc/loki/loki-config.yml

@@ -5,19 +5,32 @@ global:
 
 route:
   # Default receiver for alerts
-  receiver: "keep"             # Name of the receiver to send alerts to
+  receiver: 'default'          # Name of the default receiver to send alerts to
   group_by: ['alertname']      # Group alerts by alertname
   group_wait: 15s              # Wait 15 seconds to group alerts
   group_interval: 15s          # Send all alerts as a batch every 15 seconds
   repeat_interval: 1m          # Repeat notifications every 1 minute
   routes:
-      - matchers:
-          - alertname="PeerInterfaceFlapping"
-        receiver: 'webhook-receiver'
+    - receiver: 'webhook-receiver'
+      matchers:
+        - alertname = PeerInterfaceFlapping
+      continue: true           # Continue to the next route if this route is matched
+    - receiver: 'keep'
+      matchers:
+        - severity =~ "critical|warning"
 
 receivers:
+  # Default receiver for alerts (if no matchers are found)
+  - name: 'default'
+
+  # Receiver for sending alerts to webhook service
+  - name: 'webhook-receiver'
+    webhook_configs:
+      - url: 'http://webhook:9997/v1/api/webhook'
+        send_resolved: true
+
   # Receiver for sending alerts to Keep
-  - name: "keep"
+  - name: 'keep'
     # Webhook configuration for Keep
     webhook_configs:
     - url: 'https://api.keephq.dev/alerts/event/prometheus'  # URL for the Keep API
@@ -26,9 +39,3 @@ receivers:
         basic_auth:                     # Basic authentication for the webhook
           username: api_key             # Username for the webhook
           password_file: keep_api_key   # Password file for the webhook
-
-# Receiver for sending alerts to webhook service
-  - name: 'webhook-receiver'
-    webhook_configs:
-      - url: 'http://webhook:9997/v1/api/webhook'
-        send_resolved: true
