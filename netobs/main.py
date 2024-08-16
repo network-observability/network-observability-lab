@@ -1,5 +1,5 @@
 """Netobs CLI."""
-
+# ruff: noqa: B008, B006
 import os
 import shlex
 import subprocess  # nosec
@@ -383,7 +383,7 @@ def load_yaml(topology: Path) -> dict:
             topology_dict = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             console.log(exc, style="error")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from exc
     return topology_dict
 
 

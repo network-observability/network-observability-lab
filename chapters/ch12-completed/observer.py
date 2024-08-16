@@ -1,15 +1,15 @@
+import datetime
 import os
 import time
-import datetime
 
 import requests
 import typer
+from dotenv import load_dotenv
 from prometheus_api_client import PrometheusConnect
 from rich.console import Console
-from rich.theme import Theme
-from rich.table import Table
 from rich.live import Live
-from dotenv import load_dotenv
+from rich.table import Table
+from rich.theme import Theme
 
 # Load environment variables from our setup
 load_dotenv(dotenv_path="./../../.env")
@@ -71,7 +71,7 @@ def retrieve_data_loki(query: str, start_time: int, end_time: int) -> list[dict]
 
     # Query Loki and return the results
     response = requests.get(
-        url=f"http://localhost:3001/loki/api/v1/query_range",
+        url="http://localhost:3001/loki/api/v1/query_range",
         params={
             "query": query,
             "start": int(start_time),
@@ -197,7 +197,6 @@ def site_health(site: str):
     query = f"ping_average_response_ms{{site=~'{site}'}}"
     metrics = retrieve_data_prometheus(query)
     for metric in metrics:
-
         # Store the device's latency
         device_name = metric["metric"]["device"]
         devices[device_name]["latency"] = f"{metric['value'][-1]} ms"
@@ -206,7 +205,6 @@ def site_health(site: str):
     query = f"avg by (device) (cpu_used{{site=~'{site}'}})"
     metrics = retrieve_data_prometheus(query)
     for metric in metrics:
-
         # Store the device's CPU usage
         device_name = metric["metric"]["device"]
         devices[device_name]["cpu"] = f"{metric['value'][-1]}%"
@@ -214,7 +212,6 @@ def site_health(site: str):
     query = f"avg by (device) (memory_used{{site=~'{site}'}})"
     metrics = retrieve_data_prometheus(query)
     for metric in metrics:
-
         # Store the device's Memory usage
         device_name = metric["metric"]["device"]
         devices[device_name]["memory"] = sizeof_fmt(float(metric["value"][-1]), suffix="B")
@@ -228,7 +225,6 @@ def site_health(site: str):
     """
     metrics = retrieve_data_prometheus(query)
     for metric in metrics:
-
         # Store the device's bandwidth usage
         device_name = metric["metric"]["device"]
         devices[device_name]["bandwidth"] = sizeof_fmt(float(metric["value"][-1]))
@@ -237,7 +233,6 @@ def site_health(site: str):
     query = f"bgp_neighbor_state{{site=~'{site}'}}"
     metrics = retrieve_data_prometheus(query)
     for metric in metrics:
-
         # Create BGP state lists for each device
         device_name = metric["metric"]["device"]
         if "bgp" not in devices[device_name]:
@@ -252,7 +247,6 @@ def site_health(site: str):
 
     # Device Manufacturer and Model from Nautobot
     for device_name in devices.keys():
-
         # Get the device manufacturer and model from Nautobot
         device_info = retrieve_device_info(device_name)
 
@@ -274,7 +268,6 @@ def site_health(site: str):
 
     # Build the table with the results
     for device, data in devices.items():
-
         # Count the number of BGP states and color them
         up_bgp = f"[green]{len(data['bgp']['up'])}[/]"
         down_bgp = f"[red]{len(data['bgp']['down'])}[/]"
@@ -298,7 +291,6 @@ def site_health(site: str):
     # Now lets collect the logs for the site in the last 15 minutes
     log_results = []
     for device_name in devices.keys():
-
         # Create the Loki query filtering by device
         query = f'{{device=~"{device_name}"}}'
 
