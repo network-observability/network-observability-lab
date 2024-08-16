@@ -9,6 +9,10 @@ from rich.console import Console
 from rich.theme import Theme
 from rich.table import Table
 from rich.live import Live
+from dotenv import load_dotenv
+
+# Load environment variables from our setup
+load_dotenv(dotenv_path="./../../.env")
 
 app = typer.Typer(name="observer", no_args_is_help=True, add_completion=False)
 
@@ -45,9 +49,9 @@ def get_nautobot_token() -> str:
     """Retrieve the Nautobot API token from the environment."""
 
     # Retrieve the Nautobot API token
-    token = os.getenv("NAUTOBOT_TOKEN")
+    token = os.getenv("NAUTOBOT_SUPERUSER_API_TOKEN")
     if not token:
-        console.log("NAUTOBOT_TOKEN environment variable not set", style="error")
+        console.log("NAUTOBOT_SUPERUSER_API_TOKEN environment variable not set", style="error")
         raise typer.Exit(1)
     return token
 
