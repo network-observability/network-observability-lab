@@ -146,6 +146,12 @@
         - /root/network-observability-lab/chapters/ch9/alertmanager/keep_api_key
         - /root/network-observability-lab/chapters/ch9-completed/alertmanager/keep_api_key
 
+    - name: Delete the keep_api_key file on localhost
+      ansible.builtin.file:
+        state: absent
+        src: "{{ playbook_dir }}/../keep_api_key"
+      delegate_to: localhost
+
     - name: Install network-observability-lab
       ansible.builtin.shell:
         cmd: "cd /root/network-observability-lab && pip install ."
