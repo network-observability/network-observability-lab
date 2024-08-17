@@ -1,4 +1,5 @@
 ---
+#### Bootstrap netobs-droplet
 - name: Bootstrap netobs-droplet
   hosts: "netobs-droplet"
   gather_facts: false
@@ -116,7 +117,7 @@
       register: ceos_import
       changed_when: ceos_import.rc != 0
 
-
+#### Setup netobs-droplet
 - name: Setup netobs app
   hosts: netobs-droplet
   vars:
@@ -135,6 +136,15 @@
         src: "{{ playbook_dir }}/../.env"
         dest: /root/network-observability-lab/.env
         mode: "0644"
+
+    - name: Copy the keep_api_key file
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../keep_api_key"
+        dest: "{{ item }}"
+      loop:
+        - /root/network-observability-lab/chapters/batteries-included/alertmanager/keep_api_key
+        - /root/network-observability-lab/chapters/ch9/alertmanager/keep_api_key
+        - /root/network-observability-lab/chapters/ch9-completed/alertmanager/keep_api_key
 
     - name: Install network-observability-lab
       ansible.builtin.shell:

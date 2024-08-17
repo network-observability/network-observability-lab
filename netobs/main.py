@@ -999,6 +999,11 @@ def deploy_droplet(
     [u]Example:[/u]
         [i]> netobs setup deploy[/i]
     """
+    # First create the keep_api_key file in the root directory from the environment variable using Path
+    keep_api_key = Path("./keep_api_key")
+    keep_api_key.write_text(ENVVARS.get("KEEP_API_KEY", ""))
+
+    # Then create the droplets
     exec_cmd = ansible_command(
         playbook="create_droplet.yml",
         inventories=["localhost.yaml"],

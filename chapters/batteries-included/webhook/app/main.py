@@ -31,7 +31,9 @@ def index():
 if __name__ == "__main__":
     configure()
     log.info("Running as script.")
+    print("AQUI AQUI AQUI")
     uvicorn.run(app, port=config.SETTINGS.port, host=config.SETTINGS.host)  # type: ignore
 else:
     log.info("Running as library.")
+    print("YUHU YUHU YUHU")
     configure()
