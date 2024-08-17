@@ -1061,6 +1061,9 @@ def deploy_droplet(
         console.log("Issues encountered setting up droplets", style="warning")
         raise typer.Abort()
 
+    # Delete the keep_api_key file
+    keep_api_key.unlink()
+
 
 @setup_app.command(rich_help_panel="DigitalOcean", name="destroy")
 def destroy_droplet(
