@@ -154,9 +154,9 @@
 
 
 [[inputs.http_response]]
-  name_override = "netobs_health"
   urls = ["http://prometheus:9090/-/healthy"]
   response_string_match = "Prometheus Server is Healthy"
+  name_override = "netobs_health"
   fieldexclude = ["content_length", "result_type"]
   tagexclude = ["status_code", "result"]
 
@@ -167,8 +167,21 @@
 
 
 [[inputs.http_response]]
+  urls = ["http://alertmanager:9093/-/healthy"]
+  response_string_match = "OK"
   name_override = "netobs_health"
+  fieldexclude = ["content_length", "result_type"]
+  tagexclude = ["status_code", "result"]
+
+ [inputs.http_response.tags]
+   collection_type = "http"
+   watcher_type = "healthcheck"
+   service = "alertmanager"
+
+
+[[inputs.http_response]]
   urls = ["http://nautobot:8080/health/"]
+  name_override = "netobs_health"
   response_timeout = "5s"
   method = "GET"
   response_string_match = '\"DatabaseBackend\": \"working\".*\"DefaultFileStorageHealthCheck\": \"working\".*\"RedisBackend\": \"working\"'
