@@ -54,6 +54,7 @@ services:
       - ./logstash/logstash.cfg:/home/logstash/logstash.cfg
     ports:
       - 1515:1515
+      - 9600:9600
     environment:
       XPACK_MONITORING_ENABLED: false
     env_file:

@@ -39,3 +39,18 @@ groups:
         annotations:
           summary: "[NET] Device {{ $labels.device }}: BGP Neighbor {{ $labels.neighbor }}:{{ $labels.neighbor_asn }} is down"
           description: "BGP Neighbor towards {{ $labels.neighbor }}:{{ $labels.neighbor_asn }} on device {{ $labels.device }} is down!"
+
+#### Meta Monitoring
+  - name: Meta Monitoring
+    rules:
+      - alert: ServiceDown
+        expr: netobs_health_result_code != 0
+        for: 10s
+        labels:
+          severity: critical
+          environment: network-observability-lab
+          service: '{{ $labels.service }}'
+          instance: '{{ $labels.host }}'
+        annotations:
+          summary: "[META] Serivce {{ $labels.service }} is down"
+          description: "Service {{ $labels.service }} checked with {{ $labels.host }} is down!"
