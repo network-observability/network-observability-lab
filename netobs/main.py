@@ -947,6 +947,37 @@ def lab_update(
     console.log(f"Lab environment updated for scenario: [orange1 i]{scenario.value}", style="info")
 
 
+@lab_app.command("rebuild")
+def lab_rebuild(
+    services: Annotated[list[str], typer.Argument(help="Service(s) to rebuild")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
+):
+    """Rebuild the service(s) of a lab scenario.
+
+    [u]Example:[/u]
+
+    To rebuild all services:
+        [i]netobs lab rebuild --scenario batteries-included[/i]
+
+    To rebuild a specific service:
+        [i]netobs lab rebuild webhook --scenario batteries-included[/i]
+    """
+    console.log(f"Rebuilding lab environment for scenario: [orange1 i]{scenario.value}", style="info")
+
+    # Stop the containers
+    docker_stop(scenario=scenario, services=services, verbose=True)
+
+    # Rebuild the containers
+    docker_build(scenario=scenario, services=services, verbose=True)
+
+    # Start them back
+    docker_start(scenario=scenario, services=services, verbose=True)
+
+    console.log(f"Lab environment rebuilt for scenario: [orange1 i]{scenario.value}", style="info")
+
+
 # --------------------------------------#
 #           Digital Ocean VM            #
 # --------------------------------------#

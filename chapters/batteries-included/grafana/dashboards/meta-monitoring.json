@@ -1,0 +1,1351 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "description": "Dashboard for monitoring the services that check the lab environment",
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 2,
+    "links": [],
+    "panels": [
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "P1809F7CD0C75ACF3"
+        },
+        "description": "",
+        "gridPos": {
+          "h": 12,
+          "w": 5,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "options": {
+          "code": {
+            "language": "plaintext",
+            "showLineNumbers": false,
+            "showMiniMap": false
+          },
+          "content": "# Meta Monitoring\n\nThis dashboard serves as a way to check the state of the monitoring system.\n\n",
+          "mode": "markdown"
+        },
+        "pluginVersion": "10.4.4",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "expr": "",
+            "instant": false,
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "type": "text"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "P1809F7CD0C75ACF3"
+        },
+        "description": "Services",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "color": "green",
+                    "index": 0,
+                    "text": "UP"
+                  },
+                  "6": {
+                    "color": "red",
+                    "index": 3,
+                    "text": "ERROR"
+                  }
+                },
+                "type": "value"
+              },
+              {
+                "options": {
+                  "from": 1,
+                  "result": {
+                    "color": "red",
+                    "index": 1,
+                    "text": "ERROR"
+                  },
+                  "to": 2
+                },
+                "type": "range"
+              },
+              {
+                "options": {
+                  "from": 3,
+                  "result": {
+                    "color": "dark-red",
+                    "index": 2,
+                    "text": "DOWN"
+                  },
+                  "to": 5
+                },
+                "type": "range"
+              },
+              {
+                "options": {
+                  "match": "null",
+                  "result": {
+                    "color": "purple",
+                    "index": 4,
+                    "text": "NO DATA"
+                  }
+                },
+                "type": "special"
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 19,
+          "x": 5,
+          "y": 0
+        },
+        "id": 3,
+        "options": {
+          "infinitePan": false,
+          "inlineEditing": true,
+          "panZoom": false,
+          "root": {
+            "background": {
+              "color": {
+                "fixed": "transparent"
+              },
+              "image": {
+                "fixed": "img/bg/p1.png",
+                "mode": "field"
+              }
+            },
+            "border": {
+              "color": {
+                "fixed": "dark-green"
+              }
+            },
+            "constraint": {
+              "horizontal": "left",
+              "vertical": "top"
+            },
+            "elements": [
+              {
+                "background": {
+                  "color": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"health\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://telegraf-01:9004/metrics\", service=\"telegraf-01\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "#D9D9D9"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "#000000"
+                  },
+                  "size": 20,
+                  "text": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"health\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://telegraf-01:9004/metrics\", service=\"telegraf-01\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "valign": "middle"
+                },
+                "connections": [],
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 1",
+                "placement": {
+                  "height": 50,
+                  "left": 499,
+                  "top": 122,
+                  "width": 150
+                },
+                "type": "metric-value"
+              },
+              {
+                "background": {
+                  "color": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"health\", host=\"telegraf-01\", instance=\"telegraf-01:9004\", job=\"telegraf\", method=\"GET\", server=\"http://telegraf-02:9005/metrics\", service=\"telegraf-02\", site=\"lab-site-01\", watcher_type=\"healthcheck\"}",
+                    "fixed": "#D9D9D9"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "#000000"
+                  },
+                  "size": 20,
+                  "text": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"health\", host=\"telegraf-01\", instance=\"telegraf-01:9004\", job=\"telegraf\", method=\"GET\", server=\"http://telegraf-02:9005/metrics\", service=\"telegraf-02\", site=\"lab-site-01\", watcher_type=\"healthcheck\"}",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 2",
+                "placement": {
+                  "height": 50,
+                  "left": 499,
+                  "top": 212,
+                  "width": 150
+                },
+                "type": "metric-value"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "rgb(204, 204, 220)"
+                  },
+                  "size": 16,
+                  "text": {
+                    "fixed": "telegraf-02"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 3",
+                "placement": {
+                  "height": 50,
+                  "left": 499,
+                  "top": 172,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "rgb(204, 204, 220)"
+                  },
+                  "size": 16,
+                  "text": {
+                    "fixed": "telegraf-01"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 4",
+                "placement": {
+                  "height": 50,
+                  "left": 499,
+                  "top": 79,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"http\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://logstash:9600\", service=\"logstash\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "#D9D9D9"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "#000000"
+                  },
+                  "size": 20,
+                  "text": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"http\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://logstash:9600\", service=\"logstash\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 5",
+                "placement": {
+                  "height": 50,
+                  "left": 499,
+                  "top": 304,
+                  "width": 150
+                },
+                "type": "metric-value"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "rgb(204, 204, 220)"
+                  },
+                  "size": 16,
+                  "text": {
+                    "fixed": "logstash"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 6",
+                "placement": {
+                  "height": 50,
+                  "left": 489,
+                  "top": 265,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"http\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://prometheus:9090/-/healthy\", service=\"prometheus\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "#D9D9D9"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "#000000"
+                  },
+                  "size": 20,
+                  "text": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"http\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://prometheus:9090/-/healthy\", service=\"prometheus\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 7",
+                "placement": {
+                  "height": 50,
+                  "left": 782,
+                  "top": 119,
+                  "width": 150
+                },
+                "type": "metric-value"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "rgb(204, 204, 220)"
+                  },
+                  "size": 16,
+                  "text": {
+                    "fixed": "prometheus"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 8",
+                "placement": {
+                  "height": 50,
+                  "left": 782,
+                  "top": 79,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"http\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://loki:3001/ready\", service=\"loki\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "#D9D9D9"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "#000000"
+                  },
+                  "size": 20,
+                  "text": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"http\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://loki:3001/ready\", service=\"loki\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "valign": "middle"
+                },
+                "connections": [],
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 9",
+                "placement": {
+                  "height": 50,
+                  "left": 782,
+                  "top": 212,
+                  "width": 150
+                },
+                "type": "metric-value"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "rgb(204, 204, 220)"
+                  },
+                  "size": 16,
+                  "text": {
+                    "fixed": "loki"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 10",
+                "placement": {
+                  "height": 49.990234375,
+                  "left": 780,
+                  "top": 172,
+                  "width": 50
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "field": "netobs_health_result_code",
+                    "fixed": "#D9D9D9"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "#000000"
+                  },
+                  "size": 20,
+                  "text": {
+                    "field": "netobs_health_result_code",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "valign": "middle"
+                },
+                "connections": [],
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 11",
+                "placement": {
+                  "height": 50,
+                  "left": 1064,
+                  "top": 252,
+                  "width": 150
+                },
+                "type": "metric-value"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "rgb(204, 204, 220)"
+                  },
+                  "size": 16,
+                  "text": {
+                    "fixed": "alertmanager"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 12",
+                "placement": {
+                  "height": 49.990234375,
+                  "left": 1064,
+                  "top": 212,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"http\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://grafana:3000/api/health\", service=\"grafana\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "#D9D9D9"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "#000000"
+                  },
+                  "size": 20,
+                  "text": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"http\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://grafana:3000/api/health\", service=\"grafana\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 13",
+                "placement": {
+                  "height": 50,
+                  "left": 1064,
+                  "top": 159,
+                  "width": 150
+                },
+                "type": "metric-value"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "rgb(204, 204, 220)"
+                  },
+                  "size": 16,
+                  "text": {
+                    "fixed": "grafana"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 14",
+                "placement": {
+                  "height": 50,
+                  "left": 1055,
+                  "top": 119,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"http\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://nautobot:8080/health/\", service=\"nautobot\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "#D9D9D9"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "#000000"
+                  },
+                  "size": 20,
+                  "text": {
+                    "field": "{__name__=\"netobs_health_result_code\", collection_type=\"http\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", method=\"GET\", server=\"http://nautobot:8080/health/\", service=\"nautobot\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 15",
+                "placement": {
+                  "height": 50,
+                  "left": 780,
+                  "top": 304,
+                  "width": 150
+                },
+                "type": "metric-value"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "rgb(204, 204, 220)"
+                  },
+                  "size": 16,
+                  "text": {
+                    "fixed": "nautobot"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 16",
+                "placement": {
+                  "height": 49.990234375,
+                  "left": 782,
+                  "top": 265,
+                  "width": 50
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "field": "{__name__=\"ping_result_code\", collection_type=\"ping\", device=\"ceos-01\", host=\"telegraf-01\", instance=\"telegraf-01:9004\", job=\"telegraf\", service=\"ceos-01\", site=\"lab-site-01\", watcher_type=\"healthcheck\"}",
+                    "fixed": "#D9D9D9"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "#000000"
+                  },
+                  "size": 20,
+                  "text": {
+                    "field": "{__name__=\"ping_result_code\", collection_type=\"ping\", device=\"ceos-01\", host=\"telegraf-01\", instance=\"telegraf-01:9004\", job=\"telegraf\", service=\"ceos-01\", site=\"lab-site-01\", watcher_type=\"healthcheck\"}",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 17",
+                "placement": {
+                  "height": 50,
+                  "left": 168,
+                  "top": 159,
+                  "width": 149.99021911621094
+                },
+                "type": "metric-value"
+              },
+              {
+                "background": {
+                  "color": {
+                    "field": "{__name__=\"ping_result_code\", collection_type=\"ping\", device=\"ceos-02\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", service=\"ceos-02\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "#D9D9D9"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "#000000"
+                  },
+                  "size": 20,
+                  "text": {
+                    "field": "{__name__=\"ping_result_code\", collection_type=\"ping\", device=\"ceos-02\", host=\"telegraf-02\", instance=\"telegraf-02:9005\", job=\"telegraf\", service=\"ceos-02\", site=\"lab-site-02\", watcher_type=\"healthcheck\"}",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 18",
+                "placement": {
+                  "height": 50,
+                  "left": 168,
+                  "top": 252,
+                  "width": 149.99021911621094
+                },
+                "type": "metric-value"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "rgb(204, 204, 220)"
+                  },
+                  "size": 16,
+                  "text": {
+                    "fixed": "ceos-01"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 19",
+                "placement": {
+                  "height": 50,
+                  "left": 155,
+                  "top": 119,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "rgb(204, 204, 220)"
+                  },
+                  "size": 16,
+                  "text": {
+                    "fixed": "ceos-02"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 20",
+                "placement": {
+                  "height": 50,
+                  "left": 155,
+                  "top": 212,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "blue"
+                  },
+                  "width": 4
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "text"
+                  },
+                  "text": {
+                    "mode": "fixed"
+                  },
+                  "valign": "middle"
+                },
+                "connections": [],
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 21",
+                "placement": {
+                  "height": 305.99609375,
+                  "left": 463,
+                  "top": 77,
+                  "width": 220
+                },
+                "type": "rectangle"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "blue"
+                  },
+                  "width": 4
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "text"
+                  },
+                  "text": {
+                    "mode": "fixed"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 22",
+                "placement": {
+                  "height": 305.99609375,
+                  "left": 747,
+                  "top": 77,
+                  "width": 220
+                },
+                "type": "rectangle"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "blue"
+                  },
+                  "width": 4
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "text"
+                  },
+                  "text": {
+                    "mode": "fixed"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 23",
+                "placement": {
+                  "height": 305.99609375,
+                  "left": 1029,
+                  "top": 77,
+                  "width": 220
+                },
+                "type": "rectangle"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "blue"
+                  },
+                  "width": 4
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "text"
+                  },
+                  "text": {
+                    "mode": "fixed"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 24",
+                "placement": {
+                  "height": 216.9921875,
+                  "left": 131,
+                  "top": 112,
+                  "width": 219.99021911621094
+                },
+                "type": "rectangle"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "super-light-blue"
+                  },
+                  "size": 20,
+                  "text": {
+                    "fixed": "Network"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 25",
+                "placement": {
+                  "height": 50,
+                  "left": 191,
+                  "top": 54,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "super-light-blue"
+                  },
+                  "size": 20,
+                  "text": {
+                    "fixed": "Collectors"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 26",
+                "placement": {
+                  "height": 50,
+                  "left": 524,
+                  "top": 18,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "super-light-blue"
+                  },
+                  "size": 20,
+                  "text": {
+                    "fixed": "Databases"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 27",
+                "placement": {
+                  "height": 50,
+                  "left": 807,
+                  "top": 18,
+                  "width": 100
+                },
+                "type": "text"
+              },
+              {
+                "background": {
+                  "color": {
+                    "fixed": "transparent"
+                  }
+                },
+                "border": {
+                  "color": {
+                    "fixed": "dark-green"
+                  }
+                },
+                "config": {
+                  "align": "center",
+                  "color": {
+                    "fixed": "super-light-blue"
+                  },
+                  "size": 20,
+                  "text": {
+                    "fixed": "Dashboards and Alerts"
+                  },
+                  "valign": "middle"
+                },
+                "constraint": {
+                  "horizontal": "left",
+                  "vertical": "top"
+                },
+                "name": "Element 28",
+                "placement": {
+                  "height": 50,
+                  "left": 1050,
+                  "top": 18,
+                  "width": 176.9921875
+                },
+                "type": "text"
+              }
+            ],
+            "name": "Element 1723917302688",
+            "placement": {
+              "height": 100,
+              "left": 0,
+              "top": 0,
+              "width": 100
+            },
+            "type": "frame"
+          },
+          "showAdvancedTypes": true
+        },
+        "pluginVersion": "10.4.4",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "netobs_health_result_code{service=\"telegraf-01\"}",
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "netobs_health_result_code{service=\"telegraf-02\"}",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "B"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "netobs_health_result_code{service=\"logstash\"}",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "C"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "netobs_health_result_code{service=\"prometheus\"}",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "D"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "netobs_health_result_code{service=\"loki\"}",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "E"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "netobs_health_result_code{service=\"alertmanager\"}",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "F"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "netobs_health_result_code{service=\"grafana\"}",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "G"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "netobs_health_result_code{service=\"nautobot\"}",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "H"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "ping_result_code{device=\"ceos-01\"}",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "I"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "P1809F7CD0C75ACF3"
+            },
+            "editorMode": "code",
+            "expr": "ping_result_code{device=\"ceos-02\"}",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "J"
+          }
+        ],
+        "type": "canvas"
+      }
+    ],
+    "schemaVersion": 39,
+    "tags": [
+      "services",
+      "o11y"
+    ],
+    "templating": {
+      "list": []
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Meta Monitoring",
+    "uid": "edv4bacvab7cwf",
+    "version": 2,
+    "weekStart": ""
+  }
