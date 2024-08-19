@@ -169,12 +169,36 @@ def high_bw_links(device: str, threshold: float = 1000.0, watch: bool = False):
 
 
 @app.command()
+def device_info(device: str):
+    """Retrieve and display information for a specific device.
+
+    Example:
+
+        > python observer.py device-info ceos-01
+    """
+    console.log(
+        f"Getting information for device {device}", style="info"
+    )
+
+    # Retrieve device information from Nautobot
+    device_info = retrieve_device_info(device)
+
+    # Display device information
+    console.log(
+        f"Device: {device}",
+        f"Model: {device_info['device_type']['model']}",
+        f"Manufacturer: "
+        f"{device_info['device_type']['manufacturer']['name']}",
+    )
+
+
+@app.command()
 def site_health(site: str):
     """Retrieves and displays health information for devices in a specific site.
 
     Example:
 
-        > python observer.py site-health --site "lab-site-01"
+        > python observer.py site-health lab-site-01
     """
     console.log(f"Getting site [orange2 i]{site}[/] health", style="info")
     # Placeholder for the devices information

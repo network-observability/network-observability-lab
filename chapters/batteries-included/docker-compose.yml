@@ -14,6 +14,7 @@ volumes:
 services:
 
   telegraf-01:
+    container_name: telegraf-01
     build:
       dockerfile: "./telegraf/telegraf.Dockerfile"
       args:
@@ -29,8 +30,13 @@ services:
       - ../../.env
     networks:
       - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   telegraf-02:
+    container_name: telegraf-02
     build:
       dockerfile: "./telegraf/telegraf.Dockerfile"
       args:
@@ -46,24 +52,35 @@ services:
       - ../../.env
     networks:
       - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   logstash:
-    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:3.0.1}
+    container_name: logstash
+    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:3.1.1}
     command: -f /home/logstash/logstash.cfg
     volumes:
       - ./logstash/logstash.cfg:/home/logstash/logstash.cfg
     ports:
       - 1515:1515
       - 9600:9600
+      - 12201:12201/udp
     environment:
       XPACK_MONITORING_ENABLED: false
     env_file:
       - ../../.env
     networks:
       - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   loki:
-    image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.0.1}
+    container_name: loki
+    image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.1.1}
     ports:
       - 3001:3001
     command: -config.file=/etc/loki/loki-config.yml
@@ -75,8 +92,13 @@ services:
       - ../../.env
     networks:
       - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   prometheus:
+    container_name: prometheus
     image: ${PROMETHEUS_IMAGE:-docker.io/prom/prometheus:v2.52.0}
     ports:
       - 9090:9090
@@ -93,8 +115,13 @@ services:
       - ../../.env
     networks:
       - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   alertmanager:
+    container_name: alertmanager
     image: ${ALERTMANAGER_IMAGE:-docker.io/prom/alertmanager:v0.26.0}
     # restart: always
     ports:
@@ -108,8 +135,13 @@ services:
       - ../../.env
     networks:
       - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   grafana:
+    container_name: grafana
     image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:10.4.4}
     ports:
       - 3000:3000
@@ -127,8 +159,13 @@ services:
       - ../../.env
     networks:
       - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   nautobot:
+    container_name: nautobot
     image: ${NAUTOBOT_IMAGE:-docker.io/networktocode/nautobot:2.2-py3.10}
     env_file:
       - "../../.env"
@@ -140,8 +177,13 @@ services:
       - ./nautobot/nautobot_config.py:/opt/nautobot/nautobot_config.py
     networks:
       - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   nautobot-redis:
+    container_name: nautobot-redis
     image: ${REDIS_IMAGE:-redis:7.2-alpine}
     command:
       - "sh"
@@ -154,6 +196,7 @@ services:
       - network-observability
 
   nautobot-postgres:
+    container_name: nautobot-postgres
     image: ${POSTGRES_IMAGE:-postgres:14}
     environment:
       NAUTOBOT_DB_ENGINE: "django.db.backends.postgres"
@@ -169,6 +212,7 @@ services:
       - network-observability
 
   webhook:
+    container_name: webhook
     build:
       dockerfile: "./webhook/webhook.Dockerfile"
       args:
@@ -184,3 +228,7 @@ services:
       PREFECT_API_KEY: ${PREFECT_KEY}
     networks:
       - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
