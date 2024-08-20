@@ -128,23 +128,38 @@ INFO[0001] Creating virtual wire: ceos-01:eth1 <--> ceos-02:eth1
 ───────────────────────────────────────────────────── End of task: start stack ─────────────────────────────────────────────────────
 ```
 
---
+---
 
 ## Lab Scenarios
 
-The [`chapters/`](./chapters/) folder is filled with lab scenarios to help you understand modern network observabilities techniques with open source tooling. And as you may have guessed they are mapped with the chapters of the book.
+The [`chapters/`](./chapters/) folder contains a collection of lab scenarios designed to help you explore modern network observability techniques using open-source tools. These scenarios are directly aligned with the chapters of the book.
 
-Each practical chapter has two lab scenarios, a skeleton one named as `ch<number>` that has only the barfe minimum setup to follow along with the execises of that chapter in the book, and a answered version `ch<number>-completed` that has all the components already configured.
+Each practical chapter provides two lab scenarios:
 
-Here is a brief overview of the practical chapters and what you can encounter in them:
+1. **Skeleton Scenario (`ch<number>`):** This scenario includes only the bare minimum setup required to follow along with the exercises in the corresponding chapter of the book.
+2. **Completed Scenario (`ch<number>-completed`):** This scenario comes fully configured, with all components set up as described in the chapter.
 
-* Chapter 3 - Network Observability Data: This chapter handles explores methods and techniques to obtain operational data our of network devices from a variety of methods using well known Python libraries and other low level tooling that makes easier the exploration. Among these are SNMP, gNMI, SSH and CLI parsing, REST APIs, and more.
-* Chapter 5 - Data Collectors: This chapters builds on the knowledge of observability data, and starts implementing it with tools used in Production environment in many companies. It talks specifically about Telegraf and Logstash and how these tools are configured to collect metrics and syslog data from network devices.
-* Chapter 6 - Data Distribution and Processing: It goes deeper into Telegraf and Logstash, and how they are configured to normalize and enrich data they are collecting, for example using a Source of Truth like Nautobot to give more context to the data being collected. It also gives examples of how these collectors can be handled in larger environments with the introduction of Message Brokers like Kafka. The lab environment touches all these points.
-* Chapter 7 - Data Storage with Prometheus and Loki: The lab focuses on using Prometheus to scrape the metrics already normalized and enriched from Telegraf and is filled with examples of PromQL and how to use to get insights from your network metrics. The second part of this chapter focuses on Loki and how to query log data using LogQL.
-* Chapter 8 - Data Visualization: This chapter focuses on Grafana and how to create panels and dashboards from the data we have collected from the network.
-* Chapter 9 - Alerting: This chapters gets into the details of Prometheus and Loki for alert generation based on the data they have collected. It introduces Alertmanager as the tool for receiving these messages and appropietly route them to different destinations like [Keep](https://keephq.dev) for your alert and incident management workfows.
-* Chapter 12 - Automation with Observability Data: Focuses on the use of scripts and automation tools like Prefect for performing day 2 operations with the observability data from your network.
-* Chapter 13 - Machine Learning and AI: Gives you a glimpse of use cases of what can be done using these techniques and technologies on top of your observability data.
-* `batteries-included` scenario: It brings everything together. It is a ready to go, fully configured environment that is aimed to give you a glimpse of the art of the possible with these tools and technologies.
+![Lab Components Grafana](./pics/batteries-included-grafana.png)
+
+### Overview of Practical Chapters
+
+Here is a brief overview of the practical chapters and the key concepts you will encounter:
+
+- **Chapter 3 - Network Observability Data:** This chapter explores various methods and techniques to obtain operational data from network devices using popular Python libraries and other low-level tools. It covers protocols such as SNMP, gNMI, SSH CLI parsing, REST APIs, eBPF and more.
+
+- **Chapter 5 - Data Collectors:** Building on the concepts from Chapter 3, this chapter introduces tools like Telegraf and Logstash, which are widely used in production environments to collect metrics and syslog data from network devices.
+
+- **Chapter 6 - Data Distribution and Processing:** This chapter delves deeper into configuring Telegraf and Logstash to normalize and enrich the collected data. It also introduces the use of Message Brokers like Kafka for handling data in larger environments, with practical examples included in the lab.
+
+- **Chapter 7 - Data Storage with Prometheus and Loki:** This chapter focuses on using Prometheus to scrape, store, and analyze normalized and enriched metrics from Telegraf. It includes practical examples of PromQL queries to extract meaningful insights from your network data. Additionally, the chapter covers Loki for log data storage and retrieval using LogQL, as well as the implementation of recording rules in both systems to optimize query performance and precompute frequent calculations.
+
+- **Chapter 8 - Data Visualization:** This chapter centers on Grafana, demonstrating how to create panels and dashboards to visualize the data collected from the network.
+
+- **Chapter 9 - Alerting:** This chapter dives into generating alerts with Prometheus and Loki based on the collected data. It introduces Alertmanager, which manages the routing of alerts to different destinations, including integration with [Keep](https://keephq.dev) for alert and incident management workflows.
+
+- **Chapter 12 - Automation with Observability Data:** This chapter delves into leveraging automation tools, such as [Prefect](https://www.prefect.io/), to streamline and automate day 2 operations using your network’s observability data. It highlights how automation can enhance efficiency, reduce manual effort, and improve the reliability of ongoing network management tasks.
+
+- **Chapter 13 - Machine Learning and AI:** This chapter explores how machine learning and AI techniques can enhance your observability practices. It covers basic forecasting, AI-driven Root Cause Analysis (RCA), and advanced anomaly detection.
+
+- **[`Batteries Included`](./chapters/batteries-included/) Scenario:** This scenario brings everything together in a fully configured environment, offering a glimpse into the full potential of these tools. The batteries-included scenario [README](./chapters/batteries-included/README.md) provides an overview and detailed explanation of the setup, giving you a holistic view of what is achievable with this setup.
 
