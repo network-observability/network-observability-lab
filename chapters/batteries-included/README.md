@@ -291,6 +291,8 @@ PromQL is the query language used by Prometheus to retrieve metrics. You can acc
 http://<lab-machine-address>:9090/graph
 ```
 
+![Prometheus Web Interface](./../../pics/prometheus-web-interface.png)
+
 Example query to check network interface metrics:
 
 ```promql
@@ -311,7 +313,9 @@ To access Grafana, open your web browser and go to:
 http://<lab-machine-address>:3000
 ```
 
-Login with the default credentials (usually `admin/admin`) and explore the pre-built dashboards. These dashboards are connected to Prometheus and Loki, providing real-time insights into network performance and events.
+Login with the default credentials (usually `admin/admin`) and explore the pre-built dashboards. These dashboards are connected to Prometheus, Loki and Nautobot, providing real-time insights into network performance and events all with contextual information from Nautobot.
+
+![Grafana Device Dashboard](./../../pics/grafana-device-dashboard.png)
 
 #### Creating a Custom Dashboard
 
@@ -337,44 +341,124 @@ http://<alertmanager_ip>:9093
 
 This interface allows you to view active alerts, silence them, or check the routing rules.
 
-#### Configuring Alerts
+## Lab Interactation
 
-To add or modify alerting rules, you can edit the Prometheus configuration file:
+Let's perform a task that will try to use as many commands as possible on the lab scenario so you can see how to interact with it.
 
-```yaml
-groups:
-  - name: Network Alerts
-    rules:
-    - alert: HighCPUUsage
-      expr: avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) > 0.8
-      for: 5m
-      labels:
-        severity: critical
-      annotations:
-        summary: "High CPU Usage Detected"
-        description: "The average CPU usage is over 80% for more than 5 minutes."
+* Problem: The router `ceos-02` has a really strict configuration policies and it shouldn't have more than just two static routes configured IF necessary. If the threshold is passed than the network teams should be alerted.
+* Solution: The command `show ip route summary` provides a well-formatted CLI table with the amount of routes present on a device depending on the source. If we are able to capture, parse and create metrics from those route count metrics, we are able to create a `warning` alert to the network team, as well as a dashboard for showing the route count over time.
+
+### Data Collection
+
+Let's start with the data collection, for this we are going to use Telegraf to collect the route count metrics. We could use protocols, but the SSH - CLI output provides good amount of information, and for the purpose of the lab we want to showcase how to interact with building Telegraf instances with Python scripts for collecting this data.
+
+So, first let's test out we can collect the data over SSH - CLI and parse it with a Python script.
+
+1. Connect to telegraf-01:
+
+```bash
+netobs docker exec telegraf-01 bash
 ```
 
-Reload Prometheus to apply the new rules.
+2. Enter Python Interpreter:
 
-### Prefect
-
-Prefect is used for automating workflows based on the observability data collected. It can trigger jobs or actions in response to specific events or conditions.
-
-#### Accessing Prefect
-
-Prefect’s UI can be accessed via:
-
-```
-http://<prefect_ip>:8080
+```bash
+python
 ```
 
-Here, you can create and manage workflows, monitor task status, and review logs.
+3. Add the necessary imports,  device details configuration and check the commands output:
 
-### Example Workflow
-An example workflow could be:
+```python
+import os
+import netmiko
+from rich import print as rprint
 
-- Automatically generate a network report if Prometheus detects an anomaly.
-- Trigger remediation scripts on `cEOS` devices when an interface goes down.
+device = netmiko.ConnectHandler(device_type="arista_eos", host="ceos-02", username=os.getenv("NETWORK_AGENT_USER"), password=os.getenv("NETWORK_AGENT_PASSWORD"))
 
-To create a new workflow, use the Prefect UI or define it in code with the Prefect Python API.
+result = device.send_command("show ip route summary")
+rprint(result)
+```
+
+1. Now, let's parse the out with TTP. For this use this TTP template and check the returned output:
+
+```python
+ttp_template = """
+<group name="info">
+Operating routing protocol model: {{ protocol_model }}
+Configured routing protocol model: {{ config_protocol_model }}
+VRF: {{ vrf }}
+</group>
+
+<group name="routes*">
+   connected                                                  {{ connected_total | DIGIT }}
+   static (persistent)                                        {{ static_persistent_total | DIGIT }}
+   static (non-persistent)                                    {{ static_non_persistent_total | DIGIT }}
+</group>
+"""
+
+route_summary = device.send_command("show ip route summary", use_ttp=True, ttp_template=ttp_template)
+rprint(route_summary)
+# Output
+# [
+#     [
+#         {
+#             'info': {'vrf': 'default', 'config_protocol_model': 'multi-agent', 'protocol_model': 'multi-agent'},
+#             'routes': [
+#                 {'static_non_persistent_total': '0', 'static_persistent_total': '0', 'connected_total': '2'}
+#             ]
+#         }
+#     ]
+# ]
+```
+
+5. Now, we need to use this data collected to generate an Influx Line Protocol formatted message for Telegraf to process. So head over to the [`routing_collector.py`](./telegraf/routing_collector.py) and copy the `InfluxMetric` class into your terminal, remembering to also copy its imports so it doesn't give you an error - don't forget.
+
+5. Next, lets format the metric collected into the Influx Line Protocol.
+
+```python
+measurement = "routes"
+tags = {
+    "device": "ceos-02",
+    "device_type": "arista_eos",
+    "vrf": route_summary[0][0]["info"]["vrf"]
+}
+fields = {
+    "connected_total": route_summary[0][0]["routes"][0]["connected_total"],
+    "static_non_persistent_total": route_summary[0][0]["routes"][0]["static_non_persistent_total"],
+    "static_persistent_total": route_summary[0][0]["routes"][0]["static_persistent_total"],
+}
+
+metric = InfluxMetric(measurement=measurement, tags=tags, fields=fields)
+print(metric)
+# routes,device=ceos-02,device_type=arista_eos,vrf=default connected_total="2",static_non_persistent_total="0",static_persistent_total="4"
+)
+```
+
+7. Now, we just add this logic to the existing routing_collectors.py file. For this we just need to create a `route_summary_collector` function that takes a Netmiko device connection object `net_connect` and returns a list of `InfluxMetric` objects.
+
+For this we can wrap most of the snippets developed before and then just return an explicit list because is only one `InfluxMetric`
+
+```python
+def route_summary_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
+    # The logic of the `show ip route summary` command and TTP parsing to an `InfluxMetric`
+    return [InfluxMetric(measurement=measurement, tags=tags, fields=fields)]
+```
+
+And then on the main function uncomment these lines so the collector can use:
+
+```python
+def main(device_type, host):
+    # Rest of the logic for collecting BGP and OSPF information
+
+    # Collect Route Summary information
+    for metric in route_summary_collector(net_connect):
+        print(metric, flush=True)
+```
+
+8. After saving the file we need to apply the changes on the telegraf instances. Run the following command:
+
+```bash
+netobs lab update telegraf-01 telegraf-02
+```
+
+This will stop and start again the containers making sure the new configuration is applied.

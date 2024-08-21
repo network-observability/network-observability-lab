@@ -22,4 +22,4 @@ ENV PATH=/opt/conda/bin:$PATH
 RUN conda --version
 
 RUN pip install --upgrade pip && \
-    pip --no-cache-dir install netmiko jmespath
+    pip --no-cache-dir install netmiko jmespath rich ttp
