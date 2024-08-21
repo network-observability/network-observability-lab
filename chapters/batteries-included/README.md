@@ -92,6 +92,79 @@ Here are some useful commands to interact with the `cEOS` devices:
   ping <destination_ip> size 1400
   ```
 
+### Nautobot
+
+Nautobot acts as the source of truth for the network. It enriches data collected by Telegraf and Logstash with additional context, such as device metadata or topology information.
+
+### Verifying and Populating Nautobot
+
+Before populating Nautobot with data from your network devices, ensure that the Nautobot service is fully operational. Here are three methods to verify its readiness:
+
+1. **Check the `nautobot` Service Health:**
+   Run the following command to check the status of the `nautobot` service:
+
+   ```bash
+   netobs lab show | grep nautobot
+   ```
+
+   If the service is still starting, you will see a message indicating its health status as `(health: starting)`. For example:
+
+   ```shell
+   ❯ netobs lab show | grep nautobot
+   nautobot            docker.io/networktocode/nautobot:2.2-py3.10    "/docker-entrypoint.…"   nautobot            About a minute ago   Up About a minute (health: starting)   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp, 0.0.0.0:8443->8443/tcp, :::8443->8443/tcp
+   ```
+
+2. **Monitor the Meta Monitoring Dashboard:**
+   The Meta Monitoring dashboard in Grafana provides an overview of the
+   health of your services. Access it via `http://<lab-machine-address>:3000/dashboards`.
+
+   If Nautobot is still starting, the dashboard will reflect this status. Here is an example of what you might see:
+   ![Meta Monitoring Dashboard](./../../pics/batteries-included-grafana.png)
+
+3. **Review the `nautobot` Logs:**
+   You can follow the logs of the Nautobot container to monitor its startup process. Use the command:
+
+   ```bash
+   netobs docker logs nautobot --tail 10 --follow
+   ```
+
+   Wait until you see the message `Nautobot initialized!`, which confirms that Nautobot is ready for use.
+
+Once Nautobot is ready, you can populate it with data from your network devices by running the following command:
+
+```bash
+netobs utils load-nautobot
+```
+
+This command will load the necessary data into Nautobot, making it fully operational and ready for use with the other components in your observability stack.
+
+#### Accessing Nautobot
+
+You can access Nautobot via its web interface:
+
+```
+http://<lab-machine-address>:8080
+```
+
+Login to explore network device inventories, view relationships, and check the data being fed into Grafana.
+
+#### Enriching Data
+
+Nautobot can be queried using its GraphQL API. For example, to enrich device data in Grafana:
+
+```graphql
+{
+  devices {
+    name
+    site {
+      name
+    }
+  }
+}
+```
+
+This query will return device names and their corresponding sites, which can then be used to add context to your Grafana visualizations, enhancing the insights you can derive from your observability data.
+
 ### Telegraf
 
 Telegraf is an agent used for collecting and reporting metrics. In this lab, Telegraf is configured to collect metrics from `cEOS` devices using SNMP, gNMI and SSH protocols, which it then forwards to Prometheus. The data collected from the different methods is normalized for easier dashboarding and creation of alerts.
@@ -180,7 +253,7 @@ netobs docker logs logstash --tail 20 --follow
 
 This command will display the real-time logs from Logstash, helping you ensure that it is correctly receiving by showing its output in a `rubydebug` format.
 
-### Verifying Log Ingestion in Loki
+#### Verifying Log Ingestion in Loki
 
 Once Logstash is confirmed to be running, you can verify that logs are being ingested into Grafana Loki. Access the Loki targets via the Grafana web interface:
 
@@ -196,50 +269,52 @@ In the **Explore** section, select **Loki** as the data source and use the follo
 
 This query will display all logs processed by Logstash, allowing you to validate that the pipeline is functioning as expected.
 
-## Prometheus
+### Prometheus
 
-### Overview
 Prometheus is a time-series database used to scrape, store, and query metrics. In this lab, Prometheus collects metrics from Telegraf, allowing you to analyze network performance and trends.
 
-### Checking Prometheus Status
+#### Checking Prometheus Status
+
 To check the status of Prometheus and its targets, you can visit the Prometheus web interface:
 
 ```
-http://<prometheus_ip>:9090/targets
+http://<lab-machine-address>:9090/targets
 ```
 
 This page will show you all the active targets, including Telegraf, and whether Prometheus is successfully scraping them.
 
-### Querying Metrics with PromQL
+#### Querying Metrics with PromQL
+
 PromQL is the query language used by Prometheus to retrieve metrics. You can access the Prometheus query interface through:
 
 ```
-http://<prometheus_ip>:9090/graph
+http://<lab-machine-address>:9090/graph
 ```
 
 Example query to check network interface metrics:
 
 ```promql
-rate(if_octets{job="telegraf"}[5m])
+rate(interface_in_octets{device="ceos-02"}[5m])
 ```
 
 This query will show the rate of traffic flowing through interfaces, averaged over the last 5 minutes.
 
-## Grafana
+### Grafana
 
-### Overview
 Grafana is the visualization layer of the observability stack. It is used to create dashboards that display metrics collected by Prometheus and logs from Loki.
 
-### Accessing Grafana
+#### Accessing Grafana
+
 To access Grafana, open your web browser and go to:
 
 ```
-http://<grafana_ip>:3000
+http://<lab-machine-address>:3000
 ```
 
 Login with the default credentials (usually `admin/admin`) and explore the pre-built dashboards. These dashboards are connected to Prometheus and Loki, providing real-time insights into network performance and events.
 
-### Creating a Custom Dashboard
+#### Creating a Custom Dashboard
+
 To create a custom dashboard:
 
 1. Click on **Create** > **Dashboard**.
@@ -248,12 +323,12 @@ To create a custom dashboard:
 
 For example, you could create a panel to show CPU usage across your `cEOS` devices.
 
-## Alertmanager
+### Alertmanager
 
-### Overview
 Alertmanager is responsible for managing alerts generated by Prometheus. It routes these alerts to various destinations based on predefined rules.
 
-### Checking Alertmanager Status
+#### Checking Alertmanager Status
+
 You can check the status and configuration of Alertmanager by accessing:
 
 ```
@@ -262,7 +337,8 @@ http://<alertmanager_ip>:9093
 
 This interface allows you to view active alerts, silence them, or check the routing rules.
 
-### Configuring Alerts
+#### Configuring Alerts
+
 To add or modify alerting rules, you can edit the Prometheus configuration file:
 
 ```yaml
@@ -281,12 +357,12 @@ groups:
 
 Reload Prometheus to apply the new rules.
 
-## Prefect
+### Prefect
 
-### Overview
 Prefect is used for automating workflows based on the observability data collected. It can trigger jobs or actions in response to specific events or conditions.
 
-### Accessing Prefect
+#### Accessing Prefect
+
 Prefect’s UI can be accessed via:
 
 ```
@@ -302,33 +378,3 @@ An example workflow could be:
 - Trigger remediation scripts on `cEOS` devices when an interface goes down.
 
 To create a new workflow, use the Prefect UI or define it in code with the Prefect Python API.
-
-## Nautobot
-
-### Overview
-Nautobot acts as the source of truth for the network. It enriches data collected by Telegraf and Logstash with additional context, such as device metadata or topology information.
-
-### Accessing Nautobot
-You can access Nautobot via its web interface:
-
-```
-http://<nautobot_ip>:8000
-```
-
-Login to explore network device inventories, view relationships, and check the data being fed into Grafana.
-
-### Enriching Data
-Nautobot can be queried using its GraphQL API. For example, to enrich device data in Telegraf:
-
-```graphql
-{
-  devices {
-    name
-    site {
-      name
-    }
-  }
-}
-```
-
-This query will return device names and their corresponding sites, which can then be used to add context to your observability data.
