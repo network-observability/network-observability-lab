@@ -28,6 +28,8 @@ services:
       - 9004:9004
     env_file:
       - ../../.env
+    environment:
+      DEBUG: true
     networks:
       - network-observability
     logging:

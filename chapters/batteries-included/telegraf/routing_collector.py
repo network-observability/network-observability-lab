@@ -1,10 +1,11 @@
 """BGP neighbor state_pfxrcd/state_pfxacc to InfluxDB line protocol script."""
+
 import os
 import sys
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
-from netmiko import ConnectHandler, BaseConnection
+from netmiko import BaseConnection, ConnectHandler
 
 
 @dataclass
@@ -56,15 +57,31 @@ def bgp_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
             "neighbor": neighbor["bgp_neigh"],  # type: ignore
             "neighbor_asn": neighbor["neigh_as"],  # type: ignore
             "vrf": neighbor["vrf"],  # type: ignore
+            "device": host,
         }
 
-        if neighbor["state_pfxrcd"]:  # type: ignore
-            fields = {
-                "prefixes_received": int(neighbor["state_pfxrcd"]),  # type: ignore
-                "prefixes_accepted": int(neighbor["state_pfxacc"]),  # type: ignore
-            }
+        # Convert the state to a more readable format
+        if "Estab" in neighbor["state"]:  # type: ignore
+            state = "ESTABLISHED"
+        elif "Idle" in neighbor["state"]:  # type: ignore
+            state = "IDLE"
+        elif "Connect" in neighbor["state"]:  # type: ignore
+            state = "CONNECT"
+        elif "Active" in neighbor["state"]:  # type: ignore
+            state = "ACTIVE"
+        elif "opensent" in neighbor["state"].lower():  # type: ignore
+            state = "OPENSENT"
+        elif "openconfirm" in neighbor["state"].lower():  # type: ignore
+            state = "OPENCONFIRM"
         else:
-            fields = {}
+            state = neighbor["state"].upper()  # type: ignore
+
+        fields = {"neighbor_state": state}
+
+        if neighbor["state_pfxrcd"]:  # type: ignore
+            fields["prefixes_received"] = int(neighbor["state_pfxrcd"])  # type: ignore
+            fields["prefixes_accepted"] = int(neighbor["state_pfxacc"])  # type: ignore
+
         results.append(InfluxMetric(measurement, tags, fields))
 
     return results
@@ -93,8 +110,33 @@ def ospf_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
     return results
 
 
-# def route_summary_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
-#     return [InfluxMetric(measurement, tags, fields)]
+def route_summary_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
+    ttp_template = """
+<group name="info">
+Operating routing protocol model: {{ protocol_model }}
+Configured routing protocol model: {{ config_protocol_model }}
+VRF: {{ vrf }}
+</group>
+
+<group name="routes*">
+   connected                                                  {{ connected_total | DIGIT }}
+   static (persistent)                                        {{ static_persistent_total | DIGIT }}
+   static (non-persistent)                                    {{ static_non_persistent_total | DIGIT }}
+</group>
+    """
+    route_summary = net_connect.send_command("show ip route summary", use_ttp=True, ttp_template=ttp_template)
+    measurement = "routes"
+    tags = {
+        "device": "ceos-02",
+        "device_type": "arista_eos",
+        "vrf": route_summary[0][0]["info"]["vrf"],  # type: ignore
+    }
+    fields = {
+        "connected_total": int(route_summary[0][0]["routes"][0]["connected_total"]),  # type: ignore
+        "static_non_persistent_total": int(route_summary[0][0]["routes"][0]["static_non_persistent_total"]),  # type: ignore
+        "static_persistent_total": int(route_summary[0][0]["routes"][0]["static_persistent_total"]),  # type: ignore
+    }
+    return [InfluxMetric(measurement, tags, fields)]
 
 
 def main(device_type, host):
@@ -121,9 +163,9 @@ def main(device_type, host):
     for metric in ospf_metrics:
         print(metric, flush=True)
 
-    # # Collect Route Summary information
-    # for metric in route_summary_collector(net_connect):
-    #     print(metric, flush=True)
+    # Collect Route Summary information
+    for metric in route_summary_collector(net_connect):
+        print(metric, flush=True)
 
     # Close the SSH connection
     net_connect.disconnect()

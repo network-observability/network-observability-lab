@@ -462,3 +462,37 @@ netobs lab update telegraf-01 telegraf-02
 ```
 
 This will stop and start again the containers making sure the new configuration is applied.
+
+9. You can check the newly added metric by running a command similar to the following:
+
+```bash
+netobs docker logs telegraf-01 -t 20 -f | grep routes
+```
+
+10. Success! those metrics are shown in Influx Line Protocol format, we could see them as well in Prometheus format if you open uyour browser and go to the URL `http://<lab-machine-address>:9005` to check the ones for telegraf-02.
+
+### Data Storage
+
+At this point the data should in Prometheus, you can run a query on your Prometheus instance to get the metrics from the routes sumary:
+
+```promql
+routes_static_persistent_total{device="ceos-02"}
+```
+
+You can see this metric increasing if we start adding routes to our device. For example lets create an static route on `ceos-02`:
+
+```shell
+❯ ssh netobs@ceos-02
+(netobs@ceos-02) Password:
+ceos-02>en
+ceos-02#
+ceos-02#conf t
+ceos-02(config)#ip route 10.77.70.0/24 10.222.0.2
+ceos-02(config)#exit
+ceos-02#
+```
+
+At this point you should see the metric counter increasing by 1 in `ceos-01` static routes.
+
+### Alerts
+
