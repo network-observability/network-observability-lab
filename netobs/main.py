@@ -1,5 +1,5 @@
 """Netobs CLI."""
-
+# ruff: noqa: B008, B006
 import os
 import shlex
 import subprocess  # nosec
@@ -383,7 +383,7 @@ def load_yaml(topology: Path) -> dict:
             topology_dict = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             console.log(exc, style="error")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from exc
     return topology_dict
 
 
@@ -947,6 +947,37 @@ def lab_update(
     console.log(f"Lab environment updated for scenario: [orange1 i]{scenario.value}", style="info")
 
 
+@lab_app.command("rebuild")
+def lab_rebuild(
+    services: Annotated[list[str], typer.Argument(help="Service(s) to rebuild")],
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ],
+):
+    """Rebuild the service(s) of a lab scenario.
+
+    [u]Example:[/u]
+
+    To rebuild all services:
+        [i]netobs lab rebuild --scenario batteries-included[/i]
+
+    To rebuild a specific service:
+        [i]netobs lab rebuild webhook --scenario batteries-included[/i]
+    """
+    console.log(f"Rebuilding lab environment for scenario: [orange1 i]{scenario.value}", style="info")
+
+    # Stop the containers
+    docker_stop(scenario=scenario, services=services, verbose=True)
+
+    # Rebuild the containers
+    docker_build(scenario=scenario, services=services, verbose=True)
+
+    # Start them back
+    docker_start(scenario=scenario, services=services, verbose=True)
+
+    console.log(f"Lab environment rebuilt for scenario: [orange1 i]{scenario.value}", style="info")
+
+
 # --------------------------------------#
 #           Digital Ocean VM            #
 # --------------------------------------#
@@ -999,6 +1030,11 @@ def deploy_droplet(
     [u]Example:[/u]
         [i]> netobs setup deploy[/i]
     """
+    # First create the keep_api_key file in the root directory from the environment variable using Path
+    keep_api_key = Path("./keep_api_key")
+    keep_api_key.write_text(ENVVARS.get("KEEP_API_KEY", ""))
+
+    # Then create the droplets
     exec_cmd = ansible_command(
         playbook="create_droplet.yml",
         inventories=["localhost.yaml"],
@@ -1024,6 +1060,9 @@ def deploy_droplet(
     else:
         console.log("Issues encountered setting up droplets", style="warning")
         raise typer.Abort()
+
+    # Delete the keep_api_key file
+    keep_api_key.unlink()
 
 
 @setup_app.command(rich_help_panel="DigitalOcean", name="destroy")

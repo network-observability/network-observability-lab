@@ -313,6 +313,7 @@ terraform.tfstate.backup
 local
 
 *keep_api_key
+*slack_webhook
 
 # Dev Containers
 .devcontainer/dev

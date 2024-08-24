@@ -48,7 +48,6 @@ def process_webhook(alert_group: AlertmanagerAlertGroup):
 
         log.info(f"Alert status is {alert_group.status}, exiting")
     except Exception as e:
-        log.error("AQUI AQUI AQUI")
         log.error(f"Error running deployment: {e}")
         error = str(e)
     return {"message": "Processed webhook"} if not error else {"error": error}

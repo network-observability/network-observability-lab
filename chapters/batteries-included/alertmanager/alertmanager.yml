@@ -18,6 +18,7 @@ route:
     - receiver: 'keep'
       matchers:
         - severity =~ "critical|warning"
+      continue: true
 
 receivers:
   # Default receiver for alerts (if no matchers are found)

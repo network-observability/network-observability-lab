@@ -74,6 +74,9 @@
     collection_type = "exec"
 
 
+###############################################################################
+#                               WATCHERS                                      #
+###############################################################################
 [[inputs.ping]]
   interval = "10s"
   count = 3
@@ -83,6 +86,20 @@
 
   [inputs.ping.tags]
     collection_type = "ping"
+    watcher_type = "healthcheck"
+    service = "ceos-01"
+
+
+[[inputs.http_response]]
+  name_override = "netobs_health"
+  urls = ["http://telegraf-02:9005/metrics"]
+  fieldexclude = ["content_length", "result_type"]
+  tagexclude = ["status_code", "result"]
+
+  [inputs.http_response.tags]
+    collection_type = "health"
+    watcher_type = "healthcheck"
+    service = "telegraf-02"
 ##############################################################################
 #                            DATA NORMALIZATION                              #
 ##############################################################################
