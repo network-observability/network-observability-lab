@@ -19,10 +19,6 @@ route:
       matchers:
         - severity =~ "critical|warning"
       continue: true
-    - receiver: 'slack'
-      matchers:
-        - alertname = RoutesStaticsViolation
-      continue: true
 
 receivers:
   # Default receiver for alerts (if no matchers are found)
@@ -44,14 +40,3 @@ receivers:
         basic_auth:                     # Basic authentication for the webhook
           username: api_key             # Username for the webhook
           password_file: keep_api_key   # Password file for the webhook
-
-  # Receiver for sending alerts to Slack
-  - name: 'slack'
-    slack_configs:
-      - send_resolved: true
-        api_url_file: /etc/alertmanager/slack_webhook
-        channel: '#networkeando'
-        title: '{{ .CommonAnnotations.summary }}'
-        text: '{{ .CommonAnnotations.description }}'
-        username: 'netobs'
-        icon_url: 'https://prometheus.io/assets/prometheus_logo-cb55f0a4f9d6b7b7d6b3b3'
