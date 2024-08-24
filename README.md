@@ -45,24 +45,26 @@ To get started with the network lab and observability stack, you need to:
 
 1. Copy the necessary environment variables to configure the components used within the lab scenarios.
 
-```bash
-# Setup environment variables (edit the .env file to your liking)
-cp example.env .env
-```
+  ```bash
+  # Setup environment variables (edit the .env file to your liking)
+  cp example.env .env
+  ```
 
 2. Install the `netobs` utility command that helps manage the entire lab environment.
 
-```bash
-# Install the python dependencies
-pip install .
-```
+  ```bash
+  # Install the python dependencies
+  pip install .
+  ```
 
 3. Test everything is working by deploying a lab that has most of the components configured and ready to go.
 
-```bash
-# Start the network lab
-netobs lab deploy --scenario batteries-included
-```
+  ```bash
+  # Start the network lab
+  netobs lab deploy --scenario batteries-included
+  ```
+
+> NOTE: Our lab comes with a `batteries-included` setup, providing you with everything you need to get started with network observability right away. This setup includes pre-configured tools and detailed step-by-step instructions to help you explore and learn without any hassle. Head over to the [instructions](./chapters/batteries-included/README.md) section to begin!
 
 ---
 
@@ -162,4 +164,3 @@ Here is a brief overview of the practical chapters and the key concepts you will
 - **Chapter 13 - Machine Learning and AI:** This chapter explores how machine learning and AI techniques can enhance your observability practices. It covers basic forecasting, AI-driven Root Cause Analysis (RCA), and advanced anomaly detection.
 
 - **[`Batteries Included`](./chapters/batteries-included/) Scenario:** This scenario brings everything together in a fully configured environment, offering a glimpse into the full potential of these tools. The batteries-included scenario [README](./chapters/batteries-included/README.md) provides an overview and detailed explanation of the setup, giving you a holistic view of what is achievable with this setup.
-
