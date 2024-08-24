@@ -2,6 +2,40 @@
 
 The goal of this lab scenario is to showcase a comprehensive observability stack using open-source tools. It integrates most of the configurations and system designs provided in the chapters of the book, offering a practical, hands-on environment to explore these tools in action.
 
+- [Batteries Included Scenario](#batteries-included-scenario)
+  - [High-Level Overview](#high-level-overview)
+    - [Checking the Lab Environment](#checking-the-lab-environment)
+  - [Component Overview and Interaction Guide](#component-overview-and-interaction-guide)
+    - [Network Devices (`cEOS`)](#network-devices-ceos)
+      - [Checking the Containerlab Topology](#checking-the-containerlab-topology)
+      - [Logging into the Devices](#logging-into-the-devices)
+      - [Commands to Interact with the Devices](#commands-to-interact-with-the-devices)
+    - [Nautobot](#nautobot)
+    - [Verifying and Populating Nautobot](#verifying-and-populating-nautobot)
+      - [Accessing Nautobot](#accessing-nautobot)
+      - [Enriching Data](#enriching-data)
+    - [Telegraf](#telegraf)
+      - [Checking Telegraf Logs](#checking-telegraf-logs)
+      - [Viewing Prometheus Metrics](#viewing-prometheus-metrics)
+      - [Running Network Commands from Inside the Telegraf Container](#running-network-commands-from-inside-the-telegraf-container)
+      - [Verifying Metrics Scraping in Prometheus](#verifying-metrics-scraping-in-prometheus)
+    - [Logstash](#logstash)
+      - [Checking Logstash Logs](#checking-logstash-logs)
+      - [Verifying Log Ingestion in Loki](#verifying-log-ingestion-in-loki)
+    - [Prometheus](#prometheus)
+      - [Checking Prometheus Status](#checking-prometheus-status)
+      - [Querying Metrics with PromQL](#querying-metrics-with-promql)
+    - [Grafana](#grafana)
+      - [Accessing Grafana](#accessing-grafana)
+      - [Creating a Custom Dashboard](#creating-a-custom-dashboard)
+    - [Alertmanager](#alertmanager)
+      - [Checking Alertmanager Status](#checking-alertmanager-status)
+  - [Working with the Lab](#working-with-the-lab)
+    - [Collecting Data](#collecting-data)
+    - [Querying Data](#querying-data)
+    - [Creating and Managing Alerts](#creating-and-managing-alerts)
+      - [Triggering and Monitoring Alerts](#triggering-and-monitoring-alerts)
+
 ## High-Level Overview
 
 The following diagram illustrates the topology of the lab environment:
