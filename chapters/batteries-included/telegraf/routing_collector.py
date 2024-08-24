@@ -110,35 +110,6 @@ def ospf_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
     return results
 
 
-def route_summary_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
-    ttp_template = """
-<group name="info">
-Operating routing protocol model: {{ protocol_model }}
-Configured routing protocol model: {{ config_protocol_model }}
-VRF: {{ vrf }}
-</group>
-
-<group name="routes*">
-   connected                                                  {{ connected_total | DIGIT }}
-   static (persistent)                                        {{ static_persistent_total | DIGIT }}
-   static (non-persistent)                                    {{ static_non_persistent_total | DIGIT }}
-</group>
-    """
-    route_summary = net_connect.send_command("show ip route summary", use_ttp=True, ttp_template=ttp_template)
-    measurement = "routes"
-    tags = {
-        "device": "ceos-02",
-        "device_type": "arista_eos",
-        "vrf": route_summary[0][0]["info"]["vrf"],  # type: ignore
-    }
-    fields = {
-        "connected_total": int(route_summary[0][0]["routes"][0]["connected_total"]),  # type: ignore
-        "static_non_persistent_total": int(route_summary[0][0]["routes"][0]["static_non_persistent_total"]),  # type: ignore
-        "static_persistent_total": int(route_summary[0][0]["routes"][0]["static_persistent_total"]),  # type: ignore
-    }
-    return [InfluxMetric(measurement, tags, fields)]
-
-
 def main(device_type, host):
     """Connect to a device and print the BGP neighbor pfxrcd/pfxacc value in the influx line protocol format."""
     # Define the device to connect to
@@ -161,10 +132,6 @@ def main(device_type, host):
     # Collect OSPF neighbor information
     ospf_metrics = ospf_collector(net_connect)
     for metric in ospf_metrics:
-        print(metric, flush=True)
-
-    # Collect Route Summary information
-    for metric in route_summary_collector(net_connect):
         print(metric, flush=True)
 
     # Close the SSH connection

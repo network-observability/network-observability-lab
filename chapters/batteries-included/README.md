@@ -341,158 +341,332 @@ http://<alertmanager_ip>:9093
 
 This interface allows you to view active alerts, silence them, or check the routing rules.
 
-## Lab Interactation
+---
 
-Let's perform a task that will try to use as many commands as possible on the lab scenario so you can see how to interact with it.
+## Working with the Lab
 
-* Problem: The router `ceos-02` has a really strict configuration policies and it shouldn't have more than just two static routes configured IF necessary. If the threshold is passed than the network teams should be alerted.
-* Solution: The command `show ip route summary` provides a well-formatted CLI table with the amount of routes present on a device depending on the source. If we are able to capture, parse and create metrics from those route count metrics, we are able to create a `warning` alert to the network team, as well as a dashboard for showing the route count over time.
+In this lab, we'll perform a task that utilizes several commands to help you understand how to interact with the lab environment. To make it interesting let's imagine the following scenario:
 
-### Data Collection
+* **Problem:** The router `ceos-02` has strict configuration policies that allow a maximum of two static routes to be configured, only when necessary. If this threshold is exceeded, the network team should be alerted.
+* **Solution:** The command `show ip route summary` provides a clear table in the CLI, showing the number of routes based on their source. By capturing and parsing this data, we can create metrics to set up a `warning` alert for the network team and develop a dashboard to display route counts over time.
 
-Let's start with the data collection, for this we are going to use Telegraf to collect the route count metrics. We could use protocols, but the SSH - CLI output provides good amount of information, and for the purpose of the lab we want to showcase how to interact with building Telegraf instances with Python scripts for collecting this data.
+### Collecting Data
 
-So, first let's test out we can collect the data over SSH - CLI and parse it with a Python script.
+We'll begin with data collection using Telegraf to gather route count metrics. While protocols like SNMP could be used, the SSH CLI output offers a sufficient amount of information. In this lab, we aim to demonstrate how to configure Telegraf instances with Python scripts for data collection.
 
-1. Connect to telegraf-01:
+First, let's test collecting data via SSH CLI and parsing it with a Python script.
 
-```bash
-netobs docker exec telegraf-01 bash
-```
+1. **Connect to `telegraf-01`:**
 
-2. Enter Python Interpreter:
+   ```bash
+   netobs docker exec telegraf-01 bash
+   ```
 
-```bash
-python
-```
+2. **Enter the Python interpreter:**
 
-3. Add the necessary imports,  device details configuration and check the commands output:
+   ```bash
+   python
+   ```
 
-```python
-import os
-import netmiko
-from rich import print as rprint
+3. **Set up the necessary imports, configure device details, and check the command output:**
 
-device = netmiko.ConnectHandler(device_type="arista_eos", host="ceos-02", username=os.getenv("NETWORK_AGENT_USER"), password=os.getenv("NETWORK_AGENT_PASSWORD"))
+   ```python
+   import os
+   import netmiko
+   from rich import print as rprint
 
-result = device.send_command("show ip route summary")
-rprint(result)
-```
+   device = netmiko.ConnectHandler(
+       device_type="arista_eos",
+       host="ceos-02",
+       username=os.getenv("NETWORK_AGENT_USER"),
+       password=os.getenv("NETWORK_AGENT_PASSWORD")
+   )
 
-1. Now, let's parse the out with TTP. For this use this TTP template and check the returned output:
+   result = device.send_command("show ip route summary")
+   rprint(result)
+   ```
 
-```python
-ttp_template = """
-<group name="info">
-Operating routing protocol model: {{ protocol_model }}
-Configured routing protocol model: {{ config_protocol_model }}
-VRF: {{ vrf }}
-</group>
+4. **Parse the Output with TTP:**
 
-<group name="routes*">
-   connected                                                  {{ connected_total | DIGIT }}
-   static (persistent)                                        {{ static_persistent_total | DIGIT }}
-   static (non-persistent)                                    {{ static_non_persistent_total | DIGIT }}
-</group>
-"""
+   Next, we'll use TTP (TextFSM Template Processor) to parse the output. This template will extract relevant information from the command's output.
 
-route_summary = device.send_command("show ip route summary", use_ttp=True, ttp_template=ttp_template)
-rprint(route_summary)
-# Output
-# [
-#     [
-#         {
-#             'info': {'vrf': 'default', 'config_protocol_model': 'multi-agent', 'protocol_model': 'multi-agent'},
-#             'routes': [
-#                 {'static_non_persistent_total': '0', 'static_persistent_total': '0', 'connected_total': '2'}
-#             ]
-#         }
-#     ]
-# ]
-```
+   ```python
+   ttp_template = """
+   <group name="info">
+   Operating routing protocol model: {{ protocol_model }}
+   Configured routing protocol model: {{ config_protocol_model }}
+   VRF: {{ vrf }}
+   </group>
 
-5. Now, we need to use this data collected to generate an Influx Line Protocol formatted message for Telegraf to process. So head over to the [`routing_collector.py`](./telegraf/routing_collector.py) and copy the `InfluxMetric` class into your terminal, remembering to also copy its imports so it doesn't give you an error - don't forget.
+   <group name="routes*">
+      connected                                                  {{ connected_total | DIGIT }}
+      static (persistent)                                        {{ static_persistent_total | DIGIT }}
+      static (non-persistent)                                    {{ static_non_persistent_total | DIGIT }}
+   </group>
+   """
 
-5. Next, lets format the metric collected into the Influx Line Protocol.
+   route_summary = device.send_command("show ip route summary", use_ttp=True, ttp_template=ttp_template)
+   rprint(route_summary)
+   # Output
+   # [
+   #     [
+   #         {
+   #             'info': {'vrf': 'default', 'config_protocol_model': 'multi-agent', 'protocol_model': 'multi-agent'},
+   #             'routes': [
+   #                 {'static_non_persistent_total': '0', 'static_persistent_total': '0', 'connected_total': '2'}
+   #             ]
+   #         }
+   #     ]
+   # ]
+   ```
 
-```python
-measurement = "routes"
-tags = {
-    "device": "ceos-02",
-    "device_type": "arista_eos",
-    "vrf": route_summary[0][0]["info"]["vrf"]
-}
-fields = {
-    "connected_total": route_summary[0][0]["routes"][0]["connected_total"],
-    "static_non_persistent_total": route_summary[0][0]["routes"][0]["static_non_persistent_total"],
-    "static_persistent_total": route_summary[0][0]["routes"][0]["static_persistent_total"],
-}
+5. **Generate an Influx Line Protocol Message:**
 
-metric = InfluxMetric(measurement=measurement, tags=tags, fields=fields)
-print(metric)
-# routes,device=ceos-02,device_type=arista_eos,vrf=default connected_total="2",static_non_persistent_total="0",static_persistent_total="4"
-)
-```
+   With the parsed data, we'll now format it into an Influx Line Protocol message for Telegraf to process. Open the [`telegraf/routing_collector.py`](./telegraf/routing_collector.py) file and copy the `InfluxMetric` class, including its necessary imports, into your terminal.
 
-7. Now, we just add this logic to the existing routing_collectors.py file. For this we just need to create a `route_summary_collector` function that takes a Netmiko device connection object `net_connect` and returns a list of `InfluxMetric` objects.
+6. **Format the Collected Metric:**
 
-For this we can wrap most of the snippets developed before and then just return an explicit list because is only one `InfluxMetric`
+   Format the parsed data into the Influx Line Protocol format as follows:
 
-```python
-def route_summary_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
-    # The logic of the `show ip route summary` command and TTP parsing to an `InfluxMetric`
-    return [InfluxMetric(measurement=measurement, tags=tags, fields=fields)]
-```
+   ```python
+   measurement = "routes"
+   tags = {
+       "device": "ceos-02",
+       "device_type": "arista_eos",
+       "vrf": route_summary[0][0]["info"]["vrf"]
+   }
+   fields = {
+       "connected_total": route_summary[0][0]["routes"][0]["connected_total"],
+       "static_non_persistent_total": route_summary[0][0]["routes"][0]["static_non_persistent_total"],
+       "static_persistent_total": route_summary[0][0]["routes"][0]["static_persistent_total"],
+   }
 
-And then on the main function uncomment these lines so the collector can use:
+   metric = InfluxMetric(measurement=measurement, tags=tags, fields=fields)
+   print(metric)
+   # Output
+   # routes,device=ceos-02,device_type=arista_eos,vrf=default connected_total="2",static_non_persistent_total="0",static_persistent_total="4"
+   ```
 
-```python
-def main(device_type, host):
-    # Rest of the logic for collecting BGP and OSPF information
+7. **Add the Logic to `routing_collector.py`:**
 
-    # Collect Route Summary information
-    for metric in route_summary_collector(net_connect):
-        print(metric, flush=True)
-```
+   Now, integrate this logic into the `routing_collector.py` file. We'll create a `route_summary_collector` function that accepts a Netmiko device connection object (`net_connect`) and returns a list of `InfluxMetric` objects.
 
-8. After saving the file we need to apply the changes on the telegraf instances. Run the following command:
+   ```python
+   def route_summary_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
+       # Insert Logic for `show ip route summary` command and TTP parsing to `InfluxMetric`
+       return [InfluxMetric(measurement=measurement, tags=tags, fields=fields)]
+   ```
 
-```bash
-netobs lab update telegraf-01 telegraf-02
-```
+8. **Update the Main Function:**
 
-This will stop and start again the containers making sure the new configuration is applied.
+   Finally, uncomment the relevant lines in the main function to enable the route summary collector:
 
-9. You can check the newly added metric by running a command similar to the following:
+   ```python
+   def main(device_type, host):
+       # Rest of the logic for collecting BGP and OSPF information
 
-```bash
-netobs docker logs telegraf-01 -t 20 -f | grep routes
-```
+       # Collect Route Summary information
+       for metric in route_summary_collector(net_connect):
+           print(metric, flush=True)
+   ```
 
-10. Success! those metrics are shown in Influx Line Protocol format, we could see them as well in Prometheus format if you open uyour browser and go to the URL `http://<lab-machine-address>:9005` to check the ones for telegraf-02.
+9. **Apply the Changes to Telegraf Instances:**
 
-### Data Storage
+   After saving your changes, you need to apply them to the Telegraf instances. Run the following command:
 
-At this point the data should in Prometheus, you can run a query on your Prometheus instance to get the metrics from the routes sumary:
+   ```bash
+   netobs lab update telegraf-01 telegraf-02
+   ```
+
+   This command will restart the containers to ensure the new configuration is applied.
+
+10. **Verify the New Metrics:**
+
+   To check if the new metric has been successfully added, run the following command:
+
+   ```bash
+   netobs docker logs telegraf-01 -t 20 -f | grep routes
+   ```
+
+11. **Success!**
+
+   If everything is set up correctly, you'll see the metrics displayed in Influx Line Protocol format. You can also view them in Prometheus format by opening your browser and navigating to `http://<lab-machine-address>:9005` for Telegraf-02.
+
+### Querying Data
+
+At this point, the data should be in Prometheus. You can run a query in your Prometheus instance to retrieve the route summary metrics:
 
 ```promql
 routes_static_persistent_total{device="ceos-02"}
 ```
 
-You can see this metric increasing if we start adding routes to our device. For example lets create an static route on `ceos-02`:
+You will see this metric increase if you add more routes to your device. For example, to add a static route on `ceos-02`, use the following commands:
 
 ```shell
 ❯ ssh netobs@ceos-02
 (netobs@ceos-02) Password:
-ceos-02>en
-ceos-02#
-ceos-02#conf t
-ceos-02(config)#ip route 10.77.70.0/24 10.222.0.2
-ceos-02(config)#exit
+ceos-02> enable
+ceos-02# configure terminal
+ceos-02(config)# ip route 10.77.70.0/24 10.222.0.2
+ceos-02(config)# exit
 ceos-02#
 ```
 
-At this point you should see the metric counter increasing by 1 in `ceos-01` static routes.
+Wait a couple of minutes, and you should see the static route metric counter increase by 1 on `ceos-02`.
 
-### Alerts
+![Prometheus Routes Graph](./../../pics/prometheus-routes-graph.png)
 
+### Creating and Managing Alerts
+
+Now that we have metrics successfully passing through our system, let's create an alert that notifies us when more than two static routes have been configured on `ceos-02`, violating our policy.
+
+1. **Create a Prometheus Alerting Rule:**
+
+   First, we need to create an alert in the Prometheus alerting rules configuration to detect when the `routes_static_persistent_total` metric exceeds 2 for the device `ceos-02`. Add the following configuration to [`prometheus/rules/alerting_rules.yml`](./prometheus/rules/alerting_rules.yml):
+
+   ```yaml
+   groups:
+     # Other alerts already configured
+
+     - name: Routes Statics Violation
+       rules:
+         - alert: RoutesStaticsViolation
+           expr: routes_static_persistent_total{device="ceos-02"} > 2
+           for: 10s
+           labels:
+             severity: warning
+             source: stack
+             environment: network-observability-lab
+             device: '{{ $labels.device }}'
+             device_role: '{{ $labels.device_role }}'
+             site: '{{ $labels.site }}'
+             region: '{{ $labels.region }}'
+             instance: '{{ $labels.host }}'
+           annotations:
+             summary: "[NET] Device {{ $labels.device }}: Static Routes Violation"
+             description: "Device {{ $labels.device }} has static routes violation!"
+   ```
+
+   We use labels such as `device`, `device_role`, and others to enrich the alert with details from our metrics.
+
+2. **Set Up Slack Integration:**
+
+   To send alerts to Slack, you'll need to create an integration in your Slack workspace. Follow this [guide to create an incoming webhook](https://api.slack.com/messaging/webhooks). This webhook will be used to send alerts to Slack.
+
+3. **Save the Webhook URL:**
+
+   Save the webhook URL in a file named [`alertmanager/slack_webhook`](./alertmanager/slack_webhook). This file is ignored by Git to keep it secure, ensuring it’s not submitted to GitHub but still accessible to Alertmanager.
+
+4. **Add a Route and Receiver for Slack:**
+
+   Add a new route and receiver configuration for the Slack webhook in the [`alertmanager/alertmanager.yml`](./alertmanager/alertmanager.yml) file:
+
+   ```yaml
+   # Omitting other config sections
+
+   route:
+     # Omitting basic route configuration
+     routes:
+       # Omitting other routes, receivers, and matchers configuration
+
+       - receiver: 'slack'
+         continue: true
+         matchers:
+           - alertname = RoutesStaticsViolation
+
+   receivers:
+     # Omitting other receivers specs
+
+     - name: 'slack'
+       slack_configs:
+         - send_resolved: true
+           api_url_file: /etc/alertmanager/slack_webhook
+           channel: '#alerts'                           # Or your preferred channel
+           title: '{{ .CommonAnnotations.summary }}'
+           text: '{{ .CommonAnnotations.description }}'
+   ```
+
+5. **Map the Webhook File to Alertmanager:**
+
+   Map the `slack_webhook` file into the `alertmanager` container so it can read it for sending alert notifications. Add the following line to the `alertmanager.volumes` section in the [`docker-compose.yml`](./docker-compose.yml) file:
+
+   ```yaml
+   services:
+     # Omitting other services
+
+     alertmanager:
+       # Omitting other configuration parameters
+
+       volumes:
+         # Omitting other volumes
+
+         - ./alertmanager/slack_webhook:/etc/alertmanager/slack_webhook
+   ```
+
+6. **Update Prometheus and Alertmanager Containers:**
+
+   To apply these changes, update both the `prometheus` and `alertmanager` containers by running the following command:
+
+   ```bash
+   netobs lab update prometheus alertmanager
+   ```
+
+#### Triggering and Monitoring Alerts
+
+Now that we have everything set up for alerting, let's trigger an alert to test the configuration.
+
+1. **Add Additional Routes to `ceos-02`:**
+
+   Connect to `ceos-02` and add a few more static routes to exceed the threshold:
+
+   ```bash
+   ❯ ssh netobs@ceos-02
+   (netobs@ceos-02) Password:
+   ceos-02> enable
+   ceos-02# configure terminal
+   ceos-02(config)# ip route 10.77.71.0/24 10.222.0.2
+   ceos-02(config)# ip route 10.77.72.0/24 10.222.0.2
+   ceos-02(config)# ip route 10.77.73.0/24 10.222.0.2
+   ceos-02(config)# exit
+   ceos-02#
+   ```
+
+2. **Monitor the Alert in Prometheus:**
+
+   Check the Prometheus Alerts page (`http://<lab-machine-address>:9090/alerts`) to see if your alert rule is triggered. You should see the alert in a "firing" state if the conditions are met.
+
+   ![Prometheus Rule Firing](./../../pics/prometheus-rule-firing.png)
+
+3. **Check Alerts in Alertmanager:**
+
+   Once the alert is in the "firing" state, it will be sent to Alertmanager. You can view the active alerts handled by Alertmanager on its Alerts page (`http://<lab-machine-address>:9093`):
+
+   ![Alertmanager Alerts](./../../pics/alertmanager-alerts.png)
+
+4. **Verify the Alert in Slack:**
+
+   If everything is set up correctly, you should also see the alert notification in your Slack channel.
+
+   ![Slack Alerts](./../../pics/slack-alerts.png)
+
+5. **Resolve the Alert:**
+
+   To stop the alert warnings, resolve the issue by deleting the extra routes added earlier:
+
+   ```bash
+   ❯ ssh netobs@ceos-02
+   (netobs@ceos-02) Password:
+   ceos-02> enable
+   ceos-02# configure terminal
+   ceos-02(config)# no ip route 10.77.71.0/24 10.222.0.2
+   ceos-02(config)# no ip route 10.77.72.0/24 10.222.0.2
+   ceos-02(config)# no ip route 10.77.73.0/24 10.222.0.2
+   ceos-02(config)# exit
+   ceos-02#
+   ```
+
+   After a few moments, the alert should clear, and everything will return to normal.
+
+6. **Provide Feedback:**
+
+   If you have any ideas or feedback on what to integrate or alert on for this lab scenario, feel free to open a discussion or issue in the GitHub repository.
