@@ -3,7 +3,7 @@ name: Build and Push Dev Container
 on:
   push:
     branches:
-      - df/gh-actions
+      - main
 
 jobs:
   netobs-devcontainer:
@@ -13,13 +13,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: local test
-      run: |
-        echo "Hello, World!"
-        ls -al
-        echo $PWD
-        ls -al /home/runner/work/network-observability-lab/network-observability-lab/.devcontainer/devcontainer.json
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
