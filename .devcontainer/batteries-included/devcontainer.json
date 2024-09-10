@@ -1,9 +1,9 @@
 {
-    "image": "ghcr.io/network-observability/netobs-devcontainer:dev",
+    "image": "ghcr.io/network-observability/netobs-devcontainer:latest",
     "hostRequirements": {
         "cpus": 4,
         "memory": "8gb",
         "storage": "32gb"
-    },
-    "postStartCommand": "netobs lab prepare --scenario batteries-included"
+    }
+    // "postStartCommand": "netobs lab prepare --scenario batteries-included"
 }
