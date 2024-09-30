@@ -1,6 +1,30 @@
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/network-observability/network-observability-lab?quickstart=1&devcontainer_path=.devcontainer%2Fbatteries-included%2Fdevcontainer.json)
+# Modern Network Observability
 
-# Network Observability Lab
+<a href="https://www.packtpub.com/en-us/product/modern-network-observability-9781835081068"><img src="https://m.media-amazon.com/images/I/71oudvXWE4L._SL1500_.jpg" alt="" height="256px" align="right"></a>
+
+This is the code repository for [odern Network Observability](https://www.packtpub.com/en-us/product/modern-network-observability-9781835081068), published by Packt.
+
+**A hands-on approach using open source tools such as Telegraf, Prometheus, and Grafana**
+
+## What is this book about?
+This book equips network professionals with the skills to monitor, analyze, and optimize network infrastructures using specific tools. With advanced techniques, you’ll learn how to build tailored observability solutions for your needs.
+
+This book covers the following exciting features:
+* Collect and normalize data from various sources using Telegraf and Logstash
+* Enrich operational data with crucial context from a Source of Truth such as Nautobot
+* Visualize data and create insightful dashboards with Grafana
+* Automate alerts and responses for your network operations strategy using Prefect
+* Understand when to build or buy an observability stack, with tips and best practices
+* Explore practical machine learning techniques to enhance observability data value
+
+If you feel this book is for you, get your [copy](https://www.amazon.com/dp/1836203594) today!
+
+<a href="https://www.packtpub.com/?utm_source=github&utm_medium=banner&utm_campaign=GitHubBanner"><img src="https://raw.githubusercontent.com/PacktPublishing/GitHub/master/GitHub.png" 
+alt="https://www.packtpub.com/" border="5" /></a>
+
+## Instructions and Navigations
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/network-observability/network-observability-lab?quickstart=1&devcontainer_path=.devcontainer%2Fbatteries-included%2Fdevcontainer.json)
 
 This repository contains the resources for building and managing an observability stack within a network lab environment, specifically designed for the "Modern Network Observability" book. It includes scripts, configuration files, and documentation to set up and operate various observability tools like Prometheus, Grafana Loki, and others, helping you implement and learn about network observability practices in a practical, hands-on manner.
 
@@ -164,3 +188,20 @@ Here is a brief overview of the practical chapters and the key concepts you will
 - **Chapter 13 - Machine Learning and AI:** This chapter explores how machine learning and AI techniques can enhance your observability practices. It covers basic forecasting, AI-driven Root Cause Analysis (RCA), and advanced anomaly detection.
 
 - **[`Batteries Included`](./chapters/batteries-included/) Scenario:** This scenario brings everything together in a fully configured environment, offering a glimpse into the full potential of these tools. The batteries-included scenario [README](./chapters/batteries-included/README.md) provides an overview and detailed explanation of the setup, giving you a holistic view of what is achievable with this setup.
+
+
+### Related products
+* Automating Security Detection Engineering [[Packt]](https://www.packtpub.com/en-us/product/automating-security-detection-engineering-9781837636419) [[Amazon]](https://www.amazon.com/dp/1837636419)
+
+* Python for Security and Networking [[Packt]](https://www.packtpub.com/en-us/product/python-for-security-and-networking-9781837637553) [[Amazon]](https://www.amazon.com/dp/1837637555)
+
+## Get to Know the Author
+**David Flores**
+throughout his career has built observability solutions for financial, retail, and managed services networks, optimizing performance across diverse environments. Currently focused on network automation with an emphasis on observability, his expertise spans Linux, Python, Docker, and Kubernetes. Passionate about education, David shares his knowledge on implementing solutions using Telegraf, Prometheus, and Grafana.
+
+**Christian Adell**
+is a network software engineer who has played multiple roles related to networking and IT automation, and currently, as Principal Architect at Network to Code, is focused on building network automation solutions for diverse use cases (including network monitoring and observability), with great emphasis on open source software.
+
+**Josh VanDeraa**
+is a 20-year networking veteran who has been doing network automation for the past 8 years. He has worked in large enterprise retail, travel, managed services, and most recently, professional services industries. He has worked on networks of all sizes, bringing multiple different network automation solutions to the table to drive real value with Python, Ansible, and Python web framework solutions.
+Josh is the author of Open Source Network Management and maintains a blog site to provide additional content to those on the web.
