@@ -195,7 +195,7 @@ Here is a brief overview of the practical chapters and the key concepts you will
 
 * Python for Security and Networking [[Packt]](https://www.packtpub.com/en-us/product/python-for-security-and-networking-9781837637553) [[Amazon]](https://www.amazon.com/dp/1837637555)
 
-## Get to Know the Author
+## Get to Know the Authors
 **David Flores**
 throughout his career has built observability solutions for financial, retail, and managed services networks, optimizing performance across diverse environments. Currently focused on network automation with an emphasis on observability, his expertise spans Linux, Python, Docker, and Kubernetes. Passionate about education, David shares his knowledge on implementing solutions using Telegraf, Prometheus, and Grafana.
 
