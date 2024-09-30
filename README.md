@@ -2,7 +2,7 @@
 
 <a href="https://www.packtpub.com/en-us/product/modern-network-observability-9781835081068"><img src="https://m.media-amazon.com/images/I/71oudvXWE4L._SL1500_.jpg" alt="" height="256px" align="right"></a>
 
-This is the code repository for [odern Network Observability](https://www.packtpub.com/en-us/product/modern-network-observability-9781835081068), published by Packt.
+This is the code repository for [Modern Network Observability](https://www.packtpub.com/en-us/product/modern-network-observability-9781835081068), published by Packt.
 
 **A hands-on approach using open source tools such as Telegraf, Prometheus, and Grafana**
 
@@ -17,7 +17,7 @@ This book covers the following exciting features:
 * Understand when to build or buy an observability stack, with tips and best practices
 * Explore practical machine learning techniques to enhance observability data value
 
-If you feel this book is for you, get your [copy](https://www.amazon.com/dp/1836203594) today!
+If you feel this book is for you, get your [copy](https://www.amazon.com/dp/1835081061) today!
 
 <a href="https://www.packtpub.com/?utm_source=github&utm_medium=banner&utm_campaign=GitHubBanner"><img src="https://raw.githubusercontent.com/PacktPublishing/GitHub/master/GitHub.png" 
 alt="https://www.packtpub.com/" border="5" /></a>
