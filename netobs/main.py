@@ -15,24 +15,22 @@ import requests
 import typer
 import yaml
 from dotenv import dotenv_values, load_dotenv
+from labcli.base import console
+from labcli.utils.containerlab_utils import app as containerlab_app
+from labcli.utils.containerlab_utils import containerlab_deploy, containerlab_destroy, containerlab_inspect
+from labcli.utils.docker_utils import app as docker_app
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry  # type: ignore
-from rich.console import Console
-from rich.theme import Theme
 from typing_extensions import Annotated
 
 load_dotenv(verbose=True, override=True, dotenv_path=Path("./.env"))
 ENVVARS = {**dotenv_values(".env"), **dotenv_values(".setup.env"), **os.environ}
 
-custom_theme = Theme({"info": "cyan", "warning": "bold magenta", "error": "bold red", "good": "bold green"})
-
-console = Console(color_system="truecolor", log_path=False, record=True, theme=custom_theme, force_terminal=True)
-
 app = typer.Typer(help="Run commands for setup and testing", rich_markup_mode="rich", add_completion=False)
-containerlab_app = typer.Typer(help="Containerlab related commands.", rich_markup_mode="rich")
+# containerlab_app = typer.Typer(help="Containerlab related commands.", rich_markup_mode="rich")
 app.add_typer(containerlab_app, name="containerlab")
 
-docker_app = typer.Typer(help="Docker and Stacks management related commands.", rich_markup_mode="rich")
+# docker_app = typer.Typer(help="Docker and Stacks management related commands.", rich_markup_mode="rich")
 app.add_typer(docker_app, name="docker")
 
 lab_app = typer.Typer(help="Overall Lab management related commands.", rich_markup_mode="rich")
@@ -387,58 +385,58 @@ def load_yaml(topology: Path) -> dict:
     return topology_dict
 
 
-@containerlab_app.command(rich_help_panel="Containerlab Management", name="deploy")
-def containerlab_deploy(
-    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
-    sudo: bool = typer.Option(True, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
-):
-    """Deploy a containerlab topology.
+# @containerlab_app.command(rich_help_panel="Containerlab Management", name="deploy")
+# def containerlab_deploy(
+#     topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
+#     sudo: bool = typer.Option(True, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
+# ):
+#     """Deploy a containerlab topology.
 
-    [u]Example:[/u]
-        [i]netobs containerlab deploy --topology ./containerlab/lab.yml[/i]
-    """
-    console.log("Deploying containerlab topology", style="info")
-    console.log(f"Topology file: [orange1 i]{topology}", style="info")
-    exec_cmd = f"containerlab deploy -t {topology}"
-    if sudo:
-        exec_cmd = f"sudo {exec_cmd}"
-    run_cmd(exec_cmd, task_name="Deploying containerlab topology")
-
-
-@containerlab_app.command(rich_help_panel="Containerlab Management", name="destroy")
-def containerlab_destroy(
-    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
-    sudo: bool = typer.Option(True, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
-):
-    """Destroy a containerlab topology.
-
-    [u]Example:[/u]
-        [i]netobs containerlab destroy --topology ./containerlab/lab.yml[/i]
-    """
-    console.log("Deploying containerlab topology", style="info")
-    console.log(f"Topology file: [orange1 i]{topology}", style="info")
-    exec_cmd = f"containerlab destroy -t {topology} --cleanup"
-    if sudo:
-        exec_cmd = f"sudo {exec_cmd}"
-    run_cmd(exec_cmd, task_name="Destroying containerlab topology")
+#     [u]Example:[/u]
+#         [i]netobs containerlab deploy --topology ./containerlab/lab.yml[/i]
+#     """
+#     console.log("Deploying containerlab topology", style="info")
+#     console.log(f"Topology file: [orange1 i]{topology}", style="info")
+#     exec_cmd = f"containerlab deploy -t {topology}"
+#     if sudo:
+#         exec_cmd = f"sudo {exec_cmd}"
+#     run_cmd(exec_cmd, task_name="Deploying containerlab topology")
 
 
-@containerlab_app.command(rich_help_panel="Containerlab Management", name="inspect")
-def containerlab_inspect(
-    topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
-    sudo: bool = typer.Option(True, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
-):
-    """Inspect a containerlab topology.
+# @containerlab_app.command(rich_help_panel="Containerlab Management", name="destroy")
+# def containerlab_destroy(
+#     topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
+#     sudo: bool = typer.Option(True, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
+# ):
+#     """Destroy a containerlab topology.
 
-    [u]Example:[/u]
-        [i]netobs containerlab show --topology ./containerlab/lab.yml[/i]
-    """
-    console.log("Showing containerlab topology", style="info")
-    console.log(f"Topology file: [orange1 i]{topology}", style="info")
-    exec_cmd = f"containerlab inspect -t {topology}"
-    if sudo:
-        exec_cmd = f"sudo {exec_cmd}"
-    run_cmd(exec_cmd, task_name="Inspect containerlab topology")
+#     [u]Example:[/u]
+#         [i]netobs containerlab destroy --topology ./containerlab/lab.yml[/i]
+#     """
+#     console.log("Deploying containerlab topology", style="info")
+#     console.log(f"Topology file: [orange1 i]{topology}", style="info")
+#     exec_cmd = f"containerlab destroy -t {topology} --cleanup"
+#     if sudo:
+#         exec_cmd = f"sudo {exec_cmd}"
+#     run_cmd(exec_cmd, task_name="Destroying containerlab topology")
+
+
+# @containerlab_app.command(rich_help_panel="Containerlab Management", name="inspect")
+# def containerlab_inspect(
+#     topology: Path = typer.Argument(Path("./containerlab/lab.yml"), help="Path to the topology file", exists=True),
+#     sudo: bool = typer.Option(True, help="Use sudo to run containerlab", envvar="LAB_SUDO"),
+# ):
+#     """Inspect a containerlab topology.
+
+#     [u]Example:[/u]
+#         [i]netobs containerlab show --topology ./containerlab/lab.yml[/i]
+#     """
+#     console.log("Showing containerlab topology", style="info")
+#     console.log(f"Topology file: [orange1 i]{topology}", style="info")
+#     exec_cmd = f"containerlab inspect -t {topology}"
+#     if sudo:
+#         exec_cmd = f"sudo {exec_cmd}"
+#     run_cmd(exec_cmd, task_name="Inspect containerlab topology")
 
 
 # --------------------------------------#
