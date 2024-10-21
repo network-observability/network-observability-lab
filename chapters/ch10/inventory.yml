@@ -1,0 +1,7 @@
+plugin: networktocode.nautobot.gql_inventory
+api_endpoint: "http://localhost:8080"
+token: "0123456789abcdef0123456789abcdef01234567"
+query:
+  devices:
+    location:
+      name:
