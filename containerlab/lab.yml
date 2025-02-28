@@ -14,7 +14,7 @@ topology:
       kind: ceos
       mgmt-ipv4: 198.51.100.11
       startup-config: startups/ceos-01.conf
-      port:
+      ports:
         - tcp/50051
         - tcp/80
         - tcp/443
@@ -24,7 +24,7 @@ topology:
       kind: ceos
       mgmt-ipv4: 198.51.100.12
       startup-config: startups/ceos-02.conf
-      port:
+      ports:
         - tcp/50051
         - tcp/80
         - tcp/443
