@@ -14,7 +14,7 @@
     - name: "droplet_size"
       prompt: "Enter the droplet size"
       private: false
-      default: "s-4vcpu-8gb"
+      default: "s-8vcpu-16gb"
 
     - name: "droplet_region"
       prompt: "Enter the droplet region"
@@ -55,3 +55,9 @@
           Public IPv4 is {{ (droplet_result.data.droplet.networks.v4 | selectattr('type', 'equalto', 'public')).0.ip_address | default('<none>', true) }}
       tags:
         - skip_ansible_lint
+
+    # NOTE: This is to give a time for the droplet to be ready,
+    # because DigitalOcean API returns the droplet as ready before it is actually ready
+    - name: Pause for 60 seconds
+      ansible.builtin.pause:
+        seconds: 60
