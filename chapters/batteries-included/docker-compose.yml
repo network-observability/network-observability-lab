@@ -168,7 +168,7 @@ services:
 
   nautobot:
     container_name: nautobot
-    image: ${NAUTOBOT_IMAGE:-docker.io/networktocode/nautobot:2.2-py3.10}
+    image: ${NAUTOBOT_IMAGE:-docker.io/networktocode/nautobot:2.4-py3.10}
     env_file:
       - "../../.env"
     ports:

@@ -102,7 +102,7 @@
         mode: "0755"
 
     - name: Install containerlab
-      ansible.builtin.command: bash -c /tmp/get-clab.sh
+      ansible.builtin.command: bash -c /tmp/get-clab.sh -- -v0.64.0
       register: clab_install
       changed_when: clab_install.rc != 0
 
