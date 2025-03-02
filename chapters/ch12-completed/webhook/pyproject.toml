@@ -13,7 +13,7 @@ dependencies = [
     'fastapi>=0.99.1',
     'uvicorn',
     'toml',
-    'prefect>=2.17.1',
+    'prefect>=3.2.9',
 ]
 
 [build-system]
