@@ -143,7 +143,7 @@ def gen_intf_traffic_table(device: str, threshold: float) -> Table:
 
 
 @app.command()
-def high_bw_links(device: str, threshold: float = 1000.0, watch: bool = False):
+def high_bw_links(device: str, threshold: float = 1000.0, watch: bool = False, window: int = 60):
     """Get the links with bandwidth higher than the threshold.
 
     Example:
@@ -155,7 +155,7 @@ def high_bw_links(device: str, threshold: float = 1000.0, watch: bool = False):
     # Generate and watch the interface traffic table for about a minute
     if watch is True:
         with Live(gen_intf_traffic_table(device, threshold), refresh_per_second=4, screen=True) as live:
-            for _ in range(60):
+            for _ in range(window):
                 time.sleep(1)
                 live.update(gen_intf_traffic_table(device, threshold), refresh=True)
         return
