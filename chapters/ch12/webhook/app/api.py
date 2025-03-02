@@ -2,7 +2,7 @@ import logging
 from typing import Literal
 
 import fastapi
-from prefect.deployments.deployments import run_deployment
+from prefect.deployments import run_deployment
 from pydantic import BaseModel
 
 
