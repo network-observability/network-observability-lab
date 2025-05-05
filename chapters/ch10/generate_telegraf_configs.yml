@@ -1,0 +1,42 @@
+---
+# Execute this playbook with using an inventory to gather some data from Nautobot itself that could be used in all playbooks.
+# The Ansible Inventory should NOT hold all variables that may be used all of the time, generally speaking the inventory
+# give just enough information to connect to the device. See https://josh-v.com/automation-inventory/ for more information
+# about what to put into an inventory.
+#
+# Execution is done with `ansible-playbook chapters/ch10/generate_telegraf_configs.yml -vvv -i chapters/ch10/inventory.yml`
+# from the root directory.
+#
+# The first execution of the playbook there will be multiple outputs. Subsequent executions should work just fine.
+- name: "PLAY 1: GEENERATE TELEGRAF CONFIGURATIONS"
+  connection: local
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: "TASK 0: DEBUG HOSTVARS FOR UNDERSTANDING THE VARIABLE STRUCTURE"
+      debug:
+        msg: "{{ hostvars }}"
+
+    - name: "TASK 10: SET FACTS FOR FIRST HOST, SHOULD MAINTAIN IN SOT"
+      set_fact:
+        telegraf_listen_port_number: "9004"
+        telegraf_hostname: "telegraf-01"
+      when: "inventory_hostname == 'ceos-01'"
+
+    - name: "TASK 20: SET FACTS FOR FIRST HOST, SHOULD MAINTAIN IN SOT"
+      set_fact:
+        telegraf_listen_port_number: "9005"
+        telegraf_hostname: "telegraf-02"
+      when: "inventory_hostname == 'ceos-02'"
+
+    - name: "TASK 30: VALIDATE THE OUTPUT DIRECTORY EXISTS"
+      file:
+        path: "outputs/"
+        state: directory
+
+    - name: "TASK 40: GENERATE TEMPLATE OUTPUT"
+      ansible.builtin.template:
+        src: telegraf/telegraf.conf.toml.j2
+        dest: "outputs/{{ inventory_hostname }}.conf.toml"
+      
+
