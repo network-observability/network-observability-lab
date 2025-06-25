@@ -290,9 +290,17 @@ def run_cmd(
         subprocess.CompletedProcess: Result of the command
     """
     console.log(f"Running command: [orange1 i]{exec_cmd}", style="info")
+
+    # Clean environment variables
+    clean_envvars = {
+        k: str(v)
+        for k, v in envvars.items()
+        if v is not None and isinstance(v, (str, int, float, bool))
+    }
+
     result = subprocess.run(
         shlex.split(exec_cmd),
-        env=envvars,
+        env=clean_envvars,
         cwd=cwd,
         timeout=timeout,
         shell=shell,  # nosec
