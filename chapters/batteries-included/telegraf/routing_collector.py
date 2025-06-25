@@ -46,7 +46,7 @@ class InfluxMetric:
         )
 
 
-def bgp_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
+def bgp_collector(net_connect: BaseConnection, host: str) -> list[InfluxMetric]:
     """Collect BGP neighbor information."""
     bgp_output = net_connect.send_command("show ip bgp summary", use_textfsm=True)
 
@@ -87,7 +87,7 @@ def bgp_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
     return results
 
 
-def ospf_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
+def ospf_collector(net_connect: BaseConnection, host: str) -> list[InfluxMetric]:
     """Collect OSPF neighbor information."""
     ospf_output = net_connect.send_command("show ip ospf neighbor", use_textfsm=True)
 
@@ -101,6 +101,7 @@ def ospf_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
             "neighbor_id": neighbor["neighbor_id"],  # type: ignore
             "instance": neighbor["instance"],  # type: ignore
             "vrf": neighbor["vrf"],  # type: ignore
+            "device": host,
         }
 
         state = neighbor["state"].replace("/BDR", "").replace("/DR", "")  # type: ignore
@@ -125,12 +126,12 @@ def main(device_type, host):
     net_connect = ConnectHandler(**device)
 
     # Collect BGP neighbor information
-    bgp_metrics = bgp_collector(net_connect)
+    bgp_metrics = bgp_collector(net_connect, host)
     for metric in bgp_metrics:
         print(metric, flush=True)
 
     # Collect OSPF neighbor information
-    ospf_metrics = ospf_collector(net_connect)
+    ospf_metrics = ospf_collector(net_connect, host)
     for metric in ospf_metrics:
         print(metric, flush=True)
 

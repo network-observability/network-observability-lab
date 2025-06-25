@@ -486,7 +486,7 @@ First, let's test collecting data via SSH CLI and parsing it with a Python scrip
    Now, integrate this logic into the `routing_collector.py` file. We'll create a `route_summary_collector` function that accepts a Netmiko device connection object (`net_connect`) and returns a list of `InfluxMetric` objects.
 
    ```python
-   def route_summary_collector(net_connect: BaseConnection) -> list[InfluxMetric]:
+   def route_summary_collector(net_connect: BaseConnection, host: str) -> list[InfluxMetric]:
        # Insert Logic for `show ip route summary` command and TTP parsing to `InfluxMetric`
        return [InfluxMetric(measurement=measurement, tags=tags, fields=fields)]
    ```
@@ -500,7 +500,7 @@ First, let's test collecting data via SSH CLI and parsing it with a Python scrip
        # Rest of the logic for collecting BGP and OSPF information
 
        # Collect Route Summary information
-       for metric in route_summary_collector(net_connect):
+       for metric in route_summary_collector(net_connect, host):
            print(metric, flush=True)
    ```
 
