@@ -70,11 +70,14 @@ def parse_line(line: str) -> dict:
             fields[key] = value[1:-1]  # String field
         elif "." in value:
             fields[key] = float(value)  # Float field
+        elif value.endswith('i'):
+                fields[key] = int(value[:-1])  # Integer field
         else:
+        # Assume it's an un-suffixed integer or some other type
             try:
-                fields[key] = int(value)  # Integer field
-            except ValueError:
-                fields[key] = value  # Fallback to string if not an int
+                fields[key] = int(value)
+            except (ValueError, TypeError):
+                fields[key] = value
 
     # Extract timestamp if present
     if len(parts) > 2:
