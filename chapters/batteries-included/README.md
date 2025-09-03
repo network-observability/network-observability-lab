@@ -470,9 +470,9 @@ First, let's test collecting data via SSH CLI and parsing it with a Python scrip
        "vrf": route_summary[0][0]["info"]["vrf"]
    }
    fields = {
-       "connected_total": route_summary[0][0]["routes"][0]["connected_total"],
-       "static_non_persistent_total": route_summary[0][0]["routes"][0]["static_non_persistent_total"],
-       "static_persistent_total": route_summary[0][0]["routes"][0]["static_persistent_total"],
+       "connected_total": int(route_summary[0][0]["routes"][0]["connected_total"]),
+       "static_non_persistent_total": int(route_summary[0][0]["routes"][0]["static_non_persistent_total"]),
+       "static_persistent_total": int(route_summary[0][0]["routes"][0]["static_persistent_total"]),
    }
 
    metric = InfluxMetric(measurement=measurement, tags=tags, fields=fields)
@@ -490,6 +490,8 @@ First, let's test collecting data via SSH CLI and parsing it with a Python scrip
        # Insert Logic for `show ip route summary` command and TTP parsing to `InfluxMetric`
        return [InfluxMetric(measurement=measurement, tags=tags, fields=fields)]
    ```
+
+   > NOTE: When creating the logic, it is recommended to make the `ttp_template` as a constant that is then referenced under the `route_summary_collector` function. This is to avoid indentation issues.
 
 8. **Update the Main Function:**
 
