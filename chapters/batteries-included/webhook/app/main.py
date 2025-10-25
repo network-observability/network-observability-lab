@@ -55,7 +55,7 @@ def index():
 
 if __name__ == "__main__":
     configure()
-    log.info("Running as script.")
+    log.info("Running as script. Host and port from config.")
     try:
         validate_prefect_api_url()
     except ValueError as e:

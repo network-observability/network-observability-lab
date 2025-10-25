@@ -1,15 +1,21 @@
 ---
 global:
-   # Time after which an alert is declared resolved
-  resolve_timeout: 5m
+  # How long with no firing updates before AM auto-marks an alert resolved
+  resolve_timeout: 2m
 
 route:
-  # Default receiver for alerts
-  receiver: 'default'          # Name of the default receiver to send alerts to
-  group_by: ['alertname']      # Group alerts by alertname
-  group_wait: 15s              # Wait 15 seconds to group alerts
-  group_interval: 15s          # Send all alerts as a batch every 15 seconds
-  repeat_interval: 1m          # Repeat notifications every 1 minute
+  receiver: 'default'
+  # Group per link so ceos-01/Eth2 and ceos-02/Eth2 become separate groups
+  group_by: ['alertname', 'device', 'interface']
+  # Collect any quick duplicates for 5s, then send one batch
+  group_wait: 5s
+  # After the first notify for a group, wait at least 2m before sending another
+  # (Resolved notifications are not throttled by this.)
+  group_interval: 2m
+  # Do NOT keep re-sending every minute; your Prefect flow silences the alert for 20m.
+  # Make repeats less frequent than your quarantine silence.
+  repeat_interval: 30m
+
   routes:
     - receiver: 'webhook-receiver'
       matchers:
