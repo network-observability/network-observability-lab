@@ -40,7 +40,6 @@ def _link_tag(device: str, interface: str) -> str:
 @router.post("/v1/api/webhook", status_code=204)
 def process_webhook(alert_group: AlertmanagerAlertGroup):
     """Process an alertmanager webhook to send data to Prefect for automated workflows."""
-    log.info("Alertmanager webhook status is firing")
     log.info(f"Received alertmanager webhook: {alert_group}")
 
     # error = ""
