@@ -227,8 +227,9 @@ services:
     env_file:
       - ../../.env
     environment:
-      PREFECT_API_URL: ${PREFECT_URL}
-      PREFECT_API_KEY: ${PREFECT_KEY}
+      PREFECT_API_URL: "http://prefect-server:4200/api"
+      # PREFECT_API_URL: ${PREFECT_URL}
+      # PREFECT_API_KEY: ${PREFECT_KEY}
     networks:
       - network-observability
     logging:
@@ -250,6 +251,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   redis:
     image: redis:7
@@ -260,6 +267,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   prefect-server:
     image: prefecthq/prefect:3-latest
@@ -279,6 +292,12 @@ services:
     command: prefect server start --no-services
     ports:
       - "4200:4200"
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   prefect-services:
     image: prefecthq/prefect:3-latest
@@ -295,6 +314,12 @@ services:
       PREFECT_REDIS_MESSAGING_PORT: 6379
       PREFECT_REDIS_MESSAGING_DB: 0
     command: prefect server services start
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
 
   prefect-worker:
     image: prefecthq/prefect:3-latest
@@ -304,3 +329,9 @@ services:
     environment:
       PREFECT_API_URL: http://prefect-server:4200/api
     command: prefect worker start --pool local-pool
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"

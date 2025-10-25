@@ -95,6 +95,7 @@ def alert_receiver(alert_group: dict):
 
     print(f"Received alert group: {alertgroup_name} - {status}")
 
+    # NOTE: Add your alert workflow logic here
     # Check the subject of the alert and forward to respective workflow
     if alertgroup_name == "PeerInterfaceFlapping":
         for alert in alerts:
@@ -114,3 +115,9 @@ def alert_receiver(alert_group: dict):
 
 if __name__ == "__main__":
     _ = alert_receiver.serve(name="alert-receiver")
+    # alert_receiver.deploy(
+    #     name="alert-receiver-deployment",
+    #     work_pool_name="netobs-work-pool",
+    #     image="my-registry.com/my-docker-image:my-tag",
+    #     push=False # switch to True to push to your image registry
+    # )
