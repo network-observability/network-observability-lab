@@ -20,6 +20,7 @@ dependencies = [
     'prometheus-api-client>=0.5.5',
     'prefect>=3.2.9',
     'ansible>=10.1.0',
+    'openai==2.6.1',
 ]
 dynamic = ["readme"]
 

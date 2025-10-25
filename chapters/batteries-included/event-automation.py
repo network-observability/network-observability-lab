@@ -5,6 +5,7 @@ import socket
 from prefect import flow, task, tags
 from prefect.blocks.system import Secret
 from netmiko import ConnectHandler
+from rca import generate_rca
 
 NAUTOBOT_URL = "http://localhost:8080"
 PROM_URL = "http://localhost:9090"
@@ -569,6 +570,7 @@ def alert_receiver(alert_group: dict):
 
             if status == "firing":
                 quarantine_link_flow(device=device, interface=interface)
+                generate_rca(device=device, interface=interface)
             else:
                 # status == "resolved" (or anything not "firing")
                 restore_link_flow(device=device, interface=interface)
