@@ -18,8 +18,6 @@ def retrieve_data_loki(query: str, start_timestamp: int, end_time: int) -> dict:
     Returns:
         dict: Loki query result
     """
-    print("Retrieving data from Loki...")
-
     response = requests.get(
         url=f"http://loki:3001/loki/api/v1/query_range",
         params={
@@ -29,14 +27,13 @@ def retrieve_data_loki(query: str, start_timestamp: int, end_time: int) -> dict:
             "limit": 1000,
         },
     )
-    # print("Data retrieved from Loki")
     return response.json()["data"]["result"]
 
 
 @flow(log_prints=True)
 def generate_rca_prompt(loki_results, device_name, interface):
     return f"""
-   RCA for a BGP neighbor issue
+   Generate a Root Cause Analysis (RCA) for a potential BGP neighbor issue
    Available Data:
    - A BGP session may have changed in {device_name} from Established to another non-desired state
    - Associated Interface: {interface}
@@ -47,8 +44,16 @@ def generate_rca_prompt(loki_results, device_name, interface):
    Actionable Insights:
    - Given the findings, what immediate actions should be taken to mitigate the current issue?
    - What additional data would be helpful to further investigate this issue?
-   Please limit your response to max 2000 characters and use as much data as possible from the available data presented above (devices, interfaces, BGP information, but focusing on the logs) to add more clarification.
-   Format your response in Slack highlighting key points and recommendations.
+   Please format your response as follows:
+   - Limit your response to max 2000 characters
+   - Suggest clear actions with a directive tone
+   - Format your response for Slack message using bold (wrapping with only one '*') and code blocks where appropriate
+   - Organize in sections with headings:
+    - Potential Causes from Data Available
+    - Immediate Actions to Mitigate the Issue
+    - Additional Data for Further Investigation
+   - Be concise and to the point with the most probable root cause, do not add too much fluff
+   - Use bullet points for clarity
    """
 
 
@@ -89,16 +94,9 @@ def generate_rca(device: str, interface: str) -> None:
     now = datetime.now()
     loki_logs = retrieve_data_loki(
         query=f'{{device="{device}"}}',
-        # Look back for 10 minutes
-        start_timestamp=int(datetime.timestamp(now - timedelta(hours=0, minutes=10))),
+        start_timestamp=int(datetime.timestamp(now - timedelta(hours=0, minutes=5))),
         end_time=int(datetime.timestamp(now)),
     )
-    # print(f"Loki logs: {loki_logs}")
-
     prompt = generate_rca_prompt(loki_logs, device, interface)
+    return ask_openai(prompt)
 
-    rca_response = ask_openai(prompt)
-
-    # print(f"RCA Analysis: {rca_response}")
-
-    return rca_response
