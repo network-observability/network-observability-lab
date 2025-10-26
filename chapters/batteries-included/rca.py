@@ -5,6 +5,7 @@ from prefect import flow, task, tags
 import requests
 from openai import OpenAI
 from datetime import datetime, timedelta
+from prefect.blocks.system import Secret
 
 
 @flow(log_prints=True)
@@ -28,7 +29,7 @@ def retrieve_data_loki(query: str, start_timestamp: int, end_time: int) -> dict:
             "limit": 1000,
         },
     )
-    print("Data retrieved from Loki")
+    # print("Data retrieved from Loki")
     return response.json()["data"]["result"]
 
 
@@ -47,6 +48,7 @@ def generate_rca_prompt(loki_results, device_name, interface):
    - Given the findings, what immediate actions should be taken to mitigate the current issue?
    - What additional data would be helpful to further investigate this issue?
    Please limit your response to max 2000 characters and use as much data as possible from the available data presented above (devices, interfaces, BGP information, but focusing on the logs) to add more clarification.
+   Format your response in Slack highlighting key points and recommendations.
    """
 
 
@@ -60,7 +62,7 @@ def ask_openai(prompt: str, model: str = "gpt-3.5-turbo") -> str:
     Returns:
         str: The response from OpenAI.
     """
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = OpenAI(api_key=Secret.load("openapi-token").get())
     response = client.chat.completions.create(
         model=model,
         messages=[
@@ -70,12 +72,10 @@ def ask_openai(prompt: str, model: str = "gpt-3.5-turbo") -> str:
             },
         ],
     )
-
-    print(response)
     return response.choices[0].message.content
 
 
-@flow(log_prints=True)
+@flow(log_prints=True, flow_run_name="Root Cause Analysis | {device}:{interface}")
 def generate_rca(device: str, interface: str) -> None:
     """
     Generate a Root Cause Analysis (RCA) report for a given device and interface.
@@ -93,10 +93,12 @@ def generate_rca(device: str, interface: str) -> None:
         start_timestamp=int(datetime.timestamp(now - timedelta(hours=0, minutes=10))),
         end_time=int(datetime.timestamp(now)),
     )
-    print(f"Loki logs: {loki_logs}")
+    # print(f"Loki logs: {loki_logs}")
 
     prompt = generate_rca_prompt(loki_logs, device, interface)
 
     rca_response = ask_openai(prompt)
 
-    print(f"RCA Analysis: {rca_response}")
+    # print(f"RCA Analysis: {rca_response}")
+
+    return rca_response

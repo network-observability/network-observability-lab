@@ -6,12 +6,9 @@ import time
 
 import requests
 from netmiko import ConnectHandler
-<<<<<<< HEAD
 from rca import generate_rca
-=======
 from prefect import flow, tags, task
 from prefect.blocks.system import Secret
->>>>>>> origin/df/cisco-devnet
 
 NAUTOBOT_URL = "http://localhost:8080"
 PROM_URL = "http://localhost:9090"
@@ -555,6 +552,14 @@ def quarantine_link_flow(
             )
             return
 
+        # ROOT CAUSE ANALYSIS
+        rca = generate_rca(device=device, interface=interface)
+        slack_post(
+            "#bot-test",
+            f":sos: Root Cause Analysis — `{device}/{interface}`: {rca}",
+            thread_ts=slack_ts,
+        )
+
         # 0) create Alertmanager silence
         # Silence just for this device/interface
         silence_id = create_quarantine_silence(
@@ -782,7 +787,7 @@ def alert_receiver(alert_group: dict):
                     alertname=alertname,
                     status=status,
                 )
-                generate_rca(device=device, interface=interface)
+
             else:
                 # status == "resolved" (or anything not "firing")
                 restore_link_flow(
