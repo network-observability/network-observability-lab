@@ -1,13 +1,13 @@
-import time
+import datetime
 import json
 import re
-import requests
 import socket
-from prefect import flow, task, tags
-from prefect.artifacts import create_markdown_artifact
-from prefect.blocks.system import Secret
-from prefect.concurrency.sync import concurrency
+import time
+
+import requests
 from netmiko import ConnectHandler
+from prefect import flow, tags, task
+from prefect.blocks.system import Secret
 
 NAUTOBOT_URL = "http://localhost:8080"
 PROM_URL = "http://localhost:9090"
@@ -57,35 +57,6 @@ def pause(seconds: int, reason: str = "demo"):
     print("▶️  [Pause] Resuming.")
 
 
-# ---------- SoT helpers ----------
-
-
-@task(
-    retries=3,
-    log_prints=True,
-    task_run_name="nautobot_status[{interface_id}->{status}]",
-)
-def update_interface_status(interface_id: str, status: str, reason: str | None = None):
-    print(
-        f"🧩 [Nautobot] → Updating interface {interface_id} to '{status}' ({reason or 'no reason'})"
-    )
-    token = Secret.load("nautobot-token").get()  # type: ignore
-    body = {"status": status}
-    # if reason:
-    #     body["custom_fields"] = {"quarantine_reason": reason}
-    r = requests.patch(
-        f"{NAUTOBOT_URL}/api/dcim/interfaces/{interface_id}/",
-        headers={"Authorization": f"Token {token}"},
-        json=body,
-        timeout=10,
-    )
-    if not r.ok:
-        print(f"❌ [Nautobot] PATCH failed ({r.status_code}): {r.text}")
-        r.raise_for_status()
-
-    print(f"✅ [Nautobot] Interface {interface_id} successfully set to '{status}'")
-
-
 @task(retries=3, log_prints=True, task_run_name="resolve_host[{device}]")
 def resolve_device_host(device: str) -> str:
     """
@@ -93,42 +64,20 @@ def resolve_device_host(device: str) -> str:
     Returns a connectable host string for Netmiko.
     """
     print(f"🧠 [Resolver] Starting host resolution for {device}")
-    token = Secret.load("nautobot-token").get()  # type: ignore
-
-    # Try Nautobot REST: /api/dcim/devices/?name=<device>&include=primary_ip4
-    # (works on Nautobot 2.x; primary_ip4 -> {"address": "A.B.C.D/len"})
-    r = requests.get(
-        f"{NAUTOBOT_URL}/api/dcim/devices/",
-        params={"name": device},
-        headers={"Authorization": f"Token {token}"},
-        timeout=10,
-    )
-    r.raise_for_status()
-    results = r.json().get("results", [])
-    if results:
-        dev = results[0]
-        # If your API isn’t embedding primary_ip4 by default, you can do a second GET to dev["primary_ip4"]["url"]
-        pip4 = dev.get("primary_ip4")
-        if isinstance(pip4, dict):
-            addr = pip4.get("address")
-            if addr:
-                # strip CIDR if present (e.g. "192.0.2.11/32" -> "192.0.2.11")
-                host = addr.split("/")[0]
-                print(f"✅ [Resolver] Found Nautobot primary_ip4 for {device}: {host}")
-                return host
-
-    # Fallback to DNS on the device name
     try:
         socket.getaddrinfo(device, 22)
-        print(f"✅ [Resolver] Using DNS fallback for {device}: {device}")
+        print(f"✅ [Resolver] Using DNS for {device}: {device}")
         return device
     except OSError:
-        msg = f"❌ [Resolver] Could not resolve host for {device} via Nautobot or DNS"
+        msg = f"❌ [Resolver] Could not resolve host for {device} via DNS"
         print(msg)
         raise RuntimeError(msg) from None
 
 
-# ---------- Netmiko helpers (vendor-neutral commands) ----------
+# ---------- SoT helpers ----------
+
+
+# ---------- Netmiko helpers (neutral commands) ----------
 
 
 def _netmiko_connect(host: str):
@@ -144,224 +93,195 @@ def _netmiko_connect(host: str):
     )
 
 
-def _aliases_for_iface(ifname: str) -> list[str]:
-    """
-    Return likely short/long aliases for common platforms.
-    Examples:
-      Ethernet1 -> [Ethernet1, Et1]
-      GigabitEthernet1/0/1 -> [GigabitEthernet1/0/1, Gi1/0/1]
-      TenGigabitEthernet1/1 -> [TenGigabitEthernet1/1, Te1/1]
-      Management0 -> [Management0, Ma0]
-    """
-    al = {ifname}
-    m = (
-        ("Ethernet", "Et"),
-        ("GigabitEthernet", "Gi"),
-        ("TenGigabitEthernet", "Te"),
-        ("FortyGigabitEthernet", "Fo"),
-        ("HundredGigE", "Hu"),
-        ("Management", "Ma"),
-        ("Vlan", "Vlan"),
-        ("Port-Channel", "Po"),
-        ("Loopback", "Lo"),
-    )
-    for long, short in m:
-        if ifname.startswith(long):
-            tail = ifname[len(long) :]
-            al.add(f"{short}{tail}")
-    return list(al)
+@task(retries=2, log_prints=True, task_run_name="bgp_asn[{device}]")
+def get_local_bgp_asn(device: str) -> str:
+    """Parse local BGP ASN from running-config."""
+    with _netmiko_connect(device) as conn:
+        conn.enable()
+        cfg = conn.send_command(
+            "show running-config section router bgp", use_textfsm=False
+        )
+    cfg = str(cfg)  # Ensure cfg is a string
+    m = re.search(r"^router\s+bgp\s+(\d+)", cfg, flags=re.MULTILINE)
+    if not m:
+        raise RuntimeError(f"Could not find local BGP ASN on {device}")
+    asn = m.group(1)
+    print(f"🔎 [BGP] Local ASN on {device} = {asn}")
+    return asn
 
 
 @task(
-    retries=2,
-    log_prints=True,
-    task_run_name="is_already_quarantined[{device}:{interface}]",
+    retries=2, log_prints=True, task_run_name="neighbor_on_iface[{device}:{interface}]"
 )
-def is_already_quarantined(device: str, interface: str) -> bool:
+def get_neighbor_on_interface(device: str, interface: str) -> str | None:
     """
-    Returns True if the interface looks quarantined: admin down and/or our tag in description.
-    Works for EOS/IOS-XE style outputs.
+    Returns the BGP neighbor IP that is on the same subnet as <device>/<interface>.
+    EOS JSON paths handled:
+      interfaces[IFACE].interfaceAddress.primaryIp.{address,maskLen}
+      interfaces[IFACE].interfaceAddressBrief.ipAddr.{address,maskLen}
     """
-    interface = canon_iface(interface)
-    print(f"🧰 [Check] Checking quarantine state for {device}/{interface}")
+    import ipaddress as ip
+
+    iface = canon_iface(interface)
     with _netmiko_connect(device) as conn:
         conn.enable()
 
-        # Try "show running-config interface" first (most reliable)
-        cfg = conn.send_command(
-            f"show running-config interface {interface}", use_textfsm=False
+        # --- 1) Get interface primary IP (address/maskLen) via JSON
+        out = conn.send_command(f"show ip interface {iface} | json", use_textfsm=False)
+        try:
+            data = json.loads(str(out))
+        except Exception as e:
+            print(f"⚠️ [BGP] JSON parse failed for 'show ip interface {iface}': {e}")
+            return None
+
+        intf = (data.get("interfaces") or {}).get(iface, {})
+        primary = (
+            ((intf.get("interfaceAddress") or {}).get("primaryIp"))
+            or ((intf.get("interfaceAddressBrief") or {}).get("ipAddr"))
+            or {}
         )
-        print(f"🧾 [Check] Running-config for {device}/{interface}:\n{cfg}")
-        if "shutdown" in cfg.lower() and "quarantined_by_prefect".lower() in cfg.lower():  # type: ignore
-            print(f"🔒 [Check] {device}/{interface} already quarantined (config match)")
-            return True
-        # Fallback: parse "show interface <X>" for admin state + description
-        out = conn.send_command(f"show interface {interface}", use_textfsm=False)
-        text = out.lower()  # type: ignore
-        if (
-            "admin state is down" in text
-            or "administratively down" in text
-            or "is administratively down" in text
-        ) and "quarantined_by_prefect" in text:
+        addr = primary.get("address")
+        mlen = primary.get("maskLen")
+        if not addr or mlen is None:
+            print(f"⚠️ [BGP] No primary IP found on {device}/{iface}")
+            return None
+
+        pfx = f"{addr}/{mlen}"
+        net = ip.ip_network(pfx, strict=False)
+        lip = ip.ip_address(addr)
+        print(f"✅ [BGP] {device}/{iface} has IP {pfx}")
+
+        # --- 2) List configured neighbors from BGP running-config
+        bgp = conn.send_command(
+            "show running-config section router bgp", use_textfsm=False
+        )
+        bgp = str(bgp)  # Ensure bgp is a string
+        neigh_ips = re.findall(
+            r"^\s*neighbor\s+(\d+\.\d+\.\d+\.\d+)\s+remote-as\s+\d+",
+            bgp,
+            flags=re.MULTILINE,
+        )
+        if not neigh_ips:
+            print(f"⚠️ [BGP] No neighbors found in BGP config on {device}")
+            return None
+
+        # --- 3) Pick the neighbor that shares the subnet with the interface IP
+        candidates = []
+        for nip in neigh_ips:
+            ipn = ip.ip_address(nip)
+            if ipn != lip and ipn in net:
+                candidates.append(nip)
+
+        if not candidates:
             print(
-                f"🔒 [Check] {device}/{interface} already quarantined (show interface)"
+                f"⚠️ [BGP] No neighbor IP in {net} found on {device} for {iface}. "
+                f"Neighbors seen: {', '.join(neigh_ips)}"
             )
-            return True
-
-    print(f"✅ [Check] {device}/{interface} not quarantined")
-    return False
-
-
-@task(retries=0, log_prints=True, task_run_name="lldp_peer[{device}:{interface}]")
-def lldp_peer(device: str, interface: str, wait_s: int = 10) -> tuple[str, str] | None:
-    """
-    Returns (peer_device, peer_interface) for `device/interface`.
-    Tries JSON first, then table, retrying for up to `wait_s` seconds.
-    """
-    print(f"🛰️ [LLDP] Discovering peer for {device}/{interface}")
-    aliases = _aliases_for_iface(interface)  # keep your alias helper
-
-    pause(2, "initial LLDP wait")
-
-    def _json_attempt(conn) -> tuple[str, str] | None:
-        out = conn.send_command("show lldp neighbors | json", use_textfsm=False)
-        try:
-            data = json.loads(out)
-        except Exception:
-            return None
-        items = (
-            data.get("lldpNeighbors")
-            or data.get("neighbors")
-            or data.get("lldpNeighborsBriefTable")
-            or []
-        )
-        for it in items:
-            local = (
-                it.get("port")
-                or it.get("interface")
-                or it.get("localPort")
-                or it.get("localInterface")
-            )
-            ndev = (
-                it.get("neighborDevice")
-                or it.get("neighborDeviceId")
-                or it.get("systemName")
-            )
-            nport = (
-                it.get("neighborPort")
-                or it.get("neighborInterface")
-                or it.get("portId")
-            )
-            if local and ndev and nport:
-                local_c = canon_iface(local)
-                nport_c = canon_iface(nport)
-                if local_c in aliases:
-                    print(
-                        f"✅ [LLDP-JSON] {device}/{local_c} ↔ {ndev}/{nport_c}  (raw local='{local}', raw port='{nport}')"
-                    )
-                    return ndev, nport_c
-        return None
-
-    def _table_attempt(conn) -> tuple[str, str] | None:
-        out = conn.send_command("show lldp neighbors", use_textfsm=False)
-        lines = [l.strip() for l in out.splitlines() if l.strip()]
-        row_re = re.compile(r"^(\S+)\s+(\S+)\s+(\S+)\s+\d+$")
-
-        def parse_fallback(line: str):
-            parts = re.split(r"\s{2,}", line)
-            if len(parts) >= 4 and parts[-1].isdigit():
-                return parts[0], parts[1], parts[2]
             return None
 
-        rows = []
-        for ln in lines:
-            m = row_re.match(ln)
-            if m:
-                rows.append((m.group(1), m.group(2), m.group(3)))
-                continue
-            fb = parse_fallback(ln)
-            if fb:
-                rows.append(fb)
-        for local, ndev, nport in rows:
-            local_c = canon_iface(local)
-            nport_c = canon_iface(nport)
-            if local_c in aliases:
-                print(
-                    f"✅ [LLDP-TBL] {device}/{local_c} ↔ {ndev}/{nport_c}  (raw local='{local}', raw port='{nport}')"
-                )
-                return ndev, nport_c
-        return None
+        if len(candidates) > 1:
+            print(
+                f"ℹ️ [BGP] Multiple neighbors on {net}: {candidates} — choosing {candidates[0]}"
+            )
 
-    with _netmiko_connect(device) as conn:  # your Netmiko connector
-        import time
-
-        conn.enable()
-        try:
-            conn.send_command("terminal length 0")
-        except Exception:
-            pass
-
-        deadline = time.time() + max(0, wait_s)
-        attempt = 1
-        while True:
-            res = _json_attempt(conn) or _table_attempt(conn)
-            if res:
-                return res
-            if time.time() >= deadline:
-                print(
-                    f"⚠️ [LLDP] No neighbor for {device}/{interface} after {attempt - 1} tries."
-                )
-                return None
-            print(f"🕐 [LLDP] No result (attempt {attempt}) — retrying...")
-            attempt += 1
-            time.sleep(2)
+        neighbor_ip = candidates[0]
+        print(f"✅ [BGP] {device}/{iface} → neighbor {neighbor_ip} (subnet {net})")
+        return neighbor_ip
 
 
-@task(retries=2, log_prints=True, task_run_name="quarantine_side[{device}:{interface}]")
-def quarantine_side(device: str, interface: str):
-    interface = canon_iface(interface)
-    print(f"🚨 [Netmiko] Quarantining {device}/{interface}")
-    pause(2, "pre-quarantine pause")
+@task(retries=2, log_prints=True, task_run_name="bgp_shutdown[{device}:{neighbor}]")
+def bgp_neighbor_shutdown(device: str, neighbor: str):
+    """Shut the BGP neighbor (local side only)."""
+    asn = get_local_bgp_asn(device)
+    print(f"🚧 [BGP] Shutting neighbor {neighbor} on {device} (ASN {asn})")
     with _netmiko_connect(device) as conn:
         conn.enable()
         conn.send_config_set(
             [
-                f"interface {interface}",
-                "shutdown",
-                "description QUARANTINED_BY_PREFECT",
+                f"router bgp {asn}",
+                f"neighbor {neighbor} shutdown",
+                f"neighbor {neighbor} description QUARANTINED_BY_PREFECT",
             ]
         )
         try:
             conn.save_config()
         except Exception:
             pass
-    print(f"✅ [Netmiko] Interface {device}/{interface} quarantined successfully")
+    print(f"✅ [BGP] Neighbor {neighbor} on {device} is shutdown")
     return True
 
 
-@task(retries=2, log_prints=True, task_run_name="restore_side[{device}:{interface}]")
-def restore_side(device: str, interface: str):
-    interface = canon_iface(interface)
-    print(f"🧹 [Netmiko] Restoring {device}/{interface}")
+@task(retries=2, log_prints=True, task_run_name="bgp_noshut[{device}:{neighbor}]")
+def bgp_neighbor_no_shutdown(device: str, neighbor: str):
+    """Re-enable the BGP neighbor (local side only)."""
+    asn = get_local_bgp_asn(device)
+    print(f"🧹 [BGP] Enabling neighbor {neighbor} on {device} (ASN {asn})")
     with _netmiko_connect(device) as conn:
         conn.enable()
         conn.send_config_set(
             [
-                f"interface {interface}",
-                "no shutdown",
-                "no shutdown",
-                # "description RESTORED_BY_PREFECT",
+                f"router bgp {asn}",
+                f"no neighbor {neighbor} shutdown",
+                # clear quarantine tag
+                f"no neighbor {neighbor} description",
             ]
         )
         try:
             conn.save_config()
         except Exception:
             pass
-    print(f"✅ [Netmiko] Interface {device}/{interface} restored successfully")
+    print(f"✅ [BGP] Neighbor {neighbor} on {device} enabled")
     return True
 
 
 # ---------- Observability helpers ----------
+
+
+def _loki_push(labels: dict[str, str], message: str):
+    """
+    Push a single event to Loki using /loki/api/v1/push.
+    'labels' become the Loki stream labels.
+    """
+    ts = str(time.time_ns())  # RFC3339 not required; Loki wants ns epoch
+    payload = {
+        "streams": [
+            {
+                "stream": labels,
+                "values": [[ts, message]],
+            }
+        ]
+    }
+    r = requests.post(f"{LOKI_URL}/loki/api/v1/push", json=payload, timeout=5)
+    if not r.ok:
+        raise RuntimeError(f"Loki push failed: {r.status_code} {r.text}")
+
+
+@task(log_prints=True, retries=0)
+def annotate_to_loki(
+    workflow: str,
+    phase: str,
+    device: str,
+    interface: str,
+    alertname: str,
+    status: str,
+    note: str = "",
+):
+    """
+    Writes a single annotation event into Loki.
+    Choose your own label set, but keep it stable & low-cardinality.
+    """
+    labels = {
+        "source": "prefect",
+        "workflow": workflow,  # quarantine | restore
+        "phase": phase,  # start | end | skip | error
+        "device": device,
+        "interface": interface,
+        "alertname": alertname,
+        "status": status,
+    }
+    msg = f"{workflow.upper()} [{phase}] {device}/{interface} {alertname}:{status} {note}".strip()
+    print(f"📝 [Loki] {msg}")
+    _loki_push(labels, msg)
 
 
 @task(retries=2, log_prints=True, task_run_name="expire_silence[{device}:{interface}]")
@@ -438,8 +358,6 @@ def wait_until_alert_inactive(
     """
     Poll Alertmanager until alert is NOT active (or timeout). Returns True if inactive.
     """
-    import time, datetime as dt, requests
-
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         params = [
@@ -451,7 +369,7 @@ def wait_until_alert_inactive(
         r.raise_for_status()
         active = any(a.get("status", {}).get("state") == "active" for a in r.json())
         print(
-            f"🧪 [AM] {alertname} active={active} for {device}/{interface} @ {dt.datetime.utcnow().isoformat(timespec='seconds')}Z"
+            f"🧪 [AM] {alertname} active={active} for {device}/{interface} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}Z"
         )
         if not active:
             return True
@@ -483,10 +401,8 @@ def create_quarantine_silence(
     print(
         f"🔕 [Silence] Creating Alertmanager silence for {device}/{interface} ({duration_minutes} min)"
     )
-    import datetime as dt
-
-    starts = dt.datetime.utcnow()
-    ends = starts + dt.timedelta(minutes=duration_minutes)
+    starts = datetime.datetime.utcnow()
+    ends = starts + datetime.timedelta(minutes=duration_minutes)
     body = {
         "matchers": [
             {"name": "alertname", "value": "PeerInterfaceFlapping", "isRegex": False},
@@ -510,33 +426,38 @@ def create_quarantine_silence(
     return sid
 
 
-@task(retries=1, log_prints=True, task_run_name="loki_check[{device}:{interface}]")
-def loki_no_recent_flaps(device: str, interface: str, lookback: str = "1m") -> bool:
-    """
-    Returns True if NO UPDOWN logs were seen in the last `lookback` window.
-    """
-    import requests
-
-    # Count entries in last 1m for this link
-    logql = f'count_over_time({{vendor_facility_process="UPDOWN", device="{device}", interface="{interface}"}}[{lookback}])'
-    r = requests.get(
-        f"{LOKI_URL}/loki/api/v1/query", params={"query": logql}, timeout=10
-    )
+@task(retries=1, log_prints=True, task_run_name="bgp_state[{device}:{neighbor}]")
+def prom_bgp_established(device: str, neighbor: str) -> bool:
+    """True if Prometheus says the session is ESTABLISHED (state == 1)."""
+    q = f'bgp_neighbor_state{{device="{device}", neighbor="{neighbor}"}}'
+    r = requests.get(f"{PROM_URL}/api/v1/query", params={"query": q}, timeout=10)
     r.raise_for_status()
-    results = r.json().get("data", {}).get("result", [])
-    ok = True
-    for series in results:
-        # instant query returns a single scalar in vector result
+    res = r.json().get("data", {}).get("result", [])
+    est = False
+    for v in res:
         try:
-            val = float(series.get("value", [0, "0"])[1])
-            if val > 0:
-                ok = False
-                break
+            est = float(v.get("value", [0, "0"])[1]) == 1.0
         except Exception:
-            ok = False
-            break
-    print(f"🧪 [Loki] No recent flaps for {device}/{interface}: {ok}")
-    return ok
+            est = False
+    print(f"📈 [Prom] {device}↔{neighbor} established={est}")
+    return est
+
+
+@task(retries=1, log_prints=True, task_run_name="bgp_rx_cnt[{device}:{neighbor}]")
+def prom_bgp_prefixes_received(device: str, neighbor: str) -> int:
+    """Prefixes received now from this neighbor (instant vector)."""
+    q = f'bgp_prefixes_received{{device="{device}", neighbor="{neighbor}"}}'
+    r = requests.get(f"{PROM_URL}/api/v1/query", params={"query": q}, timeout=10)
+    r.raise_for_status()
+    res = r.json().get("data", {}).get("result", [])
+    val = 0
+    for v in res:
+        try:
+            val = int(float(v.get("value", [0, "0"])[1]))
+        except Exception:
+            val = 0
+    print(f"📦 [Prom] {device}←{neighbor} prefixes_received={val}")
+    return val
 
 
 # ---------- Action flows ----------
@@ -555,70 +476,56 @@ def quarantine_link_flow(
     alertname: str = "PeerInterfaceFlapping",
     status: str = "firing",
 ):
-    from datetime import datetime
-
     interface = canon_iface(interface)
-
     with tags(
         _link_tag(device, interface),
         f"alert:{alertname}",
         f"status:{status}",
         "action:quarantine",
     ):
-        # with concurrency(_limit_name(device, interface), occupy=1):
-        start_ts = datetime.utcnow().isoformat(timespec="seconds")
         print(
             f"⚙️ [quarantine] Starting for {device}/{interface} ({alertname}:{status})"
         )
-
-        # Idempotency
-        if is_already_quarantined(device, interface):
-            if local_interface_id:
-                update_interface_status(
-                    local_interface_id, "quarantined", reason="flapping"
-                )
-            print("⏭️ Already quarantined → no-op.")
-            create_markdown_artifact(
-                key=artifact_key("quarantine-skip", device, interface),
-                markdown=f"### ⚙️ Quarantine Skipped\n- **Device:** `{device}`\n- **Interface:** `{interface}`\n- **Reason:** Already quarantined\n- **Alert:** `{alertname}` (`{status}`)\n- **Timestamp:** {start_ts} UTC",
-                description=f"Skipped quarantine for {device}/{interface} (already quarantined)",
-            )
-            return
+        annotate_to_loki(
+            workflow="quarantine",
+            phase="start",
+            device=device,
+            interface=interface,
+            alertname=alertname,
+            status=status,
+            note="Starting quarantine workflow",
+        )
 
         # Freshness gate
         print("🔎 Verifying alert freshness in Alertmanager...")
         pause(3, "waiting for fresh state")
         if not alert_active_in_am("PeerInterfaceFlapping", device, interface):
-            print("🧊 Alert no longer active → skipping quarantine.")
-            create_markdown_artifact(
-                key=artifact_key("quarantine-stale", device, interface),
-                markdown=f"### 🧊 Quarantine Skipped (Stale Alert)\n- **Device:** `{device}`\n- **Interface:** `{interface}`\n- **Alert:** `{alertname}` (`{status}`)\n- **Reason:** Alert no longer active in Alertmanager\n- **Timestamp:** {start_ts} UTC",
-                description=f"Stale alert for {device}/{interface}",
-            )
+            print("🧊 Alert no longer active → skip.")
             return
 
-        # (Optional) LLDP for visibility only
-        try:
-            peer = lldp_peer(device, interface, wait_s=6)
-            if peer:
-                print(
-                    f"🔗 LLDP (informational): {device}/{interface} ↔ {peer[0]}/{peer[1]}"
-                )
-        except Exception as e:
-            print(f"ℹ️ [LLDP] Skipping LLDP context due to error: {e}")
-
-        # 👉 Quarantine **local end only**
-        pause(1, "about to quarantine local end")
-        quarantine_side(device, interface)
-
-        if local_interface_id:
-            update_interface_status(
-                local_interface_id, "quarantined", reason="flapping"
-            )
-
+        # 0) create Alertmanager silence
         # Silence just for this device/interface
-        silence_id = create_quarantine_silence(device, interface, duration_minutes=20)
+        silence_id = create_quarantine_silence(
+            device=device, interface=interface, duration_minutes=20
+        )
+        print(f"🔕 Created quarantine silence: {silence_id}")
 
+        # 2) map interface → neighbor
+        nbr = get_neighbor_on_interface(device, interface)
+        if not nbr:
+            print("⚠️ Could not map interface to neighbor; skipping.")
+            return
+
+        # 3) BGP quarantine (LOCAL ONLY)
+        bgp_neighbor_shutdown(device=device, neighbor=nbr)
+
+        # 4) (demo) verify in Prom: session not established and rx prefixes drop
+        pause(2, "wait metrics scrape")
+        est = prom_bgp_established(device=device, neighbor=nbr)
+        rx = prom_bgp_prefixes_received(device=device, neighbor=nbr)
+        print(f"✅ Post-quarantine checks: established={est}, prefixes_received={rx}")
+
+        # 5) Let alert go inactive, then delete silence so 'resolved' can notify
         # Let the alert window drain, then drop silence so “resolved” can emit
         pause(2, "letting the counter drain / window elapse")
         inactive = wait_until_alert_inactive(
@@ -627,11 +534,15 @@ def quarantine_link_flow(
         if inactive and silence_id:
             delete_silence_by_id(silence_id)
 
-        print("✅ Quarantined (local end) and silenced.")
-        create_markdown_artifact(
-            key=artifact_key("quarantine", device, interface),
-            markdown=f"## 🚨 Quarantine Summary\n\n- **Device:** `{device}`\n- **Interface:** `{interface}`\n- **Alert:** `{alertname}` (`{status}`)\n- **Silence:** `{silence_id}` (deleted after inactive: `{inactive}`)\n- **Status in SoT:** `quarantined`\n- **Timestamp:** {datetime.utcnow().isoformat(timespec='seconds')} UTC",
-            description=f"Quarantine summary for {device}/{interface}",
+        print("✅ BGP neighbor quarantined (local side).")
+        annotate_to_loki(
+            workflow="quarantine",
+            phase="end",
+            device=device,
+            interface=interface,
+            alertname=alertname,
+            status=status,
+            note="Quarantine workflow completed",
         )
 
 
@@ -643,8 +554,6 @@ def restore_link_flow(
     alertname: str = "PeerInterfaceFlapping",
     status: str = "resolved",
 ):
-    from datetime import datetime
-
     interface = canon_iface(interface)
     pause(1, "pre-restore pause for demo")
 
@@ -654,119 +563,47 @@ def restore_link_flow(
         f"status:{status}",
         "action:restore",
     ):
-        # with concurrency(_limit_name(device, interface), occupy=1):
-        start_ts = datetime.utcnow().isoformat(timespec="seconds")
         print(f"🛠️ [restore] Starting for {device}/{interface} ({alertname}:{status})")
+        annotate_to_loki(
+            workflow="restore",
+            phase="start",
+            device=device,
+            interface=interface,
+            alertname=alertname,
+            status=status,
+            note="Starting restore workflow",
+        )
 
-        if not is_already_quarantined(device, interface):
-            print(f"⏭️ {device}/{interface} not quarantined by us → skipping restore.")
-            create_markdown_artifact(
-                key=artifact_key("restore-skip", device, interface),
-                markdown=f"### 🧩 Restore Skipped\n- **Device:** `{device}`\n- **Interface:** `{interface}`\n- **Reason:** Not quarantined\n- **Alert:** `{alertname}` (`{status}`)\n- **Timestamp:** {start_ts} UTC",
-                description=f"Skipped restore for {device}/{interface} (not quarantined)",
-            )
+        # 2) map interface → neighbor
+        nbr = get_neighbor_on_interface(device, interface)
+        if not nbr:
+            print("⚠️ Could not map interface to neighbor; skipping.")
             return
 
-        # Optional: quick health glance
-        pause(1, "pre-check via Loki")
-        loki_no_recent_flaps(device, interface, lookback="1m")
+        # 3) BGP restore (LOCAL ONLY)
+        # re-enable local neighbor
+        bgp_neighbor_no_shutdown(device=device, neighbor=nbr)
 
-        # 👉 Restore **local end only**
-        restore_side(device, interface)
-
-        if local_interface_id:
-            update_interface_status(local_interface_id, "active")
+        # 4) (demo) verify in Prom: session established and rx prefixes return
+        pause(2, "wait metrics scrape")
+        est = prom_bgp_established(device=device, neighbor=nbr)
+        rx = prom_bgp_prefixes_received(device=device, neighbor=nbr)
+        print(f"✅ Post-restore checks: established={est}, prefixes_received={rx}")
 
         # Best-effort: remove any leftover silences for this local endpoint
         deleted = expire_silences_for_link(device, interface)
+        print(f"✅ Silences expired for {device}/{interface}: {deleted}")
 
-        print("✅ Link restored (local end).")
-        create_markdown_artifact(
-            key=artifact_key("restore", device, interface),
-            markdown=f"## 🔄 Restore Summary\n\n- **Device:** `{device}`\n- **Interface:** `{interface}`\n- **Action:** Restored local end\n- **Silences expired:** `{deleted}`\n- **Alert:** `{alertname}` (`{status}`)\n- **Status in SoT:** `active`\n- **Timestamp:** {datetime.utcnow().isoformat(timespec='seconds')} UTC",
-            description=f"Restore summary for {device}/{interface}",
+        print("✅ BGP neighbor restored (local side).")
+        annotate_to_loki(
+            workflow="restore",
+            phase="end",
+            device=device,
+            interface=interface,
+            alertname=alertname,
+            status=status,
+            note="Restore workflow completed",
         )
-
-
-# ---------- Alert Receiver Flow ----------
-
-
-@task(retries=3, log_prints=True)
-def get_nautobot_intf_id(device: str, interface: str) -> str | None:
-    """Retrieve the Nautobot Interface ID."""
-
-    # GraphQL query to retrieve the device interfaces information
-    gql = """
-    query($device: [String]) {
-        devices(name: $device) {
-            name
-            interfaces {
-                name
-                id
-            }
-        }
-    }
-    """
-
-    # Retrieve the Nautobot API token from Prefect Block Secret
-    secret_block = Secret.load("nautobot-token")
-    nautobot_token = secret_block.get()  # type: ignore
-
-    # Get the device information from Nautobot using GraphQL
-    response = requests.post(
-        url="http://localhost:8080/api/graphql/",
-        headers={"Authorization": f"Token {nautobot_token}"},
-        json={"query": gql, "variables": {"device": device}},
-    )
-    response.raise_for_status()
-
-    # Parse the response and return the interface ID
-    result = response.json()["data"]["devices"][0]
-    for intf in result["interfaces"]:
-        if intf["name"] == interface:
-            return intf["id"]
-
-
-@task(retries=3, log_prints=True)
-def update_nautobot_intf_state(interface_id: str, status: str) -> bool:
-    """Update the device interface status."""
-
-    # Retrieve the Nautobot API token from Prefect Block Secret
-    secret_block = Secret.load("nautobot-token")
-    nautobot_token = secret_block.get()  # type: ignore
-
-    # Mapping Alertmanager status to Nautobot status
-    status = "lab-active" if status == "resolved" else "Alerted"
-
-    # Update the interface status
-    result = requests.patch(
-        url=f"http://localhost:8080/api/dcim/interfaces/{interface_id}/",
-        headers={"Authorization": f"Token {nautobot_token}"},
-        json={"status": status},
-    )
-    result.raise_for_status()
-
-    # Print the result to console
-    print(f"Interface ID {interface_id} status updated to {status}")
-
-    return True
-
-
-@flow(log_prints=True)
-def interface_flapping_processor(device: str, interface: str, status: str) -> bool:
-    """Interface Flapping Event Processor."""
-
-    # Retrieve Nautobot Interface ID
-    intf_id = get_nautobot_intf_id(device=device, interface=interface)
-    if intf_id is None:
-        raise ValueError("Interface not found in Nautobot")
-
-    # Print the interface ID
-    print(f"Interface: {interface} == ID: {intf_id}")
-
-    # Update the device interface status in Nautobot
-    is_good = update_nautobot_intf_state(interface_id=intf_id, status=status)
-    return is_good
 
 
 @flow(
@@ -811,17 +648,6 @@ def alert_receiver(alert_group: dict):
                     alertname=alertname,
                     status=status,
                 )
-        # for alert in alerts:
-
-        #     # Run the interface flapping processor
-        #     result = interface_flapping_processor(
-        #         device=alert["labels"]["device"],
-        #         interface=alert["labels"]["interface"],
-        #         status=alert_group["status"],
-        #     )
-
-        #     # Print the result to console
-        #     print(f"Interface Flapping Processor Result: {result}")
 
     print("Alertmanager Alert Group status processed, exiting")
 
