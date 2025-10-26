@@ -14,6 +14,7 @@ PROM_URL = "http://localhost:9090"
 ALERTMANAGER_URL = "http://localhost:9093"
 LOKI_URL = "http://localhost:3001"
 IFACE_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9/-]+")
+SLACK_API = "https://slack.com/api/chat.postMessage"
 
 
 def canon_iface(s: str) -> str:
@@ -52,9 +53,9 @@ def artifact_key(*parts: str) -> str:
 
 
 def pause(seconds: int, reason: str = "demo"):
-    print(f"⏸️  [Pause] {reason} for {seconds}s...")
+    # print(f"⏸️  [Pause] {reason} for {seconds}s...")
     time.sleep(seconds)
-    print("▶️  [Pause] Resuming.")
+    # print("▶️  [Pause] Resuming.")
 
 
 @task(retries=3, log_prints=True, task_run_name="resolve_host[{device}]")
@@ -72,6 +73,27 @@ def resolve_device_host(device: str) -> str:
         msg = f"❌ [Resolver] Could not resolve host for {device} via DNS"
         print(msg)
         raise RuntimeError(msg) from None
+
+
+@task(log_prints=True)
+def slack_post(channel: str, text: str, thread_ts: str | None = None) -> str | None:
+    token = Secret.load("slack-bot-token").get()  # type: ignore
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-type": "application/json; charset=utf-8",
+    }
+    body = {"channel": channel, "text": text}
+    if thread_ts:
+        body["thread_ts"] = thread_ts
+
+    r = requests.post(SLACK_API, headers=headers, json=body, timeout=10)
+    data = r.json()
+    if not data.get("ok"):
+        print(f"❌ [Slack] {data}")
+        return None
+    ts = data.get("ts")
+    print(f"✅ [Slack] posted {'thread reply' if thread_ts else 'message'} ts={ts}")
+    return ts
 
 
 # ---------- SoT helpers ----------
@@ -96,6 +118,7 @@ def _netmiko_connect(host: str):
 @task(retries=2, log_prints=True, task_run_name="bgp_asn[{device}]")
 def get_local_bgp_asn(device: str) -> str:
     """Parse local BGP ASN from running-config."""
+    pause(5, "pre-BGP ASN fetch pause for demo")
     with _netmiko_connect(device) as conn:
         conn.enable()
         cfg = conn.send_command(
@@ -122,6 +145,7 @@ def get_neighbor_on_interface(device: str, interface: str) -> str | None:
     """
     import ipaddress as ip
 
+    pause(5, "pre-neighbor lookup pause for demo")
     iface = canon_iface(interface)
     with _netmiko_connect(device) as conn:
         conn.enable()
@@ -192,6 +216,7 @@ def get_neighbor_on_interface(device: str, interface: str) -> str | None:
 @task(retries=2, log_prints=True, task_run_name="bgp_shutdown[{device}:{neighbor}]")
 def bgp_neighbor_shutdown(device: str, neighbor: str):
     """Shut the BGP neighbor (local side only)."""
+    pause(5, "pre-shutdown pause for demo")
     asn = get_local_bgp_asn(device)
     print(f"🚧 [BGP] Shutting neighbor {neighbor} on {device} (ASN {asn})")
     with _netmiko_connect(device) as conn:
@@ -214,6 +239,7 @@ def bgp_neighbor_shutdown(device: str, neighbor: str):
 @task(retries=2, log_prints=True, task_run_name="bgp_noshut[{device}:{neighbor}]")
 def bgp_neighbor_no_shutdown(device: str, neighbor: str):
     """Re-enable the BGP neighbor (local side only)."""
+    pause(5, "pre-restore pause for demo")
     asn = get_local_bgp_asn(device)
     print(f"🧹 [BGP] Enabling neighbor {neighbor} on {device} (ASN {asn})")
     with _netmiko_connect(device) as conn:
@@ -380,7 +406,7 @@ def wait_until_alert_inactive(
 
 @task(retries=0, log_prints=True, task_run_name="delete_silence[{silence_id}]")
 def delete_silence_by_id(silence_id: str) -> bool:
-    import requests
+    pause(2, "pre-delete silence pause for demo")
 
     r = requests.delete(f"{ALERTMANAGER_URL}/api/v2/silence/{silence_id}", timeout=10)
     if r.ok:
@@ -398,6 +424,7 @@ def delete_silence_by_id(silence_id: str) -> bool:
 def create_quarantine_silence(
     device: str, interface: str, duration_minutes: int = 20, author: str = "prefect"
 ):
+    pause(2, "pre-silence pause for demo")
     print(
         f"🔕 [Silence] Creating Alertmanager silence for {device}/{interface} ({duration_minutes} min)"
     )
@@ -429,6 +456,7 @@ def create_quarantine_silence(
 @task(retries=1, log_prints=True, task_run_name="bgp_state[{device}:{neighbor}]")
 def prom_bgp_established(device: str, neighbor: str) -> bool:
     """True if Prometheus says the session is ESTABLISHED (state == 1)."""
+    pause(5, "waiting for Prometheus scrape")
     q = f'bgp_neighbor_state{{device="{device}", neighbor="{neighbor}"}}'
     r = requests.get(f"{PROM_URL}/api/v1/query", params={"query": q}, timeout=10)
     r.raise_for_status()
@@ -446,6 +474,7 @@ def prom_bgp_established(device: str, neighbor: str) -> bool:
 @task(retries=1, log_prints=True, task_run_name="bgp_rx_cnt[{device}:{neighbor}]")
 def prom_bgp_prefixes_received(device: str, neighbor: str) -> int:
     """Prefixes received now from this neighbor (instant vector)."""
+    pause(5, "waiting for Prometheus scrape")
     q = f'bgp_prefixes_received{{device="{device}", neighbor="{neighbor}"}}'
     r = requests.get(f"{PROM_URL}/api/v1/query", params={"query": q}, timeout=10)
     r.raise_for_status()
@@ -495,12 +524,31 @@ def quarantine_link_flow(
             status=status,
             note="Starting quarantine workflow",
         )
+        slack_ts = slack_post(
+            "#bot-test",
+            f":rotating_light: QUARANTINE start — `{device}/{interface}` ({alertname}:{status})",
+        )
 
         # Freshness gate
         print("🔎 Verifying alert freshness in Alertmanager...")
+        slack_post("#bot-test", "Confirm alert active in AM…", thread_ts=slack_ts)
         pause(3, "waiting for fresh state")
         if not alert_active_in_am("PeerInterfaceFlapping", device, interface):
             print("🧊 Alert no longer active → skip.")
+            annotate_to_loki(
+                workflow="quarantine",
+                phase="skip",
+                device=device,
+                interface=interface,
+                alertname=alertname,
+                status=status,
+                note="Alert no longer active; skipping quarantine",
+            )
+            slack_post(
+                "#bot-test",
+                f":white_check_mark: QUARANTINE skipped — `{device}/{interface}` no longer active",
+                thread_ts=slack_ts,
+            )
             return
 
         # 0) create Alertmanager silence
@@ -508,22 +556,52 @@ def quarantine_link_flow(
         silence_id = create_quarantine_silence(
             device=device, interface=interface, duration_minutes=20
         )
+        slack_post(
+            "#bot-test",
+            f"Created quarantine silence ID `{silence_id}` for `{device}/{interface}`",
+            thread_ts=slack_ts,
+        )
         print(f"🔕 Created quarantine silence: {silence_id}")
 
         # 2) map interface → neighbor
         nbr = get_neighbor_on_interface(device, interface)
         if not nbr:
             print("⚠️ Could not map interface to neighbor; skipping.")
+            annotate_to_loki(
+                workflow="quarantine",
+                phase="error",
+                device=device,
+                interface=interface,
+                alertname=alertname,
+                status=status,
+                note="Could not map interface to neighbor; skipping quarantine",
+            )
+            slack_post(
+                "#bot-test",
+                f":warning: QUARANTINE error — could not map `{device}/{interface}` to neighbor; skipping",
+                thread_ts=slack_ts,
+            )
             return
 
         # 3) BGP quarantine (LOCAL ONLY)
         bgp_neighbor_shutdown(device=device, neighbor=nbr)
+        print(f"🚧 BGP neighbor {nbr} on {device} quarantined (local side).")
+        slack_post(
+            "#bot-test",
+            f":rotating_light: QUARANTINE applied — BGP neighbor `{nbr}` on `{device}` shutdown",
+            thread_ts=slack_ts,
+        )
 
         # 4) (demo) verify in Prom: session not established and rx prefixes drop
         pause(2, "wait metrics scrape")
         est = prom_bgp_established(device=device, neighbor=nbr)
         rx = prom_bgp_prefixes_received(device=device, neighbor=nbr)
         print(f"✅ Post-quarantine checks: established={est}, prefixes_received={rx}")
+        slack_post(
+            "#bot-test",
+            f"Post-quarantine checks for `{device}/{interface}`: established={est}, prefixes_received={rx}",
+            thread_ts=slack_ts,
+        )
 
         # 5) Let alert go inactive, then delete silence so 'resolved' can notify
         # Let the alert window drain, then drop silence so “resolved” can emit
@@ -533,8 +611,23 @@ def quarantine_link_flow(
         )
         if inactive and silence_id:
             delete_silence_by_id(silence_id)
+            print(f"✅ Deleted quarantine silence {silence_id} after alert inactive.")
+            slack_post(
+                "#bot-test",
+                f":white_check_mark: QUARANTINE complete — deleted silence ID `{silence_id}` after alert inactive",
+                thread_ts=slack_ts,
+            )
+        else:
+            print(
+                f"⚠️ Alert still active after wait; leaving silence {silence_id} in place."
+            )
+            slack_post(
+                "#bot-test",
+                f":warning: QUARANTINE alert still active; leaving silence ID `{silence_id}` in place",
+                thread_ts=slack_ts,
+            )
 
-        print("✅ BGP neighbor quarantined (local side).")
+        print("✅ Quarantine workflow completed.")
         annotate_to_loki(
             workflow="quarantine",
             phase="end",
@@ -543,6 +636,11 @@ def quarantine_link_flow(
             alertname=alertname,
             status=status,
             note="Quarantine workflow completed",
+        )
+        slack_post(
+            "#bot-test",
+            f":white_check_mark: QUARANTINE end — `{device}/{interface}` ({alertname}:{status}) workflow completed",
+            thread_ts=slack_ts,
         )
 
 
@@ -573,28 +671,63 @@ def restore_link_flow(
             status=status,
             note="Starting restore workflow",
         )
+        slack_ts = slack_post(
+            "#bot-test",
+            f":traffic_light: RESTORE start — `{device}/{interface}` ({alertname}:{status})",
+        )
 
         # 2) map interface → neighbor
         nbr = get_neighbor_on_interface(device, interface)
         if not nbr:
             print("⚠️ Could not map interface to neighbor; skipping.")
+            annotate_to_loki(
+                workflow="restore",
+                phase="error",
+                device=device,
+                interface=interface,
+                alertname=alertname,
+                status=status,
+                note="Could not map interface to neighbor; skipping restore",
+            )
+            slack_post(
+                "#bot-test",
+                f":warning: RESTORE error — could not map `{device}/{interface}` to neighbor; skipping",
+                thread_ts=slack_ts,
+            )
             return
 
         # 3) BGP restore (LOCAL ONLY)
         # re-enable local neighbor
         bgp_neighbor_no_shutdown(device=device, neighbor=nbr)
+        print(f"🧹 BGP neighbor {nbr} on {device} restored (local side).")
+        slack_post(
+            "#bot-test",
+            f":traffic_light: RESTORE applied — BGP neighbor `{nbr}` on `{device}` enabled",
+            thread_ts=slack_ts,
+        )
 
         # 4) (demo) verify in Prom: session established and rx prefixes return
         pause(2, "wait metrics scrape")
         est = prom_bgp_established(device=device, neighbor=nbr)
         rx = prom_bgp_prefixes_received(device=device, neighbor=nbr)
         print(f"✅ Post-restore checks: established={est}, prefixes_received={rx}")
+        slack_post(
+            "#bot-test",
+            f"Post-restore checks for `{device}/{interface}`: established={est}, prefixes_received={rx}",
+            thread_ts=slack_ts,
+        )
 
         # Best-effort: remove any leftover silences for this local endpoint
         deleted = expire_silences_for_link(device, interface)
-        print(f"✅ Silences expired for {device}/{interface}: {deleted}")
+        if deleted:
+            print(f"✅ Silences expired for {device}/{interface}: {deleted}")
+            slack_post(
+                "#bot-test",
+                f"Expired {deleted} leftover silence(s) for `{device}/{interface}`",
+                thread_ts=slack_ts,
+            )
 
-        print("✅ BGP neighbor restored (local side).")
+        print("✅ Restore workflow completed.")
         annotate_to_loki(
             workflow="restore",
             phase="end",
@@ -603,6 +736,11 @@ def restore_link_flow(
             alertname=alertname,
             status=status,
             note="Restore workflow completed",
+        )
+        slack_post(
+            "#bot-test",
+            f":white_check_mark: RESTORE end — `{device}/{interface}` ({alertname}:{status}) workflow completed",
+            thread_ts=slack_ts,
         )
 
 
