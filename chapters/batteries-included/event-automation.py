@@ -6,9 +6,11 @@ import time
 
 import requests
 from netmiko import ConnectHandler
-from rca import generate_rca
+from rca import generate_rca, ask_openai
 from prefect import flow, tags, task
 from prefect.blocks.system import Secret
+from prefect.variables import Variable
+
 
 NAUTOBOT_URL = "http://localhost:8080"
 PROM_URL = "http://localhost:9090"
@@ -16,6 +18,10 @@ ALERTMANAGER_URL = "http://localhost:9093"
 LOKI_URL = "http://localhost:3001"
 IFACE_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9/-]+")
 SLACK_API = "https://slack.com/api/chat.postMessage"
+
+ENABLE_RCA = True
+
+Variable.set("context", json.dumps({"demo-site": {"rca": []}}), overwrite=True)
 
 
 def canon_iface(s: str) -> str:
@@ -502,6 +508,7 @@ def _link_tag(device: str, interface: str) -> str:
 def quarantine_link_flow(
     device: str,
     interface: str,
+    site: str,
     local_interface_id: str | None = None,
     alertname: str = "PeerInterfaceFlapping",
     status: str = "firing",
@@ -553,12 +560,16 @@ def quarantine_link_flow(
             return
 
         # ROOT CAUSE ANALYSIS
-        rca = generate_rca(device=device, interface=interface)
-        slack_post(
-            "#bot-test",
-            f":sos: Root Cause Analysis — `{device}/{interface}`: {rca}",
-            thread_ts=slack_ts,
-        )
+        if ENABLE_RCA:
+            rca = generate_rca(device=device, interface=interface)
+            context = json.loads(Variable.get("context"))
+            context[site]["rca"].append(rca)
+            Variable.set("context", json.dumps(context), overwrite=True)
+            slack_post(
+                "#bot-test",
+                f":sos: Root Cause Analysis — `{device}/{interface}`: {rca}",
+                thread_ts=slack_ts,
+            )
 
         # 0) create Alertmanager silence
         # Silence just for this device/interface
@@ -779,6 +790,7 @@ def alert_receiver(alert_group: dict):
             # labels come from your Loki rule
             device = a["labels"]["device"]
             interface = canon_iface(a["labels"]["interface"])
+            site = "demo-site"
 
             if status == "firing":
                 quarantine_link_flow(
@@ -786,7 +798,20 @@ def alert_receiver(alert_group: dict):
                     interface=interface,
                     alertname=alertname,
                     status=status,
+                    site=site,
                 )
+
+                context = json.loads(Variable.get("context"))
+                # Define the aggregation logic
+                print(f"Context: {context}")
+                if ENABLE_RCA and site in context and len(context[site]["rca"]) == 2:
+                    Variable.set("context", json.dumps({}), overwrite=True)
+                    rca = ask_openai("Summarize the following root cause analyses that may be related into a single concise explanation with IPs and device names and interfaces:\n\n" + "\n".join(context[site]["rca"]))
+                    slack_post(
+                        "#bot-test",
+                        f":sparkles: Root Cause Analysis — `{site}`: {rca}",
+                    )
+
 
             else:
                 # status == "resolved" (or anything not "firing")

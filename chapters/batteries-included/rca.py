@@ -54,6 +54,7 @@ def generate_rca_prompt(loki_results, device_name, interface):
     - Additional Data for Further Investigation
    - Be concise and to the point with the most probable root cause, do not add too much fluff
    - Use bullet points for clarity
+   - Add references to the device name, interface, IP addresses where applicable
    """
 
 
