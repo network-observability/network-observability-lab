@@ -1,10 +1,8 @@
-import os
-import logging
-from typing import Literal
-from prefect import flow, task, tags
+from datetime import datetime, timedelta
+
 import requests
 from openai import OpenAI
-from datetime import datetime, timedelta
+from prefect import flow
 from prefect.blocks.system import Secret
 
 
@@ -79,7 +77,7 @@ def ask_openai(prompt: str, model: str = "gpt-3.5-turbo") -> str:
             },
         ],
     )
-    return response.choices[0].message.content
+    return response.choices[0].message.content  # type: ignore
 
 
 @flow(log_prints=True, flow_run_name="Root Cause Analysis | {device}:{interface}")
