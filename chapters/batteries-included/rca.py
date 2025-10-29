@@ -44,6 +44,7 @@ def generate_rca_prompt(loki_results, device_name, interface):
    Actionable Insights:
    - Given the findings, what immediate actions should be taken to mitigate the current issue?
    - What additional data would be helpful to further investigate this issue?
+   - Verify if someone made any recent configuration changes on {device_name} or related network devices.
    Please format your response as follows:
    - Limit your response to max 2000 characters
    - Suggest clear actions with a directive tone
@@ -68,7 +69,7 @@ def ask_openai(prompt: str, model: str = "gpt-3.5-turbo") -> str:
     Returns:
         str: The response from OpenAI.
     """
-    client = OpenAI(api_key=Secret.load("openapi-token").get())
+    client = OpenAI(api_key=Secret.load("openai-token").get())  # type: ignore
     response = client.chat.completions.create(
         model=model,
         messages=[
@@ -99,5 +100,4 @@ def generate_rca(device: str, interface: str) -> None:
         end_time=int(datetime.timestamp(now)),
     )
     prompt = generate_rca_prompt(loki_logs, device, interface)
-    return ask_openai(prompt)
-
+    return ask_openai(prompt)  # type: ignore

@@ -6,10 +6,11 @@ import time
 
 import requests
 from netmiko import ConnectHandler
-from rca import generate_rca, ask_openai
 from prefect import flow, tags, task
 from prefect.blocks.system import Secret
 from prefect.variables import Variable
+
+from rca import ask_openai, generate_rca
 
 
 NAUTOBOT_URL = "http://localhost:8080"
@@ -533,13 +534,13 @@ def quarantine_link_flow(
             note="Starting quarantine workflow",
         )
         slack_ts = slack_post(
-            "#bot-test",
+            "#alerts",
             f":rotating_light: QUARANTINE start — `{device}/{interface}` ({alertname}:{status})",
         )
 
         # Freshness gate
         print("🔎 Verifying alert freshness in Alertmanager...")
-        slack_post("#bot-test", "Confirm alert active in AM…", thread_ts=slack_ts)
+        slack_post("#alerts", "Confirm alert active in AM…", thread_ts=slack_ts)
         pause(3, "waiting for fresh state")
         if not alert_active_in_am("PeerInterfaceFlapping", device, interface):
             print("🧊 Alert no longer active → skip.")
@@ -553,7 +554,7 @@ def quarantine_link_flow(
                 note="Alert no longer active; skipping quarantine",
             )
             slack_post(
-                "#bot-test",
+                "#alerts",
                 f":white_check_mark: QUARANTINE skipped — `{device}/{interface}` no longer active",
                 thread_ts=slack_ts,
             )
@@ -562,11 +563,11 @@ def quarantine_link_flow(
         # ROOT CAUSE ANALYSIS
         if ENABLE_RCA:
             rca = generate_rca(device=device, interface=interface)
-            context = json.loads(Variable.get("context"))
+            context = json.loads(Variable.get("context"))  # type: ignore
             context[site]["rca"].append(rca)
             Variable.set("context", json.dumps(context), overwrite=True)
             slack_post(
-                "#bot-test",
+                "#alerts",
                 f":sos: Root Cause Analysis — `{device}/{interface}`: {rca}",
                 thread_ts=slack_ts,
             )
@@ -577,7 +578,7 @@ def quarantine_link_flow(
             device=device, interface=interface, duration_minutes=20
         )
         slack_post(
-            "#bot-test",
+            "#alerts",
             f"Created quarantine silence ID `{silence_id}` for `{device}/{interface}`",
             thread_ts=slack_ts,
         )
@@ -597,7 +598,7 @@ def quarantine_link_flow(
                 note="Could not map interface to neighbor; skipping quarantine",
             )
             slack_post(
-                "#bot-test",
+                "#alerts",
                 f":warning: QUARANTINE error — could not map `{device}/{interface}` to neighbor; skipping",
                 thread_ts=slack_ts,
             )
@@ -607,7 +608,7 @@ def quarantine_link_flow(
         bgp_neighbor_shutdown(device=device, neighbor=nbr)
         print(f"🚧 BGP neighbor {nbr} on {device} quarantined (local side).")
         slack_post(
-            "#bot-test",
+            "#alerts",
             f":rotating_light: QUARANTINE applied — BGP neighbor `{nbr}` on `{device}` shutdown",
             thread_ts=slack_ts,
         )
@@ -618,7 +619,7 @@ def quarantine_link_flow(
         rx = prom_bgp_prefixes_received(device=device, neighbor=nbr)
         print(f"✅ Post-quarantine checks: established={est}, prefixes_received={rx}")
         slack_post(
-            "#bot-test",
+            "#alerts",
             f"Post-quarantine checks for `{device}/{interface}`: established={est}, prefixes_received={rx}",
             thread_ts=slack_ts,
         )
@@ -633,7 +634,7 @@ def quarantine_link_flow(
             delete_silence_by_id(silence_id)
             print(f"✅ Deleted quarantine silence {silence_id} after alert inactive.")
             slack_post(
-                "#bot-test",
+                "#alerts",
                 f":white_check_mark: QUARANTINE complete — deleted silence ID `{silence_id}` after alert inactive",
                 thread_ts=slack_ts,
             )
@@ -642,7 +643,7 @@ def quarantine_link_flow(
                 f"⚠️ Alert still active after wait; leaving silence {silence_id} in place."
             )
             slack_post(
-                "#bot-test",
+                "#alerts",
                 f":warning: QUARANTINE alert still active; leaving silence ID `{silence_id}` in place",
                 thread_ts=slack_ts,
             )
@@ -658,7 +659,7 @@ def quarantine_link_flow(
             note="Quarantine workflow completed",
         )
         slack_post(
-            "#bot-test",
+            "#alerts",
             f":white_check_mark: QUARANTINE end — `{device}/{interface}` ({alertname}:{status}) workflow completed",
             thread_ts=slack_ts,
         )
@@ -692,7 +693,7 @@ def restore_link_flow(
             note="Starting restore workflow",
         )
         slack_ts = slack_post(
-            "#bot-test",
+            "#alerts",
             f":traffic_light: RESTORE start — `{device}/{interface}` ({alertname}:{status})",
         )
 
@@ -710,7 +711,7 @@ def restore_link_flow(
                 note="Could not map interface to neighbor; skipping restore",
             )
             slack_post(
-                "#bot-test",
+                "#alerts",
                 f":warning: RESTORE error — could not map `{device}/{interface}` to neighbor; skipping",
                 thread_ts=slack_ts,
             )
@@ -721,7 +722,7 @@ def restore_link_flow(
         bgp_neighbor_no_shutdown(device=device, neighbor=nbr)
         print(f"🧹 BGP neighbor {nbr} on {device} restored (local side).")
         slack_post(
-            "#bot-test",
+            "#alerts",
             f":traffic_light: RESTORE applied — BGP neighbor `{nbr}` on `{device}` enabled",
             thread_ts=slack_ts,
         )
@@ -732,7 +733,7 @@ def restore_link_flow(
         rx = prom_bgp_prefixes_received(device=device, neighbor=nbr)
         print(f"✅ Post-restore checks: established={est}, prefixes_received={rx}")
         slack_post(
-            "#bot-test",
+            "#alerts",
             f"Post-restore checks for `{device}/{interface}`: established={est}, prefixes_received={rx}",
             thread_ts=slack_ts,
         )
@@ -742,7 +743,7 @@ def restore_link_flow(
         if deleted:
             print(f"✅ Silences expired for {device}/{interface}: {deleted}")
             slack_post(
-                "#bot-test",
+                "#alerts",
                 f"Expired {deleted} leftover silence(s) for `{device}/{interface}`",
                 thread_ts=slack_ts,
             )
@@ -758,7 +759,7 @@ def restore_link_flow(
             note="Restore workflow completed",
         )
         slack_post(
-            "#bot-test",
+            "#alerts",
             f":white_check_mark: RESTORE end — `{device}/{interface}` ({alertname}:{status}) workflow completed",
             thread_ts=slack_ts,
         )
@@ -801,14 +802,14 @@ def alert_receiver(alert_group: dict):
                     site=site,
                 )
 
-                context = json.loads(Variable.get("context"))
+                context = json.loads(Variable.get("context"))  # type: ignore
                 # Define the aggregation logic
                 print(f"Context: {context}")
                 if ENABLE_RCA and site in context and len(context[site]["rca"]) == 2:
                     Variable.set("context", json.dumps({}), overwrite=True)
                     rca = ask_openai("Summarize the following root cause analyses that may be related into a single concise explanation with IPs and device names and interfaces:\n\n" + "\n".join(context[site]["rca"]))
                     slack_post(
-                        "#bot-test",
+                        "#alerts",
                         f":sparkles: Root Cause Analysis — `{site}`: {rca}",
                     )
 
