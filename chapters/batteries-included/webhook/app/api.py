@@ -42,19 +42,6 @@ def process_webhook(alert_group: AlertmanagerAlertGroup):
     """Process an alertmanager webhook to send data to Prefect for automated workflows."""
     log.info(f"Received alertmanager webhook: {alert_group}")
 
-    # error = ""
-    # try:
-    #     _ = run_deployment(
-    #         name="alert-receiver/alert-receiver",
-    #         parameters={"alert_group": alert_group.model_dump(mode="json")},
-    #     )
-
-    #     log.info(f"Alert status is {alert_group.status}, exiting")
-    # except Exception as e:
-    #     log.error(f"Error running deployment: {e}")
-    #     error = str(e)
-    # return {"message": "Processed webhook"} if not error else {"error": error}
-
     error = ""
     try:
         status = alert_group.status
@@ -78,21 +65,6 @@ def process_webhook(alert_group: AlertmanagerAlertGroup):
                 name="alert-receiver/alert-receiver",
                 parameters={"alert_group": alert_group.model_dump(mode="json")},
                 flow_run_name=f"alert | {alertname}:{status} | {device}:{interface}",
-                # tags=[
-                #     f"link:{device}:{interface}".replace("/", "-"),
-                #     f"alert:{alertname}",
-                #     f"status:{status}",
-                #     "source:loki",
-                # ],
-                # idempotency_key=f"{alertname}:{status}:{device}:{interface}:{alert_group.groupKey}",
-                # flow_run_name=f"alert | {alertname}:{status} | {device}:{interface}",
-                # tags=[
-                #     _link_tag(device, interface),
-                #     f"alert:{alertname}",
-                #     f"status:{status}",
-                #     "source:loki",
-                # ],
-                # idempotency_key=f"{alertname}:{status}:{device}:{interface}:{alert_group.groupKey}",
                 timeout=10,
             )
 
