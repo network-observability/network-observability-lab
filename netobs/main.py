@@ -1,4 +1,5 @@
 """Netobs CLI."""
+
 # ruff: noqa: B008, B006
 import os
 import shlex
@@ -292,11 +293,7 @@ def run_cmd(
     console.log(f"Running command: [orange1 i]{exec_cmd}", style="info")
 
     # Clean environment variables
-    clean_envvars = {
-        k: str(v)
-        for k, v in envvars.items()
-        if v is not None and isinstance(v, (str, int, float, bool))
-    }
+    clean_envvars = {k: str(v) for k, v in envvars.items() if v is not None and isinstance(v, (str, int, float, bool))}
 
     result = subprocess.run(
         shlex.split(exec_cmd),
@@ -1069,7 +1066,7 @@ def deploy_droplet(
         console.log("Issues encountered setting up droplets", style="warning")
         raise typer.Abort()
 
-    # Delete the keep_api_key file
+    # Delete the keep_api_key file
     keep_api_key.unlink()
 
 
@@ -1468,3 +1465,203 @@ def utils_device_interface_flap(
         device_conn.send_config_set([f"interface {interface}", "no shutdown"])
         time.sleep(delay)
     console.log(f"Flapped interface: [orange1 i]{interface} on device: {device}", style="info")
+
+
+@utils_app.command("load-prefect-secrets", rich_help_panel="Prefect")
+def utils_load_prefect_secrets(
+    prefect_api_url: Annotated[
+        str, typer.Option(help="Prefect API URL", envvar="PREFECT_API_URL")
+    ] = "http://localhost:4200/api",
+    nautobot_token: Annotated[
+        str, typer.Option(help="Nautobot Token", envvar="NAUTOBOT_SUPERUSER_API_TOKEN")
+    ] = "",
+    openai_token: Annotated[str, typer.Option(help="OpenAI API Key", envvar="OPENAI_API_KEY")] = "",
+    network_user: Annotated[
+        str, typer.Option(help="Network Agent User", envvar="NETWORK_AGENT_USER")
+    ] = "netobs",
+    network_password: Annotated[
+        str, typer.Option(help="Network Agent Password", envvar="NETWORK_AGENT_PASSWORD")
+    ] = "netobs123",
+    network_device_type: Annotated[str, typer.Option(help="Network Device Type")] = "arista_eos",
+    slack_bot_token: Annotated[str, typer.Option(help="Slack Bot Token", envvar="SLACK_BOT_TOKEN")] = "",
+):
+    """Load secrets to Prefect server from environment variables.
+
+    [u]Example:[/u]
+        [i]netobs utils load-prefect-secrets[/i]
+
+        To load with custom values:
+        [i]netobs utils load-prefect-secrets --openai-token sk-xxx --slack-bot-token xoxb-xxx[/i]
+    """
+    console.log("Loading secrets to Prefect server", style="info")
+
+    # Define secrets to upload
+    secrets = {
+        "nautobot-token": nautobot_token,
+        "openai-token": openai_token,
+        "net-user": network_user,
+        "net-pass": network_password,
+        "net-device-type": network_device_type,
+        "slack-bot-token": slack_bot_token,
+    }
+
+    # Filter out empty secrets
+    secrets_to_upload = {name: value for name, value in secrets.items() if value}
+
+    if not secrets_to_upload:
+        console.log("No secrets to upload. Please provide secret values.", style="warning")
+        return
+
+    console.log(f"Prefect API URL: [orange1 i]{prefect_api_url}", style="info")
+    console.log(f"Uploading {len(secrets_to_upload)} secret(s)", style="info")
+
+    # Get the secret block type and schema IDs
+    try:
+        block_type_response = requests.post(
+            f"{prefect_api_url}/block_types/filter",
+            json={"block_types": {"slug": {"any_": ["secret"]}}},
+            timeout=10,
+        )
+        block_type_response.raise_for_status()
+        block_types = block_type_response.json()
+
+        if not block_types:
+            console.log("Secret block type not found in Prefect server", style="error")
+            return
+
+        block_type_id = block_types[0]["id"]
+
+        # Get the schema ID for the secret block type
+        schema_response = requests.post(
+            f"{prefect_api_url}/block_schemas/filter",
+            json={"block_schemas": {"block_type_id": {"any_": [block_type_id]}}},
+            timeout=10,
+        )
+        schema_response.raise_for_status()
+        schemas = schema_response.json()
+
+        if not schemas:
+            console.log("Secret block schema not found in Prefect server", style="error")
+            return
+
+        block_schema_id = schemas[0]["id"]
+
+    except requests.exceptions.RequestException as err:
+        console.log(f"Failed to get secret block type/schema: {err}", style="error")
+        return
+
+    for secret_name, secret_value in secrets_to_upload.items():
+        try:
+            # Create secret block document via Prefect API
+            response = requests.post(
+                f"{prefect_api_url}/block_documents/",
+                json={
+                    "name": secret_name,
+                    "block_type_id": block_type_id,
+                    "block_schema_id": block_schema_id,
+                    "data": {"value": secret_value},
+                },
+                timeout=10,
+            )
+
+            if response.status_code == 201:
+                console.log(f"Created secret: [orange1 i]{secret_name}", style="good")
+            elif response.status_code == 409 or "already exists" in response.text.lower():
+                # Secret already exists, update it
+                console.log(f"Secret already exists, updating: [orange1 i]{secret_name}", style="info")
+
+                # Get existing block ID
+                blocks_response = requests.post(
+                    f"{prefect_api_url}/block_documents/filter",
+                    json={"block_documents": {"name": {"any_": [secret_name]}}},
+                    timeout=10,
+                )
+                blocks_response.raise_for_status()
+                blocks = blocks_response.json()
+
+                if blocks:
+                    block_id = blocks[0]["id"]
+                    # Update the block
+                    update_response = requests.patch(
+                        f"{prefect_api_url}/block_documents/{block_id}",
+                        json={"data": {"value": secret_value}},
+                        timeout=10,
+                    )
+                    update_response.raise_for_status()
+                    console.log(f"Updated secret: [orange1 i]{secret_name}", style="good")
+            else:
+                response.raise_for_status()
+
+        except requests.exceptions.RequestException as err:
+            console.log(f"Failed to create secret [orange1 i]{secret_name}: {err}", style="error")
+            continue
+
+    console.log("Prefect secrets loaded successfully", style="good")
+
+
+@utils_app.command("delete-prefect-secrets", rich_help_panel="Prefect")
+def utils_delete_prefect_secrets(
+    prefect_api_url: Annotated[
+        str, typer.Option(help="Prefect API URL", envvar="PREFECT_API_URL")
+    ] = "http://localhost:4200/api",
+):
+    """Delete all secrets from Prefect server.
+
+    [u]Example:[/u]
+        [i]netobs utils delete-prefect-secrets[/i]
+    """
+    console.log("Deleting secrets from Prefect server", style="info")
+    console.log(f"Prefect API URL: [orange1 i]{prefect_api_url}", style="info")
+
+    try:
+        # Get the secret block type ID first
+        block_type_response = requests.post(
+            f"{prefect_api_url}/block_types/filter",
+            json={"block_types": {"slug": {"any_": ["secret"]}}},
+            timeout=10,
+        )
+        block_type_response.raise_for_status()
+        block_types = block_type_response.json()
+
+        if not block_types:
+            console.log("Secret block type not found", style="warning")
+            return
+
+        block_type_id = block_types[0]["id"]
+
+        # Get all secret block documents
+        response = requests.post(
+            f"{prefect_api_url}/block_documents/filter",
+            json={"block_documents": {"block_type_id": {"any_": [block_type_id]}}},
+            timeout=10,
+        )
+        response.raise_for_status()
+        secrets = response.json()
+
+        if not secrets:
+            console.log("No secrets found to delete", style="info")
+            return
+
+        console.log(f"Found {len(secrets)} secret(s) to delete", style="info")
+
+        # Delete each secret
+        for secret in secrets:
+            secret_name = secret["name"]
+            secret_id = secret["id"]
+
+            try:
+                delete_response = requests.delete(
+                    f"{prefect_api_url}/block_documents/{secret_id}",
+                    timeout=10,
+                )
+                delete_response.raise_for_status()
+                console.log(f"Deleted secret: [orange1 i]{secret_name}", style="good")
+            except requests.exceptions.RequestException as err:
+                console.log(f"Failed to delete secret [orange1 i]{secret_name}: {err}", style="error")
+                continue
+
+        console.log("Prefect secrets deleted successfully", style="good")
+
+    except requests.exceptions.RequestException as err:
+        console.log(f"Failed to retrieve secrets: {err}", style="error")
+        raise typer.Exit(1) from err
