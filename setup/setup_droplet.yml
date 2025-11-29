@@ -176,3 +176,10 @@
         executable: /bin/bash
       register: netobs_run
       changed_when: netobs_run.rc != 0
+
+    - name: Initialize Prefect data
+      ansible.builtin.shell:
+        cmd: "cd /root/network-observability-lab && netobs utils load-prefect-secrets"
+        executable: /bin/bash
+      register: netobs_prefect_data
+      changed_when: netobs_prefect_data.rc != 0
