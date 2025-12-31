@@ -1,0 +1,16 @@
+name: mno-webinar
+mgmt:
+  network: network-observability
+  ipv4-subnet: 198.51.100.0/24
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux
+    srl2:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux
+  links:
+    - endpoints: ["srl1:e1-1", "srl2:e1-1"]
+      ipv4: ["192.168.0.1/24", "192.168.0.2/24"]
+      ipv6: ["2001:db8::1/64", "2001:db8::2/64"]

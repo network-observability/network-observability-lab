@@ -1,0 +1,337 @@
+---
+networks:
+  network-observability:
+    external: true
+    name: network-observability
+
+volumes:
+  nautobot_postgres_data:
+  loki_data:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:
+  postgres_data:
+  redis_data:
+
+services:
+  telegraf-01:
+    container_name: telegraf-01
+    build:
+      dockerfile: "./telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
+    command: telegraf --config /etc/telegraf/telegraf.conf
+    tty: true
+    volumes:
+      - ./telegraf/telegraf-01.conf.toml:/etc/telegraf/telegraf.conf
+      - ./telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
+    ports:
+      - 9004:9004
+    env_file:
+      - ../../.env
+    environment:
+      DEBUG: true
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  telegraf-02:
+    container_name: telegraf-02
+    build:
+      dockerfile: "./telegraf/telegraf.Dockerfile"
+      args:
+        TELEGRAF_IMAGE: ${TELEGRAF_IMAGE:-docker.io/telegraf:1.31}
+    command: telegraf --config /etc/telegraf/telegraf.conf
+    tty: true
+    volumes:
+      - ./telegraf/telegraf-02.conf.toml:/etc/telegraf/telegraf.conf
+      - ./telegraf/routing_collector.py:/etc/telegraf/routing_collector.py
+    ports:
+      - 9005:9005
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  logstash:
+    container_name: logstash
+    image: ${LOGSTASH_LOKI_IMAGE:-docker.io/grafana/logstash-output-loki:3.1.1}
+    command: -f /home/logstash/logstash.cfg
+    volumes:
+      - ./logstash/logstash.cfg:/home/logstash/logstash.cfg
+    ports:
+      - 1515:1515
+      - 9600:9600
+      - 12201:12201/udp
+    environment:
+      XPACK_MONITORING_ENABLED: false
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  loki:
+    container_name: loki
+    image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.1.1}
+    ports:
+      - 3001:3001
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml
+      - ./loki/rules/:/rules/fake/
+      - loki_data:/loki:rw
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  prometheus:
+    container_name: prometheus
+    image: ${PROMETHEUS_IMAGE:-docker.io/prom/prometheus:v2.52.0}
+    ports:
+      - 9090:9090
+    command:
+      - --storage.tsdb.retention.size=512MB
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-remote-write-receiver
+    tty: true
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/rules/:/etc/prometheus/rules/
+      - prometheus_data:/prometheus
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  alertmanager:
+    container_name: alertmanager
+    image: ${ALERTMANAGER_IMAGE:-docker.io/prom/alertmanager:v0.26.0}
+    # restart: always
+    ports:
+      - 9093:9093
+    command: --config.file=/etc/alertmanager/alertmanager.yml --cluster.advertise-address=0.0.0.0:9093
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./alertmanager/keep_api_key:/etc/alertmanager/keep_api_key
+      - alertmanager_data:/data
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  grafana:
+    container_name: grafana
+    image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:10.4.4}
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/all.yml
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - grafana_data:/grafana
+    environment:
+      GF_INSTALL_PLUGINS: natel-discrete-panel,fifemon-graphql-datasource,yesoreyeram-infinity-datasource,volkovlabs-echarts-panel
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  nautobot:
+    container_name: nautobot
+    image: ${NAUTOBOT_IMAGE:-docker.io/networktocode/nautobot:2.4-py3.10}
+    env_file:
+      - "../../.env"
+    ports:
+      - "8443:8443"
+      - "8080:8080"
+    restart: "unless-stopped"
+    volumes:
+      - ./nautobot/nautobot_config.py:/opt/nautobot/nautobot_config.py
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  nautobot-redis:
+    container_name: nautobot-redis
+    image: ${REDIS_IMAGE:-redis:7.2-alpine}
+    command:
+      - "sh"
+      - "-c"
+      - "redis-server --appendonly yes --requirepass $$NAUTOBOT_REDIS_PASSWORD"
+    restart: "unless-stopped"
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  nautobot-postgres:
+    container_name: nautobot-postgres
+    image: ${POSTGRES_IMAGE:-postgres:14}
+    environment:
+      NAUTOBOT_DB_ENGINE: "django.db.backends.postgres"
+      POSTGRES_USER: ${NAUTOBOT_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${NAUTOBOT_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${NAUTOBOT_POSTGRES_DB}
+    volumes:
+      - nautobot_postgres_data:/var/lib/postgresql/data
+    restart: "unless-stopped"
+    env_file:
+      - ../../.env
+    networks:
+      - network-observability
+
+  webhook:
+    container_name: webhook
+    build:
+      dockerfile: "./webhook/webhook.Dockerfile"
+      args:
+        PYTHON_VER: ${PYTHON_VER:-3.10}
+    command: "python -m app.main"
+    ports:
+      - 9997:9997
+    tty: true
+    env_file:
+      - ../../.env
+    environment:
+      PREFECT_API_URL: "http://prefect-server:4200/api"
+      # PREFECT_API_URL: ${PREFECT_URL}
+      # PREFECT_API_KEY: ${PREFECT_KEY}
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  # Prefect 3 services (https://docs.prefect.io/v3/how-to-guides/self-hosted/docker-compose)
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: prefect
+      POSTGRES_PASSWORD: prefect
+      POSTGRES_DB: prefect
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prefect"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  redis:
+    image: redis:7
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  prefect-server:
+    image: prefecthq/prefect:3-latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@postgres:5432/prefect
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_PORT: 6379
+      PREFECT_REDIS_MESSAGING_DB: 0
+    command: prefect server start --no-services
+    ports:
+      - "4200:4200"
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  prefect-services:
+    image: prefecthq/prefect:3-latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@postgres:5432/prefect
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_PORT: 6379
+      PREFECT_REDIS_MESSAGING_DB: 0
+    command: prefect server services start
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
+
+  prefect-worker:
+    image: prefecthq/prefect:3-latest
+    depends_on:
+      prefect-server:
+        condition: service_started
+    environment:
+      PREFECT_API_URL: http://prefect-server:4200/api
+    command: prefect worker start --pool local-pool
+    networks:
+      - network-observability
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://0.0.0.0:12201"
