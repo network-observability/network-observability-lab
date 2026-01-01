@@ -72,7 +72,9 @@ cp example.env .env
 
 Next, we will go over the steps to populate some of these variables to set up the lab environment.
 
-### 5. Download the Arista cEOS images
+### 5. Download the Arista cEOS images (optional)
+
+> This is required when the scenario uses Arista cEOS
 
 The lab environment uses Arista cEOS container images. You need to register and download these images from the Arista website. Once registered, use this [link](https://www.arista.com/en/support/software-download) to search and download the images under "cEOS-lab" > "EOS-<version>" > "cEOS64-lab-<version>.tar.xz".
 
@@ -126,6 +128,12 @@ netobs --help
 
 # Deploy DigitalOcean Droplet
 netobs setup deploy
+```
+
+Or, if you want to deploy a concrete scenario (from chapters folder) and the topology, you can specify it:
+
+```bash
+netobs setup deploy --scenario webinar --topology ./chapters/webinar/containerlab/lab.yml
 ```
 
 The setup playbook will ask for the droplet image, its size and region to be deployed. It comes with default values, but you can change them if you prefer a bigger droplet size or region, for more information see [here](https://slugs.do-api.dev/).

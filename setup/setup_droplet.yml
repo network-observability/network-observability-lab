@@ -112,11 +112,25 @@
         src: "{{ lookup('ansible.builtin.env', 'CEOS_IMAGE_PATH') }}"
         dest: /tmp/cEOS.tar
         mode: "0644"
+      when:
+        - lab_scenario == "batteries-included"
+        - lookup('ansible.builtin.env', 'CEOS_IMAGE_PATH', default='') != ''
+
+    - name: Check if cEOS image exists
+      ansible.builtin.command: docker image inspect ceos:image
+      register: ceos_image_check
+      failed_when: false
+      changed_when: false
+      when:
+        - lab_scenario == "batteries-included"
 
     - name: Import cEOS container image
       ansible.builtin.command: docker import /tmp/cEOS.tar ceos:image
       register: ceos_import
-      changed_when: ceos_import.rc != 0
+      changed_when: true
+      when:
+        - lab_scenario == "batteries-included"
+        - ceos_image_check.rc != 0
 
 #### Setup netobs-droplet
 - name: Setup netobs app
@@ -146,6 +160,8 @@
         - /root/network-observability-lab/chapters/batteries-included/alertmanager/keep_api_key
         - /root/network-observability-lab/chapters/ch9/alertmanager/keep_api_key
         - /root/network-observability-lab/chapters/ch9-completed/alertmanager/keep_api_key
+      when:
+        - lab_scenario == "batteries-included"
 
     - name: Install network-observability-lab
       ansible.builtin.shell:
@@ -156,7 +172,7 @@
 
     - name: Run netobs batteries included
       ansible.builtin.shell:
-        cmd: "cd /root/network-observability-lab && netobs lab prepare --scenario batteries-included"
+        cmd: "cd /root/network-observability-lab && netobs lab prepare --scenario {{ lab_scenario }} --topology {{ lab_topology_file }}"
         executable: /bin/bash
       register: netobs_run
       changed_when: netobs_run.rc != 0

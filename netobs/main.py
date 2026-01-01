@@ -65,6 +65,7 @@ class NetObsScenarios(Enum):
     CH12_COMPLETED = "ch12-completed"
     CH13 = "ch13"
     CH13_COMPLETED = "ch13-completed"
+    WEBINAR = "webinar"
 
 
 class DockerNetworkAction(Enum):
@@ -994,6 +995,8 @@ def ansible_command(
     limit: str | None = None,
     extra_vars: str | None = None,
     verbose: int = 0,
+    scenario: str | None = None,
+    topology: Path | None = None,
 ) -> str:
     """Run an ansible playbook with the given inventories and limit.
 
@@ -1017,6 +1020,12 @@ def ansible_command(
     if extra_vars:
         exec_cmd += f' -e "{extra_vars}"'
 
+    if scenario:
+        exec_cmd += f' -e "lab_scenario={scenario}"'
+
+    if topology:
+        exec_cmd += f' -e "lab_topology_file={topology}"'
+
     if verbose:
         exec_cmd += f" -{'v' * verbose}"
 
@@ -1029,6 +1038,12 @@ def deploy_droplet(
     extra_vars: Annotated[
         Optional[str], typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")
     ] = None,
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ] = NetObsScenarios.BATTERIES_INCLUDED,
+    topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
+        "./containerlab/lab.yml"
+    ),
 ):
     """Create DigitalOcean Droplets.
 
@@ -1045,6 +1060,8 @@ def deploy_droplet(
         inventories=["localhost.yaml"],
         verbose=verbose,
         extra_vars=extra_vars,
+        scenario=scenario.value,
+        topology=topology,
     )
     result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="create droplets")
     if result.returncode == 0:
@@ -1472,13 +1489,9 @@ def utils_load_prefect_secrets(
     prefect_api_url: Annotated[
         str, typer.Option(help="Prefect API URL", envvar="PREFECT_API_URL")
     ] = "http://localhost:4200/api",
-    nautobot_token: Annotated[
-        str, typer.Option(help="Nautobot Token", envvar="NAUTOBOT_SUPERUSER_API_TOKEN")
-    ] = "",
+    nautobot_token: Annotated[str, typer.Option(help="Nautobot Token", envvar="NAUTOBOT_SUPERUSER_API_TOKEN")] = "",
     openai_token: Annotated[str, typer.Option(help="OpenAI API Key", envvar="OPENAI_API_KEY")] = "",
-    network_user: Annotated[
-        str, typer.Option(help="Network Agent User", envvar="NETWORK_AGENT_USER")
-    ] = "netobs",
+    network_user: Annotated[str, typer.Option(help="Network Agent User", envvar="NETWORK_AGENT_USER")] = "netobs",
     network_password: Annotated[
         str, typer.Option(help="Network Agent Password", envvar="NETWORK_AGENT_PASSWORD")
     ] = "netobs123",
