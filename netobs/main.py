@@ -1060,8 +1060,6 @@ def deploy_droplet(
         inventories=["localhost.yaml"],
         verbose=verbose,
         extra_vars=extra_vars,
-        scenario=scenario.value,
-        topology=topology,
     )
     result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="create droplets")
     if result.returncode == 0:
@@ -1075,8 +1073,10 @@ def deploy_droplet(
         inventories=["do_hosts.yaml", "localhost.yaml"],
         verbose=verbose,
         extra_vars=extra_vars,
+        scenario=scenario.value,
+        topology=topology,
     )
-    result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="create droplets")
+    result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="setup droplets")
     if result.returncode == 0:
         console.log("Droplets setup successfully", style="good")
     else:
