@@ -1,0 +1,48 @@
+---
+global:
+  # How long with no firing updates before AM auto-marks an alert resolved
+  resolve_timeout: 2m
+
+route:
+  receiver: 'default'
+  # Group per link so ceos-01/Eth2 and ceos-02/Eth2 become separate groups
+  group_by: ['alertname', 'device', 'interface']
+  # Collect any quick duplicates for 5s, then send one batch
+  group_wait: 5s
+  # After the first notify for a group, wait at least 2m before sending another
+  # (Resolved notifications are not throttled by this.)
+  group_interval: 2m
+  # Do NOT keep re-sending every minute; your Prefect flow silences the alert for 20m.
+  # Make repeats less frequent than your quarantine silence.
+  repeat_interval: 30m
+
+  routes:
+    - receiver: 'webhook-receiver'
+      matchers:
+        - alertname = PeerInterfaceFlapping
+      continue: true           # Continue to the next route if this route is matched
+    - receiver: 'keep'
+      matchers:
+        - severity =~ "critical|warning"
+      continue: true
+
+receivers:
+  # Default receiver for alerts (if no matchers are found)
+  - name: 'default'
+
+  # Receiver for sending alerts to webhook service
+  - name: 'webhook-receiver'
+    webhook_configs:
+      - url: 'http://webhook:9997/v1/api/webhook'
+        send_resolved: true
+
+  # Receiver for sending alerts to Keep
+  - name: 'keep'
+    # Webhook configuration for Keep
+    webhook_configs:
+    - url: 'https://api.keephq.dev/alerts/event/prometheus'  # URL for the Keep API
+      send_resolved: true               # Send resolved alerts
+      http_config:                      # HTTP configuration for the webhook
+        basic_auth:                     # Basic authentication for the webhook
+          username: api_key             # Username for the webhook
+          password_file: keep_api_key   # Password file for the webhook

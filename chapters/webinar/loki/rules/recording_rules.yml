@@ -1,0 +1,6 @@
+groups:
+- name: interface_updown_events
+  interval: 1m
+  rules:
+  - record: events:interface_updown_rate:2m
+    expr: sum(rate({vendor_facility_process="UPDOWN"}[2m])) by (device)

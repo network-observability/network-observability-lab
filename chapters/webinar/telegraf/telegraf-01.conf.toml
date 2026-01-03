@@ -1,0 +1,243 @@
+[agent]
+  hostname = "telegraf-01"
+
+[global_tags]
+  site = "lab-site-01"
+###############################################################################
+#                            DATA COLLECTION                                  #
+###############################################################################
+[[inputs.snmp]]
+  agents = ["ceos-01"]
+  version = 2
+  community = "${SNMP_COMMUNITY}"
+  interval = "60s"
+  timeout = "10s"
+  retries = 3
+
+  [inputs.snmp.tags]
+    collection_type = "snmp"
+
+  # `up` measurement
+  [[inputs.snmp.field]]
+    name = "uptime"
+    # RFC1213-MIB::sysUpTime.0
+    oid = "1.3.6.1.2.1.1.3.0"
+
+[[inputs.gnmi]]
+  addresses = ["ceos-01:50051"]
+  username = "${NETWORK_AGENT_USER}"
+  password = "${NETWORK_AGENT_PASSWORD}"
+  redial = "20s"
+  tagexclude = ["path"]
+
+  [inputs.gnmi.tags]
+    collection_type = "gnmi"
+
+  [[inputs.gnmi.subscription]]
+    name = "interface"
+    path = "/interfaces/interface/state/counters"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+  [[inputs.gnmi.subscription]]
+    name = "interface"
+    path = "/interfaces/interface/state/oper-status"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+  [[inputs.gnmi.subscription]]
+    name = "interface"
+    path = "/interfaces/interface/state/admin-status"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+  [[inputs.gnmi.subscription]]
+    name = "cpu"
+    path = "/components/component/cpu/utilization/state/instant"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+  [[inputs.gnmi.subscription]]
+    name = "memory"
+    path = "/components/component/state/memory"
+    subscription_mode = "sample"
+    sample_interval = "10s"
+
+
+[[inputs.exec]]
+  commands = ["python /etc/telegraf/routing_collector.py arista_eos ceos-01"]
+  interval = "20s"
+  timeout = "15s"
+  data_format = "influx"
+
+  [inputs.exec.tags]
+    collection_type = "exec"
+
+
+###############################################################################
+#                               WATCHERS                                      #
+###############################################################################
+[[inputs.ping]]
+  interval = "10s"
+  count = 3
+  ping_interval = 1.0
+  timeout = 5.0
+  urls = ["ceos-01"]
+
+  [inputs.ping.tags]
+    collection_type = "ping"
+    watcher_type = "healthcheck"
+    service = "ceos-01"
+
+
+[[inputs.http_response]]
+  name_override = "netobs_health"
+  urls = ["http://telegraf-02:9005/metrics"]
+  fieldexclude = ["content_length", "result_type"]
+  tagexclude = ["status_code", "result"]
+
+  [inputs.http_response.tags]
+    collection_type = "health"
+    watcher_type = "healthcheck"
+    service = "telegraf-02"
+##############################################################################
+#                            DATA NORMALIZATION                              #
+##############################################################################
+[[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["snmp"]
+
+  [[processors.rename.replace]]
+    tag = "agent_host"
+    dest = "device"
+
+  [[processors.rename.replace]]
+    measurement = "snmp"
+    dest = "device"
+
+
+[[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["gnmi"]
+
+  [[processors.rename.replace]]
+    tag = "source"
+    dest = "device"
+
+  # Rename fields for CPU metrics
+  [[processors.rename.replace]]
+    field = "instant"
+    dest = "used"
+
+  # Rename fields for Memory metrics
+  [[processors.rename.replace]]
+    field = "utilized"
+    dest = "used"
+
+
+[[processors.rename]]
+  [[processors.rename.tagpass]]
+    collection_type = ["ping"]
+
+  [[processors.rename.replace]]
+    tag = "url"
+    dest = "device"
+
+
+# Enum processor for interface oper_status and admin_status field values to numbers
+[[processors.enum]]
+  namepass = ["interface"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["snmp", "gnmi"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "oper_status"
+    [processors.enum.mapping.value_mappings]
+      UP = 1
+      DOWN = 2
+      TESTING = 3
+      UNKNOWN = 4
+      DORMANT = 5
+      NOT_PRESENT = 6
+      LOWER_LAYER_DOWN = 7
+
+  [[processors.enum.mapping]]
+    field = "admin_status"
+    [processors.enum.mapping.value_mappings]
+      UP = 1
+      DOWN = 2
+      TESTING = 3
+
+# Enum processor for ospf states
+[[processors.enum]]
+  namepass = ["ospf"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["exec"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "neighbor_state"
+    [processors.enum.mapping.value_mappings]
+      FULL = 1
+      DOWN = 2
+      ATTEMPT = 3
+      INIT = 4
+      2WAY = 5
+      EXTART = 6
+      EXCHANGE = 7
+      LOADING = 7
+
+# Enum processor for bgp states
+[[processors.enum]]
+  namepass = ["bgp"]
+
+  [[processors.enum.tagpass]]
+    collection_type = ["exec"]
+
+  [[processors.enum.mapping]]
+    ## Name of the field to map
+    field = "neighbor_state"
+    [processors.enum.mapping.value_mappings]
+      ESTABLISHED = 1
+      IDLE = 2
+      CONNECT = 3
+      ACTIVE = 4
+      OPENSENT = 5
+      OPENCONFIRM = 6
+      NONEXISTENT = 7
+
+###############################################################################
+#                            DATA ENRICHMENT                                  #
+###############################################################################
+[[processors.regex]]
+  namepass = ["interface"]
+
+  [processors.regex.tagpass]
+      device = ["ceos-01"]
+
+  [[processors.regex.tags]]
+    key = "name"
+    pattern = "^Ethernet.*$"
+    result_key = "intf_role"
+    replacement = "peer"
+
+  [[processors.regex.tags]]
+    key = "name"
+    pattern = "^Management.*$"
+    result_key = "intf_role"
+    replacement = "mgmt"
+
+
+##############################################################################
+#                            DATA OUTPUT                                     #
+##############################################################################
+[[outputs.file]]
+  files = ["stdout"]
+
+
+[[outputs.prometheus_client]]
+  # HTTP port to listen on
+  listen = ":9004"
