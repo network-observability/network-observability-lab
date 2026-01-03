@@ -13,6 +13,7 @@ volumes:
   postgres_data:
   redis_data:
 
+
 services:
   telegraf-01:
     container_name: telegraf-01
@@ -169,7 +170,7 @@ services:
 
   nautobot:
     container_name: nautobot
-    image: ${NAUTOBOT_IMAGE:-docker.io/networktocode/nautobot:2.4-py3.10}
+    image: ${NAUTOBOT_IMAGE:-docker.io/networktocode/nautobot:2.4-py3.12}
     env_file:
       - "../../.env"
     ports:
@@ -247,7 +248,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U prefect"]
+      test: [ "CMD-SHELL", "pg_isready -U prefect" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -263,7 +264,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping"]
+      test: [ "CMD-SHELL", "redis-cli ping" ]
       interval: 5s
       timeout: 5s
       retries: 5

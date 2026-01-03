@@ -7,10 +7,10 @@ topology:
     srl1:
       kind: nokia_srlinux
       image: ghcr.io/nokia/srlinux
+      startup-config: startups/srl1.json
     srl2:
       kind: nokia_srlinux
       image: ghcr.io/nokia/srlinux
+      startup-config: startups/srl2.json
   links:
     - endpoints: ["srl1:e1-1", "srl2:e1-1"]
-      ipv4: ["192.168.0.1/24", "192.168.0.2/24"]
-      ipv6: ["2001:db8::1/64", "2001:db8::2/64"]

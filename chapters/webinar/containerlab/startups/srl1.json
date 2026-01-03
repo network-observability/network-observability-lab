@@ -1,0 +1,193 @@
+{
+    "system": {
+        "name": {
+            "host-name": "srl1"
+        },
+        "aaa": {
+            "authentication": {
+                "user": {
+                    "netobs": {
+                        "password": "netobs123",
+                        "role": "admin"
+                    }
+                }
+            }
+        },
+        "ssh-server": {
+            "admin-state": "enable"
+        },
+        "gnmi-server": {
+            "admin-state": "enable",
+            "network-instance": "MGMT",
+            "port": 50051
+        },
+        "snmp": {
+            "admin-state": "enable",
+            "community": {
+                "public": {
+                    "authorization": "read-only"
+                }
+            },
+            "network-instance": "MGMT"
+        },
+        "logging": {
+            "remote-server": {
+                "198.51.100.1": {
+                    "transport": "tcp",
+                    "port": 1515,
+                    "network-instance": "MGMT",
+                    "source-interface": "mgmt0.0"
+                }
+            }
+        }
+    },
+    "network-instance": {
+        "default": {
+            "type": "default",
+            "interface": {
+                "ethernet-1/1.0": {},
+                "ethernet-1/2.0": {},
+                "lo0.0": {},
+                "lo0.1": {}
+            },
+            "protocols": {
+                "ospf": {
+                    "instance": {
+                        "77": {
+                            "admin-state": "enable",
+                            "router-id": "10.17.17.1",
+                            "area": {
+                                "0.0.0.0": {
+                                    "interface": {
+                                        "ethernet-1/1.0": {
+                                            "admin-state": "enable"
+                                        },
+                                        "ethernet-1/2.0": {
+                                            "admin-state": "enable"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "bgp": {
+                    "autonomous-system": 65111,
+                    "router-id": "10.17.17.1",
+                    "group": {
+                        "EBGP": {
+                            "peer-as": 65222,
+                            "export-policy": [
+                                "EXPORT-LOOP1"
+                            ],
+                            "neighbor": {
+                                "10.1.2.2": {
+                                    "admin-state": "enable"
+                                },
+                                "10.1.7.2": {
+                                    "admin-state": "enable"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "MGMT": {
+            "type": "ip-vrf",
+            "interface": {
+                "mgmt0.0": {}
+            }
+        }
+    },
+    "interface": {
+        "ethernet-1/1": {
+            "admin-state": "enable",
+            "subinterface": {
+                "0": {
+                    "admin-state": "enable",
+                    "ipv4": {
+                        "address": {
+                            "10.1.2.1/24": {}
+                        }
+                    }
+                }
+            }
+        },
+        "ethernet-1/2": {
+            "admin-state": "enable",
+            "subinterface": {
+                "0": {
+                    "admin-state": "enable",
+                    "ipv4": {
+                        "address": {
+                            "10.1.7.1/24": {}
+                        }
+                    }
+                }
+            }
+        },
+        "lo0": {
+            "admin-state": "enable",
+            "subinterface": {
+                "0": {
+                    "admin-state": "enable",
+                    "ipv4": {
+                        "address": {
+                            "10.17.17.1/32": {}
+                        }
+                    }
+                },
+                "1": {
+                    "admin-state": "enable",
+                    "ipv4": {
+                        "address": {
+                            "10.111.0.1/24": {}
+                        }
+                    }
+                }
+            }
+        },
+        "mgmt0": {
+            "admin-state": "enable",
+            "subinterface": {
+                "0": {
+                    "admin-state": "enable",
+                    "ipv4": {
+                        "address": {
+                            "198.51.100.11/24": {}
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "routing-policy": {
+        "prefix-set": {
+            "PS-LOOP1": {
+                "prefix": {
+                    "10.111.0.0/24": {}
+                }
+            }
+        },
+        "policy": {
+            "EXPORT-LOOP1": {
+                "statement": {
+                    "10": {
+                        "match": {
+                            "prefix-set": "PS-LOOP1"
+                        },
+                        "action": {
+                            "policy-result": "accept"
+                        }
+                    },
+                    "100": {
+                        "action": {
+                            "policy-result": "reject"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

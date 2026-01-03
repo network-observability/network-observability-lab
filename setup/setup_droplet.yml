@@ -170,7 +170,7 @@
       register: netobs_install
       changed_when: netobs_install.rc != 0
 
-    - name: Run netobs batteries included
+    - name: "Run netobs for {{ lab_scenario }} scenario"
       ansible.builtin.shell:
         cmd: "cd /root/network-observability-lab && netobs lab prepare --scenario {{ lab_scenario }} --topology {{ lab_topology_file }}"
         executable: /bin/bash
@@ -183,7 +183,7 @@
         status_code: [200]
       register: result
       until: result.status == 200
-      retries: 50
+      retries: 100
       delay: 10
 
     - name: Initialize Nautobot data
