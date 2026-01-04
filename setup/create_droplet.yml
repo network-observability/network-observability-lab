@@ -5,6 +5,7 @@
   vars:
     ansible_connection: local
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    delay_between_droplet_creation: "{{ lookup('ansible.builtin.env', 'DO_DROPLET_CREATION_DELAY', default='60') | int }}"
   vars_prompt:
     - name: "droplet_image"
       prompt: "Enter the droplet image"
@@ -58,6 +59,6 @@
 
     # NOTE: This is to give a time for the droplet to be ready,
     # because DigitalOcean API returns the droplet as ready before it is actually ready
-    - name: Pause for 60 seconds
+    - name: Pause for "{{ delay_between_droplet_creation }}" seconds
       ansible.builtin.pause:
-        seconds: 60
+        seconds: "{{ delay_between_droplet_creation }}"
