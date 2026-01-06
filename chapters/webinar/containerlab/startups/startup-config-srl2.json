@@ -1689,9 +1689,9 @@
                 "admin-state": "enable",
                 "default-tls-profile": true,
                 "network-instance": "mgmt",
+                "port": 57400,
                 "services": [
-                    "srl_nokia-grpc:gnmi",
-                    "srl_nokia-grpc:gnsi"
+                    "srl_nokia-grpc:gnmi"
                 ]
             }
         ],
@@ -1863,7 +1863,8 @@
             ],
             "network-instance": [
                 {
-                    "name": "mgmt"
+                    "name": "mgmt",
+                    "admin-state": "enable"
                 }
             ]
         },
