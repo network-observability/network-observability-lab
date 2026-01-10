@@ -77,7 +77,7 @@
 
 [[inputs.gnmi.subscription]]
   name = "cpu"
-  path = "/platform/control[slot=*]/cpu[index=*]/total/instant"
+  path = "/platform/control[slot=*]/cpu[index=all]/total/instant"
   subscription_mode = "sample"
   sample_interval = "10s"
 
@@ -87,6 +87,17 @@
   subscription_mode = "sample"
   sample_interval = "10s"
 
+[[inputs.gnmi.subscription]]
+  name = "bgp_peer_state"
+  path = "/network-instance[name=*]/protocols/bgp/neighbor[peer-address=*]/session-state"
+  subscription_mode = "sample"
+  sample_interval = "10s"
+
+[[inputs.gnmi.subscription]]
+  name = "bgp_accepted_prefixes"
+  path = "/network-instance[name=*]/protocols/bgp/neighbor[peer-address=*]/afi-safi[afi-safi-name=*]/received-routes"
+  subscription_mode = "sample"
+  sample_interval = "10s"
 
 ###############################################################################
 #                               WATCHERS                                      #
@@ -156,22 +167,17 @@
 
   [[processors.enum.mapping]]
     ## Name of the field to map
-    field = "oper_status"
+    field = "oper_state"
     [processors.enum.mapping.value_mappings]
-      UP = 1
-      DOWN = 2
-      TESTING = 3
-      UNKNOWN = 4
-      DORMANT = 5
-      NOT_PRESENT = 6
-      LOWER_LAYER_DOWN = 7
+      up = 1
+      down = 2
+
 
   [[processors.enum.mapping]]
-    field = "admin_status"
+    field = "admin_state"
     [processors.enum.mapping.value_mappings]
-      UP = 1
-      DOWN = 2
-      TESTING = 3
+      enable = 1
+      disable = 2
 
 
 ###############################################################################
