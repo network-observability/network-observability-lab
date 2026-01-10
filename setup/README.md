@@ -133,7 +133,7 @@ netobs setup deploy
 Or, if you want to deploy a concrete scenario (from chapters folder) and the topology, you can specify it:
 
 ```bash
-netobs setup deploy --scenario webinar --topology ./chapters/webinar/containerlab/lab.yml
+netobs setup deploy --scenario webinar --topology ./chapters/webinar/containerlab/lab.yml --vars-topology ./chapters/webinar/containerlab/lab_vars.yml
 ```
 
 The setup playbook will ask for the droplet image, its size and region to be deployed. It comes with default values, but you can change them if you prefer a bigger droplet size or region, for more information see [here](https://slugs.do-api.dev/).

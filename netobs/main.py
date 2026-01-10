@@ -997,6 +997,7 @@ def ansible_command(
     verbose: int = 0,
     scenario: str | None = None,
     topology: Path | None = None,
+    vars_topology: Path | None = None,
 ) -> str:
     """Run an ansible playbook with the given inventories and limit.
 
@@ -1026,6 +1027,9 @@ def ansible_command(
     if topology:
         exec_cmd += f' -e "lab_topology_file={topology}"'
 
+    if vars_topology:
+        exec_cmd += f' -e "lab_vars_file={vars_topology}"'
+
     if verbose:
         exec_cmd += f" -{'v' * verbose}"
 
@@ -1043,6 +1047,9 @@ def deploy_droplet(
     ] = NetObsScenarios.BATTERIES_INCLUDED,
     topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
         "./containerlab/lab.yml"
+    ),
+    vars_topology: Annotated[Path, typer.Option(help="Path to the vars topology file", exists=True)] = Path(
+        "./containerlab/lab_vars.yml"
     ),
 ):
     """Create DigitalOcean Droplets.
@@ -1075,6 +1082,7 @@ def deploy_droplet(
         extra_vars=extra_vars,
         scenario=scenario.value,
         topology=topology,
+        vars_topology=vars_topology,
     )
     result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="setup droplets")
     if result.returncode == 0:

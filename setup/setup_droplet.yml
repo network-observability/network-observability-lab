@@ -188,7 +188,7 @@
 
     - name: Initialize Nautobot data
       ansible.builtin.shell:
-        cmd: "cd /root/network-observability-lab && netobs utils load-nautobot"
+        cmd: "cd /root/network-observability-lab && netobs utils load-nautobot --topology {{ lab_topology_file }} --extra-topology-vars {{ lab_vars_file }}"
         executable: /bin/bash
       register: netobs_run
       changed_when: netobs_run.rc != 0
