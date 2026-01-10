@@ -65,6 +65,8 @@ class NetObsScenarios(Enum):
     CH12_COMPLETED = "ch12-completed"
     CH13 = "ch13"
     CH13_COMPLETED = "ch13-completed"
+    WEBINAR = "webinar"
+    WEBINAR_COMPLETED = "webinar-completed"
 
 
 class DockerNetworkAction(Enum):
@@ -994,6 +996,9 @@ def ansible_command(
     limit: str | None = None,
     extra_vars: str | None = None,
     verbose: int = 0,
+    scenario: str | None = None,
+    topology: Path | None = None,
+    vars_topology: Path | None = None,
 ) -> str:
     """Run an ansible playbook with the given inventories and limit.
 
@@ -1017,6 +1022,15 @@ def ansible_command(
     if extra_vars:
         exec_cmd += f' -e "{extra_vars}"'
 
+    if scenario:
+        exec_cmd += f' -e "lab_scenario={scenario}"'
+
+    if topology:
+        exec_cmd += f' -e "lab_topology_file={topology}"'
+
+    if vars_topology:
+        exec_cmd += f' -e "lab_vars_file={vars_topology}"'
+
     if verbose:
         exec_cmd += f" -{'v' * verbose}"
 
@@ -1029,6 +1043,15 @@ def deploy_droplet(
     extra_vars: Annotated[
         Optional[str], typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")
     ] = None,
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ] = NetObsScenarios.BATTERIES_INCLUDED,
+    topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
+        "./containerlab/lab.yml"
+    ),
+    vars_topology: Annotated[Path, typer.Option(help="Path to the vars topology file", exists=True)] = Path(
+        "./containerlab/lab_vars.yml"
+    ),
 ):
     """Create DigitalOcean Droplets.
 
@@ -1058,8 +1081,11 @@ def deploy_droplet(
         inventories=["do_hosts.yaml", "localhost.yaml"],
         verbose=verbose,
         extra_vars=extra_vars,
+        scenario=scenario.value,
+        topology=topology,
+        vars_topology=vars_topology,
     )
-    result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="create droplets")
+    result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="setup droplets")
     if result.returncode == 0:
         console.log("Droplets setup successfully", style="good")
     else:
@@ -1152,20 +1178,22 @@ def utils_load_nautobot_data(
     console.log(f"Created Role: [orange1 i]{roles['display']}", style="info")
 
     # Create Manufacturers in Nautobot
-    manufacturers = nautobot_client.http_call(
-        url="/api/dcim/manufacturers/",
-        method="post",
-        json_data={"name": "Arista"},
-    )
-    console.log(f"Created Manufacturer: [orange1 i]{manufacturers['display']}", style="info")
 
-    # Create Device Types in Nautobot
-    device_types = nautobot_client.http_call(
-        url="/api/dcim/device-types/",
-        method="post",
-        json_data={"manufacturer": "Arista", "model": "cEOS"},
-    )
-    console.log(f"Created Device Types: [orange1 i]{device_types['display']}", style="info")
+    for manufacturer in ["Arista", "Nokia"]:
+        manufacturers = nautobot_client.http_call(
+            url="/api/dcim/manufacturers/",
+            method="post",
+            json_data={"name": manufacturer},
+        )
+        console.log(f"Created Manufacturer: [orange1 i]{manufacturers['display']}", style="info")
+
+        # Create Device Types in Nautobot
+        device_types = nautobot_client.http_call(
+            url="/api/dcim/device-types/",
+            method="post",
+            json_data={"manufacturer": manufacturer, "model": "cEOS" if manufacturer == "Arista" else "SRLinux"},
+        )
+        console.log(f"Created Device Types: [orange1 i]{device_types['display']}", style="info")
 
     # Create Location Types
     location_type = nautobot_client.http_call(
@@ -1472,13 +1500,9 @@ def utils_load_prefect_secrets(
     prefect_api_url: Annotated[
         str, typer.Option(help="Prefect API URL", envvar="PREFECT_API_URL")
     ] = "http://localhost:4200/api",
-    nautobot_token: Annotated[
-        str, typer.Option(help="Nautobot Token", envvar="NAUTOBOT_SUPERUSER_API_TOKEN")
-    ] = "",
+    nautobot_token: Annotated[str, typer.Option(help="Nautobot Token", envvar="NAUTOBOT_SUPERUSER_API_TOKEN")] = "",
     openai_token: Annotated[str, typer.Option(help="OpenAI API Key", envvar="OPENAI_API_KEY")] = "",
-    network_user: Annotated[
-        str, typer.Option(help="Network Agent User", envvar="NETWORK_AGENT_USER")
-    ] = "netobs",
+    network_user: Annotated[str, typer.Option(help="Network Agent User", envvar="NETWORK_AGENT_USER")] = "netobs",
     network_password: Annotated[
         str, typer.Option(help="Network Agent Password", envvar="NETWORK_AGENT_PASSWORD")
     ] = "netobs123",

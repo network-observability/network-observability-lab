@@ -1,0 +1,28 @@
+name: mno-webinar
+mgmt:
+  network: network-observability
+  ipv4-subnet: 198.51.100.0/24
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux
+      mgmt-ipv4: 198.51.100.2
+      startup-config: startups/startup-config-srl1.json
+      ports:
+        - 80/tcp
+        - 443/tcp
+        - 57400/tcp
+        - 161/udp
+    srl2:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux
+      mgmt-ipv4: 198.51.100.3
+      startup-config: startups/startup-config-srl2.json
+      ports:
+        - 80/tcp
+        - 443/tcp
+        - 57400/tcp
+        - 161/udp
+  links:
+    - endpoints: ["srl1:e1-1", "srl2:e1-1"]
