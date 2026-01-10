@@ -66,6 +66,7 @@ class NetObsScenarios(Enum):
     CH13 = "ch13"
     CH13_COMPLETED = "ch13-completed"
     WEBINAR = "webinar"
+    WEBINAR_COMPLETED = "webinar-completed"
 
 
 class DockerNetworkAction(Enum):
@@ -1177,8 +1178,8 @@ def utils_load_nautobot_data(
     console.log(f"Created Role: [orange1 i]{roles['display']}", style="info")
 
     # Create Manufacturers in Nautobot
-    
-    for manufacturer in ["Arista","Nokia"]:
+
+    for manufacturer in ["Arista", "Nokia"]:
         manufacturers = nautobot_client.http_call(
             url="/api/dcim/manufacturers/",
             method="post",
@@ -1190,7 +1191,7 @@ def utils_load_nautobot_data(
         device_types = nautobot_client.http_call(
             url="/api/dcim/device-types/",
             method="post",
-            json_data={"manufacturer": manufacturer, "model": "cEOS" if manufacturer=="Arista" else "SRLinux"},
+            json_data={"manufacturer": manufacturer, "model": "cEOS" if manufacturer == "Arista" else "SRLinux"},
         )
         console.log(f"Created Device Types: [orange1 i]{device_types['display']}", style="info")
 
