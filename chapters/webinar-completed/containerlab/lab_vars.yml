@@ -13,7 +13,7 @@ prefixes:
     name: "lab-net5"
 
 nodes:
-  ceos-01:
+  srl1:
     interfaces:
       - name: Ethernet1
         ipv4: 10.1.2.1/24
@@ -27,7 +27,7 @@ nodes:
       - name: Loopback1
         ipv4: 10.111.0.1/24
         role: loopback
-  ceos-02:
+  srl2:
     interfaces:
       - name: Ethernet1
         ipv4: 10.1.2.2/24
