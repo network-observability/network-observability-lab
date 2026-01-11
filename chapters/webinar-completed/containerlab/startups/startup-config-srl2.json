@@ -1672,7 +1672,10 @@
                 "role": [
                     {
                         "rolename": "netobs",
-                        "superuser": true
+                        "superuser": true,
+                        "services": [
+                            "gnmi"
+                        ]
                     }
                 ]
             },

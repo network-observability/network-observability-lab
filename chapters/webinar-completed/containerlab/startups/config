@@ -2,7 +2,7 @@ set /system aaa authorization role netobs superuser true
 set /system aaa authentication user netobs password netobs123
 set /system aaa authentication user netobs role [netobs]
 set /system aaa authorization role netobs services [
-gnmi]
+srl_nokia-grpc:gnmi]
 set /system snmp access-group ro security-level no-auth-no-priv
 set /system snmp access-group ro community-entry public_ro community public
 set /system snmp network-instance mgmt admin-state enable
@@ -21,5 +21,6 @@ Default credentials1: admin:NokiaSrl1!
 
 
 Get the config from startup
-containerlab exec -t ./chapters/webinar/containerlab/lab.yml srl2 --cmd "cat /etc/opt/srlinux/config.json" \
+"save startup"
+containerlab exec -t ./chapters/webinar-completed/containerlab/lab.yml srl2 --cmd "cat /etc/opt/srlinux/config.json" \
   > startup-config-srl2.json 2>&1
