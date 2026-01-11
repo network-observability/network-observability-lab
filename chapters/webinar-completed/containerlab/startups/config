@@ -10,6 +10,30 @@ set /system snmp network-instance mgmt admin-state enable
 set /system logging remote-server 198.51.100.1 transport tcp
 set /system logging remote-server 198.51.100.1 remote-port 1515
 set /system logging remote-server 198.51.100.1 network-instance mgmt
+
+set /system logging remote-server 198.51.100.1 facility auth priority match-above informational
+set /system logging remote-server 198.51.100.1 facility authpriv priority match-above informational
+set /system logging remote-server 198.51.100.1 facility cron priority match-above informational
+set /system logging remote-server 198.51.100.1 facility daemon priority match-above informational
+set /system logging remote-server 198.51.100.1 facility ftp priority match-above informational
+set /system logging remote-server 198.51.100.1 facility kern priority match-above informational
+set /system logging remote-server 198.51.100.1 facility lpr priority match-above informational
+set /system logging remote-server 198.51.100.1 facility mail priority match-above informational
+set /system logging remote-server 198.51.100.1 facility news priority match-above informational
+set /system logging remote-server 198.51.100.1 facility syslog priority match-above informational
+set /system logging remote-server 198.51.100.1 facility user priority match-above informational
+set /system logging remote-server 198.51.100.1 facility uucp priority match-above informational
+
+
+set /system logging remote-server 198.51.100.1 facility local0 priority match-above informational
+set /system logging remote-server 198.51.100.1 facility local1 priority match-above informational
+set /system logging remote-server 198.51.100.1 facility local2 priority match-above informational
+set /system logging remote-server 198.51.100.1 facility local3 priority match-above informational
+set /system logging remote-server 198.51.100.1 facility local4 priority match-above informational
+set /system logging remote-server 198.51.100.1 facility local5 priority match-above informational
+set /system logging remote-server 198.51.100.1 facility local6 priority match-above informational
+set /system logging remote-server 198.51.100.1 facility local7 priority match-above informational
+
 set /network-instance default type default
 set /interface ethernet-1/1 admin-state enable
 set /interface ethernet-1/1 subinterface 0 admin-state enable
