@@ -1699,6 +1699,7 @@
             }
         ],
         "srl_nokia-logging:logging": {
+            "network-instance": "mgmt",
             "buffer": [
                 {
                     "buffer-name": "messages",
@@ -1847,120 +1848,71 @@
                     "host": "198.51.100.1",
                     "transport": "tcp",
                     "remote-port": 1515,
-                    "network-instance": "mgmt",
-                    "facility": [
+                    "subsystem": [
                         {
-                            "facility-name": "auth",
+                            "subsystem-name": "srl_nokia-logging:aaa",
                             "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         },
                         {
-                            "facility-name": "authpriv",
+                            "subsystem-name": "srl_nokia-logging:accounting",
                             "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         },
                         {
-                            "facility-name": "cron",
+                            "subsystem-name": "srl_nokia-logging:acl",
                             "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         },
                         {
-                            "facility-name": "daemon",
+                            "subsystem-name": "srl_nokia-logging:bgp",
                             "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         },
                         {
-                            "facility-name": "ftp",
+                            "subsystem-name": "srl_nokia-logging:chassis",
                             "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         },
                         {
-                            "facility-name": "kern",
+                            "subsystem-name": "srl_nokia-logging:debug",
                             "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         },
                         {
-                            "facility-name": "lpr",
+                            "subsystem-name": "srl_nokia-logging:gnmi",
                             "priority": {
-                                "match-above": "informational"
-                            }
-                        },
-            │             {
-                            "facility-name": "mail",
-                            "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         },
                         {
-                            "facility-name": "news",
+                            "subsystem-name": "srl_nokia-logging:log",
                             "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         },
                         {
-                            "facility-name": "syslog",
+                            "subsystem-name": "srl_nokia-logging:mgmt",
                             "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         },
                         {
-                            "facility-name": "user",
+                            "subsystem-name": "srl_nokia-logging:platform",
                             "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         },
                         {
-                            "facility-name": "uucp",
+                            "subsystem-name": "srl_nokia-logging:sync",
                             "priority": {
-                                "match-above": "informational"
-                            }
-                        },
-                        {
-                            "facility-name": "local0",
-                            "priority": {
-                                "match-above": "informational"
-                            }
-                        },
-                        {
-                            "facility-name": "local1",
-                            "priority": {
-                                "match-above": "informational"
-                            }
-                        },
-                        {
-                            "facility-name": "local2",
-                            "priority": {
-                                "match-above": "informational"
-                            }
-                        },
-                        {
-                            "facility-name": "local3",
-                            "priority": {
-                                "match-above": "informational"
-                            }
-                        },
-                        {
-                            "facility-name": "local4",
-                            "priority": {
-                                "match-above": "informational"
-                            }
-                        },
-                        {
-                            "facility-name": "local5",
-                            "priority": {
-                                "match-above": "informational"
-                            }
-                        },
-                        {
-                            "facility-name": "local7",
-                            "priority": {
-                                "match-above": "informational"
+                                "match-above": "debug"
                             }
                         }
                     ]

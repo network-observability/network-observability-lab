@@ -1,43 +1,32 @@
 set /system aaa authorization role netobs superuser true
 set /system aaa authentication user netobs password netobs123
 set /system aaa authentication user netobs role [netobs]
-set /system aaa authorization role netobs services [
-srl_nokia-grpc:gnmi]
+set /system aaa authorization role netobs services [gnmi]
 set /system snmp access-group ro security-level no-auth-no-priv
 set /system snmp access-group ro community-entry public_ro community public
 set /system snmp network-instance mgmt admin-state enable
 
+set /system logging network-instance mgmt
 set /system logging remote-server 198.51.100.1 transport tcp
 set /system logging remote-server 198.51.100.1 remote-port 1515
-set /system logging remote-server 198.51.100.1 network-instance mgmt
 
-set /system logging remote-server 198.51.100.1 facility auth priority match-above informational
-set /system logging remote-server 198.51.100.1 facility authpriv priority match-above informational
-set /system logging remote-server 198.51.100.1 facility cron priority match-above informational
-set /system logging remote-server 198.51.100.1 facility daemon priority match-above informational
-set /system logging remote-server 198.51.100.1 facility ftp priority match-above informational
-set /system logging remote-server 198.51.100.1 facility kern priority match-above informational
-set /system logging remote-server 198.51.100.1 facility lpr priority match-above informational
-set /system logging remote-server 198.51.100.1 facility mail priority match-above informational
-set /system logging remote-server 198.51.100.1 facility news priority match-above informational
-set /system logging remote-server 198.51.100.1 facility syslog priority match-above informational
-set /system logging remote-server 198.51.100.1 facility user priority match-above informational
-set /system logging remote-server 198.51.100.1 facility uucp priority match-above informational
+set /system logging remote-server 198.51.100.1 subsystem aaa priority match-above debug
+set /system logging remote-server 198.51.100.1 subsystem accounting priority match-above debug
+set /system logging remote-server 198.51.100.1 subsystem acl priority match-above debug
+set /system logging remote-server 198.51.100.1 subsystem bgp priority match-above debug
+set /system logging remote-server 198.51.100.1 subsystem chassis priority match-above debug
+set /system logging remote-server 198.51.100.1 subsystem debug priority match-above debug
+set /system logging remote-server 198.51.100.1 subsystem gnmi priority match-above debug
+set /system logging remote-server 198.51.100.1 subsystem log priority match-above debug
+set /system logging remote-server 198.51.100.1 subsystem mgmt priority match-above debug
+set /system logging remote-server 198.51.100.1 subsystem platform priority match-above debug
+set /system logging remote-server 198.51.100.1 subsystem sync priority match-above debug
 
-
-set /system logging remote-server 198.51.100.1 facility local0 priority match-above informational
-set /system logging remote-server 198.51.100.1 facility local1 priority match-above informational
-set /system logging remote-server 198.51.100.1 facility local2 priority match-above informational
-set /system logging remote-server 198.51.100.1 facility local3 priority match-above informational
-set /system logging remote-server 198.51.100.1 facility local4 priority match-above informational
-set /system logging remote-server 198.51.100.1 facility local5 priority match-above informational
-set /system logging remote-server 198.51.100.1 facility local6 priority match-above informational
-set /system logging remote-server 198.51.100.1 facility local7 priority match-above informational
 
 set /network-instance default type default
 set /interface ethernet-1/1 admin-state enable
 set /interface ethernet-1/1 subinterface 0 admin-state enable
-set /interface ethernet-1/1 subinterface 0 ipv4 address 10.1.2.2/24
+set /interface ethernet-1/1 subinterface 0 ipv4 address 10.1.2.1/24
 set /interface ethernet-1/1 subinterface 0 ipv4 admin-state enable
 set /network-instance default interface ethernet-1/1.0
 
@@ -46,5 +35,6 @@ Default credentials1: admin:NokiaSrl1!
 
 Get the config from startup
 "save startup"
-containerlab exec -t ./chapters/webinar-completed/containerlab/lab.yml srl2 --cmd "cat /etc/opt/srlinux/config.json" \
-  > startup-config-srl2.json 2>&1
+containerlab exec -t ./chapters/webinar-completed/containerlab/lab.yml srl1 --cmd "cat /etc/opt/srlinux/config.json" \
+  > startup-config-srl1.json 2>&1
+  https://learn.srlinux.dev/blog/2023/sr-linux-logging-with-elk/
