@@ -39,7 +39,7 @@ $ containerlab exec -t ./chapters/webinar-completed/containerlab/lab.yml srl1 --
   https://learn.srlinux.dev/blog/2023/sr-linux-logging-with-elk/
 
 $ tcpdump -vAnni any dst 198.51.100.1 and tcp port 1515
-$ tcpdump -nni any host 198.51.100.1 and tcp port 1515
+$ tcpdump -nni any host 198.51.100.1 and udp port 1515
 
 $ ip -br addr | grep '198.51.100.1'
 br-3135c466e691  UP             198.51.100.1/24 fe80::76:9eff:fe68:a4f3/64 
