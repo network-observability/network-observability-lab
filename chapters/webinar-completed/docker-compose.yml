@@ -69,6 +69,7 @@ services:
       - ./logstash/logstash.cfg:/home/logstash/logstash.cfg
     ports:
       - 1515:1515
+      - 1515:1515/udp
       - 9600:9600
       - 12201:12201/udp
     environment:
@@ -76,7 +77,8 @@ services:
     env_file:
       - ../../.env
     networks:
-      - network-observability
+      network-observability:
+        ipv4_address: 198.51.100.25
     logging:
       driver: gelf
       options:

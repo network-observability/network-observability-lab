@@ -1845,8 +1845,8 @@
             ],
             "remote-server": [
                 {
-                    "host": "198.51.100.1",
-                    "transport": "tcp",
+                    "host": "198.51.100.25",
+                    "transport": "udp",
                     "remote-port": 1515,
                     "subsystem": [
                         {
