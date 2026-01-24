@@ -1,4 +1,6 @@
 name: mno-webinar
+prefix: ""
+
 mgmt:
   network: network-observability
   ipv4-subnet: 198.51.100.0/24
@@ -26,3 +28,5 @@ topology:
         - 161/udp
   links:
     - endpoints: ["srl1:e1-1", "srl2:e1-1"]
+    - endpoints: ["srl1:e1-10", "srl2:e1-10"]
+    - endpoints: ["srl1:e1-11", "srl2:e1-11"]

@@ -46,6 +46,13 @@ utils_app = typer.Typer(help="Utilities and scripts related commands.", rich_mar
 app.add_typer(utils_app, name="utils")
 
 
+class PlatformType(Enum):
+    """Platform/Device types supported by Netmiko and netobs."""
+
+    ARISTA_EOS = "arista_eos"
+    NOKIA_SRL = "nokia_srl"
+
+
 class NetObsScenarios(Enum):
     """NetObs scenarios."""
 
@@ -1473,26 +1480,82 @@ def utils_device_interface_flap(
     interface: Annotated[str, typer.Option(help="Interface to flap", envvar="LAB_INTERFACE")],
     count: Annotated[int, typer.Option(help="Number of flaps", envvar="LAB_FLAP_COUNT")] = 1,
     delay: Annotated[int, typer.Option(help="Delay between flaps", envvar="LAB_FLAP_DELAY")] = 5,
+    platform: Annotated[
+        PlatformType,
+        typer.Option(
+            help="Netmiko platform (defaults to arista_eos for backwards compatibility)",
+            envvar="LAB_PLATFORM",
+            show_default=True,
+        ),
+    ] = PlatformType.ARISTA_EOS,
 ):
-    """Flap a network device interface."""
-    console.log(f"Flapping interface: [orange1 i]{interface} on device: {device}", style="info")
-    device_conn = netmiko.ConnectHandler(
-        device_type="arista_eos",
-        host=device,
-        username="netobs",
-        password="netobs123",
+    """Flap a network device interface. Defaults to EOS; specify --platform nokia_srl for SR Linux."""
+    console.log(
+        f"Flapping interface: [orange1 i]{interface} on device: {device} (platform={platform})",
+        style="info",
     )
-    # Enable the config mode
-    device_conn.enable()
-    device_conn.config_mode()
-    for _ in range(count):
-        console.log("Bringing interface down...", style="info")
-        device_conn.send_config_set([f"interface {interface}", "shutdown"])
-        time.sleep(delay)
-        console.log("Bringing interface up...", style="info")
-        device_conn.send_config_set([f"interface {interface}", "no shutdown"])
-        time.sleep(delay)
-    console.log(f"Flapped interface: [orange1 i]{interface} on device: {device}", style="info")
+
+    # Hardcoded creds (per your request)
+    if platform == PlatformType.NOKIA_SRL:
+        username = "admin"
+        password = "NokiaSrl1!"
+    else:
+        username = "netobs"
+        password = "netobs123"
+
+    device_conn = None
+    try:
+        device_conn = netmiko.ConnectHandler(
+            device_type=platform.value,
+            host=device,
+            username=username,
+            password=password,
+        )
+
+        # EOS has enable + config mode; SRL uses candidate/commit workflow
+        if platform == "arista_eos":
+            device_conn.enable()
+            device_conn.config_mode()
+
+        for i in range(count):
+            if platform == "arista_eos":
+                console.log(f"[{i+1}/{count}] Bringing interface down (EOS)...", style="info")
+                device_conn.send_config_set([f"interface {interface}", "shutdown"])
+                time.sleep(delay)
+
+                console.log(f"[{i+1}/{count}] Bringing interface up (EOS)...", style="info")
+                device_conn.send_config_set([f"interface {interface}", "no shutdown"])
+                time.sleep(delay)
+
+            else:  # nokia_srl
+                console.log(f"[{i+1}/{count}] Bringing interface down (SRL)...", style="info")
+                device_conn.send_config_set(
+                    [
+                        "enter candidate",
+                        f"set interface {interface} admin-state disable",
+                        "commit save",
+                    ]
+                )
+                time.sleep(delay)
+
+                console.log(f"[{i+1}/{count}] Bringing interface up (SRL)...", style="info")
+                device_conn.send_config_set(
+                    [
+                        "enter candidate",
+                        f"set interface {interface} admin-state enable",
+                        "commit save",
+                    ]
+                )
+                time.sleep(delay)
+
+        console.log(
+            f"Flapped interface: [orange1 i]{interface} on device: {device} (platform={platform})",
+            style="info",
+        )
+
+    finally:
+        if device_conn:
+            device_conn.disconnect()
 
 
 @utils_app.command("load-prefect-secrets", rich_help_panel="Prefect")
