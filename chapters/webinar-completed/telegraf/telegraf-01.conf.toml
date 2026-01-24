@@ -88,14 +88,44 @@
   sample_interval = "10s"
 
 [[inputs.gnmi.subscription]]
-  name = "bgp_peer_state"
-  path = "/network-instance[name=*]/protocols/bgp/neighbor[peer-address=*]/session-state"
+  name = "bgp"
+  path = "/network-instance[name=*]/protocols/bgp/neighbor[peer-address=*]/afi-safi[afi-safi-name=*]/admin-state"
   subscription_mode = "sample"
   sample_interval = "10s"
 
 [[inputs.gnmi.subscription]]
-  name = "bgp_accepted_prefixes"
+  name = "bgp"
+  path = "/network-instance[name=*]/protocols/bgp/neighbor[peer-address=*]/afi-safi[afi-safi-name=*]/oper-state"
+  subscription_mode = "sample"
+  sample_interval = "10s"
+
+[[inputs.gnmi.subscription]]
+  name = "bgp"
   path = "/network-instance[name=*]/protocols/bgp/neighbor[peer-address=*]/afi-safi[afi-safi-name=*]/received-routes"
+  subscription_mode = "sample"
+  sample_interval = "10s"
+
+[[inputs.gnmi.subscription]]
+  name = "bgp"
+  path = "/network-instance[name=*]/protocols/bgp/neighbor[peer-address=*]/afi-safi[afi-safi-name=*]/sent-routes"
+  subscription_mode = "sample"
+  sample_interval = "10s"
+
+[[inputs.gnmi.subscription]]
+  name = "bgp"
+  path = "/network-instance[name=*]/protocols/bgp/neighbor[peer-address=*]/afi-safi[afi-safi-name=*]/active-routes"
+  subscription_mode = "sample"
+  sample_interval = "10s"
+
+[[inputs.gnmi.subscription]]
+  name = "bgp"
+  path = "/network-instance[name=*]/protocols/bgp/neighbor[peer-address=*]/afi-safi[afi-safi-name=*]/rejected-routes"
+  subscription_mode = "sample"
+  sample_interval = "10s"
+
+[[inputs.gnmi.subscription]]
+  name = "bgp"
+  path = "/network-instance[name=*]/protocols/bgp/neighbor[peer-address=*]/afi-safi[afi-safi-name=*]/suppressed-routes"
   subscription_mode = "sample"
   sample_interval = "10s"
 
@@ -178,6 +208,24 @@
     [processors.enum.mapping.value_mappings]
       enable = 1
       disable = 2
+
+[[processors.enum]]
+  namepass = ["bgp"]
+
+  [[processors.enum.mapping]]
+    field = "admin_state"
+    [processors.enum.mapping.value_mappings]
+      enable = 1
+      disable = 2
+
+  [[processors.enum.mapping]]
+    field = "oper_state"
+    [processors.enum.mapping.value_mappings]
+      up = 1
+      down = 2
+      idle = 3
+      connect = 4
+      active = 5
 
 
 ###############################################################################
