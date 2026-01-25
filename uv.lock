@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -1382,19 +1382,21 @@ wheels = [
 
 [[package]]
 name = "netmiko"
-version = "4.3.0"
+version = "4.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ntc-templates" },
     { name = "paramiko" },
     { name = "pyserial" },
     { name = "pyyaml" },
+    { name = "rich" },
+    { name = "ruamel-yaml" },
     { name = "scp" },
     { name = "textfsm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/46/c5/fbc99404d15ec3c447fbb5a2e4a44eabee0ec9991a7246d8d80480766e82/netmiko-4.3.0.tar.gz", hash = "sha256:da90f6efdf33b4140eb6cd7f2272773c2ce144fa74ac34d5ecac1b4d4607f1fb", size = 141701, upload-time = "2023-11-17T18:06:07.038Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/0a/4d557ffd4070a47f87c3e07abd28f9fcbdbf799f2a62940168236b4a8d31/netmiko-4.6.0.tar.gz", hash = "sha256:9701bb2c1a15eb2e8074cb2e28ca007c69b9fa52961b83b98c757ead6b80deef", size = 169274, upload-time = "2025-06-26T19:13:17.303Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/4c/504be61a9f24e1971807d78a796db45e0580eb237c9563b1637ba819a4cf/netmiko-4.3.0-py3-none-any.whl", hash = "sha256:a873b186e0b61be4a2100eda51e996d917ceddce195b734346b686757e61d324", size = 219198, upload-time = "2023-11-17T18:06:05.092Z" },
+    { url = "https://files.pythonhosted.org/packages/32/5b/9db3cf51785ef0a50f0976704e0776e7136a83cbdf9ed84065184f1fe3e2/netmiko-4.6.0-py3-none-any.whl", hash = "sha256:0c9b7309005d2c8a010b275f3494628cadb1658a8841632131c848074b7cdadb", size = 262873, upload-time = "2025-06-26T19:13:15.764Z" },
 ]
 
 [[package]]
@@ -1428,7 +1430,7 @@ requires-dist = [
     { name = "black", marker = "extra == 'dev'" },
     { name = "flake8", marker = "extra == 'dev'" },
     { name = "jmespath", specifier = ">=1.0.1" },
-    { name = "netmiko", specifier = "==4.3.0" },
+    { name = "netmiko", specifier = "==4.6.0" },
     { name = "openai", specifier = "==2.6.1" },
     { name = "prefect", specifier = ">=3.2.9" },
     { name = "prometheus-api-client", specifier = ">=0.5.5" },

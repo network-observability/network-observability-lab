@@ -66,7 +66,33 @@ def _load_secret(name: str) -> str:
         raise RuntimeError(
             f"Prefect Secret blocks not available. Install/enable Prefect or pass tokens explicitly. Missing: {name}"
         )
+    print(f"🔐 Loading Prefect Secret block: {name}")
     return Secret.load(name).get()  # type: ignore
+
+
+def bgp_health_hint(metrics: dict[str, float]) -> str:
+    """
+    Tiny heuristic for the workshop. Keep it readable, not "perfect".
+    Assumes:
+      admin_state: 1=up, 0=down
+      oper_state: 1=up, 0=down
+    """
+    admin = metrics.get("admin_state", -1)
+    oper = metrics.get("oper_state", -1)
+    rx = metrics.get("received_routes", 0)
+    act = metrics.get("active_routes", 0)
+
+    if admin == 0:
+        return "Admin is DOWN → likely intentionally disabled (check config/maintenance change)."
+    if admin == 1 and oper == 0:
+        return "Admin UP but Oper DOWN → likely neighbor down / session reset / reachability or auth issue."
+    if admin == 1 and oper == 1 and rx == 0 and act == 0:
+        return "Session UP but no routes → possible policy/filtering/AFI mismatch, or peer not advertising."
+    if admin == 1 and oper == 1 and rx > 0 and act == 0:
+        return "Routes received but none active → import policy/validation rejecting routes."
+    if admin == 1 and oper == 1 and act > 0:
+        return "Session UP with active routes → may be intermittent flap; verify last change + logs."
+    return "Insufficient metrics to infer a hint (need admin/oper/routes)."
 
 
 @dataclass(frozen=True)
@@ -94,11 +120,13 @@ class EvidenceBundle:
     sot: dict[str, Any] = field(default_factory=dict)
 
     def summary(self) -> dict[str, Any]:
+        hint = bgp_health_hint(self.metrics or {})
         return {
             "device": self.device,
             "peer_address": self.peer_address,
             "afi_safi": self.afi_safi,
             "instance_name": self.instance_name,
+            "health_hint": hint,
             "metrics": self.metrics,
             "log_lines": len(self.logs),
             "sot": {
