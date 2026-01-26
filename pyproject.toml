@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netobs"
-version = "0.0.16"
+version = "0.0.17"
 description = "Utilities and Management Tools for Network Observability Book"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",

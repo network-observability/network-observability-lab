@@ -70,29 +70,72 @@ def _load_secret(name: str) -> str:
     return Secret.load(name).get()  # type: ignore
 
 
-def bgp_health_hint(metrics: dict[str, float]) -> str:
-    """
-    Tiny heuristic for the workshop. Keep it readable, not "perfect".
-    Assumes:
-      admin_state: 1=up, 0=down
-      oper_state: 1=up, 0=down
-    """
-    admin = metrics.get("admin_state", -1)
-    oper = metrics.get("oper_state", -1)
+def _decode_admin_state(v: float) -> str:
+    # telegraf enum mapping:
+    # enable=1, disable=2
+    if v == 1:
+        return "enable"
+    if v == 2:
+        return "disable"
+    if v == -1:
+        return "unknown"
+    return f"unknown({v})"
+
+
+def _decode_oper_state(v: float) -> str:
+    # telegraf enum mapping:
+    # up=1, down=2, idle=3, connect=4, active=5
+    try:
+        key = int(v)
+    except (ValueError, OverflowError):
+        return f"unknown({v})"
+
+    return {
+        1: "up",
+        2: "down",
+        3: "idle",
+        4: "connect",
+        5: "active",
+        -1: "unknown",
+    }.get(key, f"unknown({v})")
+
+
+def bgp_metrics_hint(metrics: dict[str, float]) -> str:
+    admin_v = metrics.get("admin_state", -1)
+    oper_v = metrics.get("oper_state", -1)
+
+    admin = _decode_admin_state(admin_v)
+    oper = _decode_oper_state(oper_v)
+
     rx = metrics.get("received_routes", 0)
+    tx = metrics.get("sent_routes", 0)
+    sup = metrics.get("suppressed_routes", 0)
     act = metrics.get("active_routes", 0)
 
-    if admin == 0:
-        return "Admin is DOWN → likely intentionally disabled (check config/maintenance change)."
-    if admin == 1 and oper == 0:
-        return "Admin UP but Oper DOWN → likely neighbor down / session reset / reachability or auth issue."
-    if admin == 1 and oper == 1 and rx == 0 and act == 0:
-        return "Session UP but no routes → possible policy/filtering/AFI mismatch, or peer not advertising."
-    if admin == 1 and oper == 1 and rx > 0 and act == 0:
+    if admin == "disable":
+        return "Admin DISABLED → likely intentional (maintenance / config change)."
+
+    # Treat anything except 'up' as not-up (down/idle/connect/active)
+    if oper != "up":
+        # if routes are zero too, it strongly supports session down
+        if rx == 0 and tx == 0 and act == 0:
+            return f"Oper={oper.upper()} with 0 routes → session not established (reachability/auth/neighbor)."
+        return f"Oper={oper.upper()} → session not fully up; check neighbor FSM + logs."
+
+    # oper up from here:
+    if rx == 0 and tx == 0 and act == 0:
+        return "Oper UP but no routes → policy/AFI mismatch, or peer not advertising."
+
+    if rx > 0 and act == 0:
         return "Routes received but none active → import policy/validation rejecting routes."
-    if admin == 1 and oper == 1 and act > 0:
-        return "Session UP with active routes → may be intermittent flap; verify last change + logs."
-    return "Insufficient metrics to infer a hint (need admin/oper/routes)."
+
+    if sup > 0:
+        return "Some routes suppressed → investigate suppression / best-path / policy behavior."
+
+    if act > 0:
+        return "Session UP with active routes → if alert fired, likely flap/intermittent; verify logs + last change."
+
+    return "Insufficient evidence to infer cause (need routes and/or stable state)."
 
 
 @dataclass(frozen=True)
@@ -120,13 +163,13 @@ class EvidenceBundle:
     sot: dict[str, Any] = field(default_factory=dict)
 
     def summary(self) -> dict[str, Any]:
-        hint = bgp_health_hint(self.metrics or {})
+        metrics_hint = bgp_metrics_hint(self.metrics or {})
         return {
             "device": self.device,
             "peer_address": self.peer_address,
             "afi_safi": self.afi_safi,
             "instance_name": self.instance_name,
-            "health_hint": hint,
+            "bgp_metrics_hint": metrics_hint,
             "metrics": self.metrics,
             "log_lines": len(self.logs),
             "sot": {
@@ -135,6 +178,10 @@ class EvidenceBundle:
                 "intended_peer": self.sot.get("intended_peer"),
                 "site": self.sot.get("site"),
                 "role": self.sot.get("role"),
+            },
+            "decoded": {
+                "admin_state": _decode_admin_state(self.metrics.get("admin_state", -1)),
+                "oper_state": _decode_oper_state(self.metrics.get("oper_state", -1)),
             },
         }
 
@@ -327,16 +374,25 @@ class NautobotClient:
 
     @staticmethod
     def is_device_in_maintenance(device_obj: dict) -> bool:
-        return bool((device_obj.get("custom_fields") or {}).get("maintenance", False))
+        cf = device_obj.get("custom_fields") or device_obj.get("_custom_field_data") or {}
+        return bool(cf.get("maintenance", False))
 
     @staticmethod
     def get_intended_bgp_peers(device_obj: dict, afi_safi: str) -> list[str]:
-        """
-        Reads config_context.observability_intent.bgp.intended_peers[device_name][afi_safi] -> [peer_ip, ...]
-        """
-        ctx = device_obj.get("config_context") or {}
-        intent = (ctx.get("observability_intent") or {}).get("bgp") or {}
-        peers = ((intent.get("intended_peers") or {}).get(device_obj["name"]) or {}).get(afi_safi) or []
+        ctx = device_obj.get("local_config_context_data") or {}
+        bgp = (ctx.get("observability_intent") or {}).get("bgp") or {}
+
+        # Optional gate: if you keep bgp.afi_safi global, filter by it
+        bgp_afi = bgp.get("afi_safi")
+        if bgp_afi and bgp_afi != afi_safi:
+            return []
+
+        sessions = bgp.get("intended_peers") or []  # list[dict]
+        peers: list[str] = []
+        for s in sessions:
+            ip = (s or {}).get("peer_ip")
+            if ip:
+                peers.append(ip)
         return peers
 
     def build_bgp_intent_gate(self, device: str, peer_address: str, afi_safi: str) -> dict[str, Any]:
@@ -473,6 +529,8 @@ class WorkshopSDK:
             "admin_state": f"bgp_admin_state{{{base}}}",
             "oper_state": f"bgp_oper_state{{{base}}}",
             "received_routes": f"bgp_received_routes{{{base}}}",
+            "sent_routes": f"bgp_sent_routes{{{base}}}",
+            "suppressed_routes": f"bgp_suppressed_routes{{{base}}}",
             "active_routes": f"bgp_active_routes{{{base}}}",
         }
 
@@ -480,11 +538,12 @@ class WorkshopSDK:
         self, device: str, peer_address: str, afi_safi: str, instance_name: str
     ) -> dict[str, float]:
         qs = self.bgp_queries(device=device, peer_address=peer_address, afi_safi=afi_safi, instance_name=instance_name)
-
         return {
             "admin_state": first_prom_value(self.prom.instant(qs["admin_state"]), default=-1),
             "oper_state": first_prom_value(self.prom.instant(qs["oper_state"]), default=-1),
             "received_routes": first_prom_value(self.prom.instant(qs["received_routes"]), default=0),
+            "sent_routes": first_prom_value(self.prom.instant(qs["sent_routes"]), default=0),
+            "suppressed_routes": first_prom_value(self.prom.instant(qs["suppressed_routes"]), default=0),
             "active_routes": first_prom_value(self.prom.instant(qs["active_routes"]), default=0),
         }
 
@@ -494,7 +553,7 @@ class WorkshopSDK:
         - filters license noise
         - looks for common BGP terms + peer ip
         """
-        return f'{{device="{device}"}} != "license" |~ "(bgp|BGP|neighbor|session|route|evpn|{peer_address})"'
+        return f'{{device="{device}"}} != "license" |~ "(bgp|BGP|neighbor|session|route|ipv4-unicast|{peer_address})"'
 
     def bgp_logs(self, device: str, peer_address: str, minutes: int = 10, limit: int = 200) -> list[str]:
         return self.loki.query_range(

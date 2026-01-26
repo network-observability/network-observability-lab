@@ -1232,6 +1232,25 @@ def utils_load_nautobot_data(
     )
     console.log(f"Created Status: [orange1 i]{alerted_statuses['display']}", style="info")
 
+    # Create Custom Fields
+    try:
+        nautobot_client.http_call(
+            url="/api/extras/custom-fields/",
+            method="post",
+            json_data={
+                "label": "Maintenance",
+                "key": "maintenance",
+                "type": "boolean",
+                "default": False,
+                "required": False,
+                "content_types": ["dcim.device"],
+            },
+        )
+        console.log("Created custom field: maintenance", style="info")
+    except ValueError:
+        # your client raises ValueError on "already exists"
+        console.log("Custom field already exists: maintenance", style="info")
+
     # Create Locations
     locations = nautobot_client.http_call(
         url="/api/dcim/locations/",
@@ -1283,6 +1302,19 @@ def utils_load_nautobot_data(
 
     # Create Devices
     for node, node_data in topology_dict["topology"]["nodes"].items():
+        intent = extra_topology_vars_dict.get("observability_intent") or {}
+        bgp_intent = intent.get("bgp") or {}
+        device_peers = (bgp_intent.get("intended_peers") or {}).get(node) or []
+
+        local_context = {
+            "observability_intent": {
+                "bgp": {
+                    "afi_safi": bgp_intent.get("afi_safi"),
+                    "intended_peers": device_peers,
+                }
+            }
+}
+
         device = nautobot_client.http_call(
             url="/api/dcim/devices/",
             method="post",
@@ -1294,11 +1326,9 @@ def utils_load_nautobot_data(
                 "location": {"id": locations["id"]},
                 "status": {"id": statuses["id"]},
                 # "primary_ip4": {"id": ip_address["id"]},
-                "customn_fields": {
-                    "containerlab": {
-                        "node_kind": node_data["kind"],
-                        "node_address": node_data["mgmt-ipv4"],
-                    }
+                "local_config_context_data": local_context,
+                "custom_fields": {
+                    "maintenance": False,
                 },
             },
         )
@@ -1306,18 +1336,7 @@ def utils_load_nautobot_data(
 
         # Create IP Addresses and Interfaces
         for intf_data in node_data["interfaces"]:
-            ip_address = nautobot_client.http_call(
-                url="/api/ipam/ip-addresses/",
-                method="post",
-                json_data={
-                    "address": intf_data["ipv4"],
-                    "status": {"id": statuses["id"]},
-                    "namespace": {"id": ipam_namespace["id"]},
-                    "type": "host",
-                },
-            )
-            console.log(f"Created IP Address: [orange1 i]{ip_address['display']}", style="info")
-
+            # 1) Create the interface once
             interface = nautobot_client.http_call(
                 url="/api/dcim/interfaces/",
                 method="post",
@@ -1333,16 +1352,37 @@ def utils_load_nautobot_data(
             )
             console.log(f"Created Interface: [orange1 i]{device['display']}:{interface['display']}", style="info")
 
-            # Create IP address to interface mapping
-            mapping = nautobot_client.http_call(
-                url="/api/ipam/ip-address-to-interface/",
-                method="post",
-                json_data={
-                    "ip_address": {"id": ip_address["id"]},
-                    "interface": {"id": interface["id"]},
-                },
-            )
-            console.log(f"Created IP Address to Interface Mapping: [orange1 i]{mapping['display']}", style="info")
+            # 2) Support ipv4 as string OR list
+            ipv4_list = intf_data.get("ipv4")
+            if not ipv4_list:
+                continue
+            if isinstance(ipv4_list, str):
+                ipv4_list = [ipv4_list]
+
+            # 3) Create + map every IP
+            for addr in ipv4_list:
+                ip_address = nautobot_client.http_call(
+                    url="/api/ipam/ip-addresses/",
+                    method="post",
+                    json_data={
+                        "address": addr,
+                        "status": {"id": statuses["id"]},
+                        "namespace": {"id": ipam_namespace["id"]},
+                        "type": "host",
+                    },
+                )
+                console.log(f"Created IP Address: [orange1 i]{ip_address['display']}", style="info")
+
+                mapping = nautobot_client.http_call(
+                    url="/api/ipam/ip-address-to-interface/",
+                    method="post",
+                    json_data={
+                        "ip_address": {"id": ip_address["id"]},
+                        "interface": {"id": interface["id"]},
+                    },
+                )
+                console.log(f"Created IP->Interface Mapping: [orange1 i]{mapping['display']}", style="info")
+
 
         # Create Mgmt IP Address
         mgmt_ip_address = nautobot_client.http_call(
