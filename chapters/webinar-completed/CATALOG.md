@@ -11,7 +11,7 @@ The recommended learning path is:
 Before starting IPython or running any Prefect flows, make sure your shell is configured to talk to the already running Prefect server (for the workshop lab). Run this command in your shell:
 
 ```bash
-export PREFECT_API_URL=http://localhost:4200/api
+prefect config set PREFECT_API_URL=http://localhost:4200/api
 ```
 
 Verify it is set correctly:
@@ -31,9 +31,9 @@ Always export this before running ipython.
 
 ## 1) Start IPython
 
-This workshop intentionally starts outside Prefect flows so you can:
+This workshop intentionally starts **outside Prefect** flows so you can:
 
-* inspect real data,
+* inspect real telemetry,
 * iterate quickly,
 * understand what each function returns.
 
@@ -65,16 +65,23 @@ The SDK gives you:
 You can now explore the SDK interactively. For example, to fetch BGP peer evidence from Prometheus and Loki for a specific device and peer:
 
 ```python
-ev = sdk.collect_bgp_peer_evidence(
+ev = sdk.collect_bgp_evidence(
     device="srl1",
     peer_address="10.1.2.2",
     afi_safi="ipv4-unicast",
     instance_name="default",
+    log_minutes=30,
+    log_limit=50,
 )
+```
+
+See a summary of the evidence collected:
+
+```python
 ev.summary()
 ```
 
-Here is the example output:
+Example output would be:
 
 ```python
 {
@@ -82,24 +89,46 @@ Here is the example output:
     'peer_address': '10.1.2.2',
     'afi_safi': 'ipv4-unicast',
     'instance_name': 'default',
-    'health_hint': 'Routes received but none active → import policy/validation rejecting routes.',
-    'metrics': {'admin_state': 1.0, 'oper_state': 1.0, 'received_routes': 10.0, 'active_routes': 0.0},
-    'log_lines': 0,
-    'sot': {'found': True, 'maintenance': False, 'intended_peer': False, 'site': None, 'role': None}
+    'bgp_metrics_hint': 'Routes received but none active → import policy/validation rejecting routes.',
+
+    'metrics': {
+        'admin_state': 1.0,
+        'oper_state': 1.0,
+        'received_routes': 10.0,
+        'sent_routes': 10.0,
+        'suppressed_routes': 0.0,
+        'active_routes': 0.0
+    },
+
+    'log_lines': 4,
+
+    'sot': {'found': True, 'maintenance': False, 'intended_peer': True, 'site': None, 'role': None},
+
+    'decoded': {'admin_state': 'enable', 'oper_state': 'up'}
 }
 ```
 
-And you can look at the raw evidence:
+## 4) Explore the raw signals
+
+You are encouraged to inspect the raw evidence directly:
 
 ```python
-ev.metrics
-ev.logs
-ev.sot
+ev.metrics    # Prometheus-derived signals
+ev.logs       # Raw log lines from Loki
+ev.sot        # Source-of-Truth (Nautobot intent + maintenance)
 ```
 
-## 4) Make decisions based on evidence
+This is where you learn:
 
-You can now make decisions based on the evidence collected. For example, using a SoT only information:
+* what disappears during a flap,
+* what goes to zero,
+* what intent actually says.
+
+## 5) Make decisions based on evidence
+
+You can also make decisions based on the evidence collected.
+
+### SoT-only Policy
 
 ```python
 policy = DecisionPolicy()
@@ -110,10 +139,10 @@ decision
 The example output would be:
 
 ```python
-Decision(ok=False, decision='skip', reason='peer not intended in SoT', details={})
+Decision(ok=True, decision='proceed', reason='policy satisfied', details={})
 ```
 
-Or Policy with metrics gating:
+### Metrics + SoT Policy
 
 ```python
 policy = DecisionPolicy(require_admin_up_for_quarantine=True)
@@ -132,7 +161,7 @@ Decision(
 )
 ```
 
-## 5) Apply quarantine actions (Alertmanager silences)
+## 6) Apply actions (Alertmanager quarantine)
 
 ```python
 silence_id = sdk.quarantine_bgp(
@@ -150,7 +179,7 @@ An example output would be:
 
 You can verify the silence in Alertmanager UI http://<your-alertmanager-host>:9093/#/silences
 
-## 6) Annotate what happened (Loki)
+## 7) Annotate what happened (Loki)
 
 For a general annotation of the action taken, you can use:
 ```python
@@ -176,11 +205,11 @@ sdk.annotate_decision(
 )
 ```
 
-## 7) RCA - Optional
+## 7) RCA - Optional (LLM-ready)
 
 ```python
 payload = ev.to_rca_payload()
 payload.keys()
 ```
 
-This is what gets passed to the RCA generator inside the Prefect flow.
+This payload is what a Prefect flow (or an LLM-based RCA step) would consume later.

@@ -104,5 +104,5 @@ observability_intent:
           expected_prefixes_received: 10
         - peer_ip: 10.1.11.1
           remote_as: 65101
-          expected_state: down
+          expected_state: established
           reason: "ip-mismatch-demo"

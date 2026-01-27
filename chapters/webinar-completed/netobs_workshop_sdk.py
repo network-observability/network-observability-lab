@@ -100,42 +100,44 @@ def _decode_oper_state(v: float) -> str:
     }.get(key, f"unknown({v})")
 
 
-def bgp_metrics_hint(metrics: dict[str, float]) -> str:
-    admin_v = metrics.get("admin_state", -1)
-    oper_v = metrics.get("oper_state", -1)
-
-    admin = _decode_admin_state(admin_v)
-    oper = _decode_oper_state(oper_v)
+def bgp_metrics_hint(metrics: dict[str, float], decoded: dict[str, str] | None = None) -> str:
+    """
+    Uses Telegraf enum mapping:
+      admin_state: enable=1, disable=2
+      oper_state:  up=1, down=2, idle=3, connect=4, active=5
+    """
+    admin = metrics.get("admin_state", -1)
+    oper = metrics.get("oper_state", -1)
 
     rx = metrics.get("received_routes", 0)
     tx = metrics.get("sent_routes", 0)
     sup = metrics.get("suppressed_routes", 0)
     act = metrics.get("active_routes", 0)
 
-    if admin == "disable":
-        return "Admin DISABLED → likely intentional (maintenance / config change)."
+    # If these are unknown/missing, *then* it’s insufficient.
+    if admin in (-1, None) or oper in (-1, None):
+        return "Insufficient metrics to infer a hint (missing admin_state/oper_state)."
 
-    # Treat anything except 'up' as not-up (down/idle/connect/active)
-    if oper != "up":
-        # if routes are zero too, it strongly supports session down
-        if rx == 0 and tx == 0 and act == 0:
-            return f"Oper={oper.upper()} with 0 routes → session not established (reachability/auth/neighbor)."
-        return f"Oper={oper.upper()} → session not fully up; check neighbor FSM + logs."
+    # Admin disabled
+    if admin == 2:
+        return "Admin DISABLED → likely intentionally shut (maintenance / config intent)."
 
-    # oper up from here:
+    # Oper not UP
+    if oper != 1:
+        oper_txt = (decoded or {}).get("oper_state") or str(int(oper))
+        return f"Oper not UP ({oper_txt}) → likely session not established (reachability/auth/timers)."
+
+    # Oper UP from here down
     if rx == 0 and tx == 0 and act == 0:
-        return "Oper UP but no routes → policy/AFI mismatch, or peer not advertising."
-
+        return "Session UP but no routes → possible policy/filtering/AFI mismatch or peer not advertising."
+    if sup > 0:
+        return "Routes are being suppressed → likely policy/validation suppressing candidates."
     if rx > 0 and act == 0:
         return "Routes received but none active → import policy/validation rejecting routes."
-
-    if sup > 0:
-        return "Some routes suppressed → investigate suppression / best-path / policy behavior."
-
     if act > 0:
-        return "Session UP with active routes → if alert fired, likely flap/intermittent; verify logs + last change."
+        return "Session UP with active routes → looks healthy; check logs for intermittent flaps."
 
-    return "Insufficient evidence to infer cause (need routes and/or stable state)."
+    return "Metrics present but inconclusive (need more context)."
 
 
 @dataclass(frozen=True)
@@ -163,26 +165,24 @@ class EvidenceBundle:
     sot: dict[str, Any] = field(default_factory=dict)
 
     def summary(self) -> dict[str, Any]:
-        metrics_hint = bgp_metrics_hint(self.metrics or {})
+        hint = bgp_metrics_hint(self.metrics or {}, decoded=self.sot.get("decoded"))
         return {
             "device": self.device,
             "peer_address": self.peer_address,
             "afi_safi": self.afi_safi,
             "instance_name": self.instance_name,
-            "bgp_metrics_hint": metrics_hint,
+            "bgp_metrics_hint": hint,
             "metrics": self.metrics,
             "log_lines": len(self.logs),
             "sot": {
                 "found": self.sot.get("found"),
                 "maintenance": self.sot.get("maintenance"),
                 "intended_peer": self.sot.get("intended_peer"),
+                "expected_state": self.sot.get("expected_state"),
                 "site": self.sot.get("site"),
                 "role": self.sot.get("role"),
             },
-            "decoded": {
-                "admin_state": _decode_admin_state(self.metrics.get("admin_state", -1)),
-                "oper_state": _decode_oper_state(self.metrics.get("oper_state", -1)),
-            },
+            "decoded": self.sot.get("decoded", {}),
         }
 
     def to_rca_payload(self, max_log_lines: int = 40) -> dict[str, Any]:
@@ -206,17 +206,33 @@ class Decision:
 
 class DecisionPolicy:
     """
-    Default workshop policy:
+    Workshop policy (intent vs reality):
+
     1) stop if SoT can't find device
     2) skip if maintenance
     3) skip if peer not intended
-    4) otherwise proceed
+    4) if SoT expects peer DOWN -> skip (not an incident)
+    5) if SoT expects peer UP:
+        - if metrics missing -> proceed (collect evidence)
+        - if metrics say admin+oper are good -> skip (healthy)
+        - else -> proceed (mismatch: investigate/quarantine)
 
-    Optional: also gate on metrics (e.g., admin up + oper down).
+    Optional flag:
+      require_admin_up_for_quarantine=True
+        -> only proceed when admin_state is ENABLE (1) but oper_state is NOT UP (!= 1)
+        (prevents “quarantine” when peer is intentionally disabled)
     """
 
     def __init__(self, require_admin_up_for_quarantine: bool = False):
         self.require_admin_up_for_quarantine = require_admin_up_for_quarantine
+
+    @staticmethod
+    def _as_int(x: object, default: int = -1) -> int:
+        try:
+            # handle 1.0 cleanly
+            return int(float(x))  # type: ignore[arg-type]
+        except Exception:
+            return default
 
     def evaluate(self, sot_gate: dict[str, Any], metrics: Optional[dict[str, float]] = None) -> Decision:
         if not sot_gate.get("found", True):
@@ -228,21 +244,47 @@ class DecisionPolicy:
         if not sot_gate.get("intended_peer"):
             return Decision(ok=False, decision="skip", reason="peer not intended in SoT")
 
-        # Optional extra: check admin/oper state if metrics provided
-        if self.require_admin_up_for_quarantine and metrics is not None:
-            admin = metrics.get("admin_state", -1)
-            oper = metrics.get("oper_state", -1)
+        expected = (sot_gate.get("expected_state") or "established").lower()
 
-            # Example policy: only quarantine when admin is up and oper is down
-            if not (admin == 1 and oper == 0):
+        # If SoT expects DOWN, treat DOWN as expected behavior
+        if expected in {"down", "disabled"}:
+            return Decision(ok=False, decision="skip", reason="SoT expects this peer to be down/disabled")
+
+        # Expected UP (established)
+        if metrics is None:
+            return Decision(ok=True, decision="proceed", reason="SoT expects up; metrics not provided (collect evidence)")
+
+        admin = self._as_int(metrics.get("admin_state", -1))
+        oper = self._as_int(metrics.get("oper_state", -1))
+
+        # Telegraf enum mapping:
+        # admin_state: enable=1, disable=2
+        # oper_state: up=1, down=2, idle=3, connect=4, active=5
+        admin_ok = (admin == 1)
+        oper_ok = (oper == 1)
+
+        # If everything matches intent, no action needed
+        if admin_ok and oper_ok:
+            return Decision(ok=False, decision="skip", reason="peer matches SoT intent (enabled + up)")
+
+        # Optional stricter gating:
+        # only proceed if admin is enabled but oper isn't up
+        if self.require_admin_up_for_quarantine:
+            if not (admin_ok and not oper_ok):
                 return Decision(
                     ok=False,
                     decision="skip",
-                    reason="metrics gate not met (expected admin_state=1 and oper_state=0)",
-                    details={"admin_state": admin, "oper_state": oper},
+                    reason="metrics gate not met (expected admin_state=enable and oper_state!=up)",
+                    details={"admin_state": admin, "oper_state": oper, "expected_state": expected},
                 )
 
-        return Decision(ok=True, decision="proceed", reason="policy satisfied")
+        # Otherwise mismatch is actionable
+        return Decision(
+            ok=True,
+            decision="proceed",
+            reason="SoT expects peer up, but metrics show mismatch",
+            details={"expected_state": expected, "admin_state": admin, "oper_state": oper},
+        )
 
 
 # ------------------------
@@ -378,42 +420,41 @@ class NautobotClient:
         return bool(cf.get("maintenance", False))
 
     @staticmethod
-    def get_intended_bgp_peers(device_obj: dict, afi_safi: str) -> list[str]:
+    def get_intended_bgp_sessions(device_obj: dict, afi_safi: str) -> list[dict]:
         ctx = device_obj.get("local_config_context_data") or {}
-        bgp = (ctx.get("observability_intent") or {}).get("bgp") or {}
+        bgp = ((ctx.get("observability_intent") or {}).get("bgp") or {})
 
-        # Optional gate: if you keep bgp.afi_safi global, filter by it
         bgp_afi = bgp.get("afi_safi")
         if bgp_afi and bgp_afi != afi_safi:
             return []
 
         sessions = bgp.get("intended_peers") or []  # list[dict]
-        peers: list[str] = []
-        for s in sessions:
-            ip = (s or {}).get("peer_ip")
-            if ip:
-                peers.append(ip)
-        return peers
+        return [s for s in sessions if isinstance(s, dict)]
+
+    @staticmethod
+    def get_intended_bgp_session(device_obj: dict, afi_safi: str, peer_address: str) -> dict | None:
+        for s in NautobotClient.get_intended_bgp_sessions(device_obj, afi_safi):
+            if (s.get("peer_ip") or "") == peer_address:
+                return s
+        return None
 
     def build_bgp_intent_gate(self, device: str, peer_address: str, afi_safi: str) -> dict[str, Any]:
-        """
-        Returns the "gate" object used by the flow. Key names are stable:
-          - maintenance: bool
-          - intended_peer: bool   (FIX: consistent name used by flow)
-          - intended_peers: list[str]
-        """
         dev = self.get_device(device)
         if not dev:
             return {"found": False, "reason": "device not found in Nautobot"}
 
-        intended_peers = self.get_intended_bgp_peers(dev, afi_safi)
         maintenance = self.is_device_in_maintenance(dev)
+
+        session = self.get_intended_bgp_session(dev, afi_safi=afi_safi, peer_address=peer_address)
+        intended = session is not None
+        expected_state = (session or {}).get("expected_state")  # "established" or "down" in your YAML
 
         return {
             "found": True,
             "maintenance": maintenance,
-            "intended_peer": peer_address in intended_peers,  # <— consistent key
-            "intended_peers": intended_peers,
+            "intended_peer": intended,
+            "expected_state": expected_state,     # <-- NEW (critical)
+            "session": session,                   # <-- NEW (optional but super useful for RCA)
             "device": dev.get("name", device),
             "site": (dev.get("site") or {}).get("name"),
             "role": (dev.get("device_role") or {}).get("name"),
