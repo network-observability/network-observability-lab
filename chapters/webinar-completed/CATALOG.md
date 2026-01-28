@@ -1,4 +1,4 @@
-# 📘 Modern Network Observability – Workshop Catalog
+# 📘 Modern Network Observability - Workshop Catalog
 
 This catalog documents the **Python SDK** used in the workshop and shows how to **explore and test it interactively with IPython** before building Prefect workflows.
 
@@ -117,9 +117,109 @@ ctx = dev.get("local_config_context_data") or {}
 ctx
 ```
 
-## 3) Explore the SDK interactively
+## 5) Check the "intent" for a BGP peer
 
-You can now explore the SDK interactively. For example, to fetch BGP peer evidence from Prometheus and Loki for a specific device and peer:
+In part of the workshop, we will check if a BGP peer is intended in Nautobot.
+
+```python
+gate = sdk.build_bgp_intent_gate(device="srl1", peer_address="10.1.2.2", afi_safi="ipv4-unicast")
+gate
+```
+
+You should see something similar to:
+
+```python
+{
+  "found": True,
+  "maintenance": False,
+  "intended_peer": True,
+  "intended_peers": [...],
+  "expected_state": "established",
+  "site": None,
+  "role": None,
+}
+```
+
+> NOTE: The `expected_state` is our intent for the BGP peer, and in this case it is "established".
+
+## 6) Check the "reality" for a BGP peer
+
+First let's explore the metrics for a BGP peer:
+
+```python
+qs = sdk.bgp_queries(
+    device="srl1",
+    peer_address="10.1.2.2",
+    afi_safi="ipv4-unicast",
+    instance_name="default",
+)
+qs
+```
+
+Then run the queries one by one:
+
+```python
+for k, q in qs.items():
+    res = sdk.prom.instant(q)
+    print(k, "=>", res[:1])
+```
+
+It should show the resulting metrics, for example:
+
+```python
+admin_state => [{'metric': {'__name__': 'bgp_peer_admin_state', 'device': 'srl1', 'peer_address': '
+```
+
+### Get Normalized BGP metrics snapshot
+
+```python
+m = sdk.bgp_metrics_snapshot(
+    device="srl1",
+    peer_address="10.1.2.2",
+    afi_safi="ipv4-unicast",
+    instance_name="default",
+)
+m
+```
+
+You should see something similar to:
+
+```python
+{
+    'admin_state': 1.0,
+    'oper_state': 1.0,
+    'received_routes': 10.0,
+    'sent_routes': 10.0,
+    'suppressed_routes': 0.0,
+    'active_routes': 0.0
+}
+```
+
+It is basically a parsed version of the Prometheus metrics for easier consumption.
+
+### Fetch recent BGP logs from Loki
+
+We can also fetch recent BGP logs for the peer from Loki:
+
+```python
+sdk.bgp_logql(device="srl1", peer_address="10.1.2.2")
+```
+
+Or fetch the logs looking back a certain number of minutes:
+
+```python
+logs = sdk.bgp_logs(
+    device="srl1",
+    peer_address="10.1.2.2",
+    minutes=30,
+    limit=50,
+)
+len(logs)
+```
+
+## 8) Correlation: Collect an EvidenceBundle (SoT + metrics + logs)
+
+This part is the core of the workshop. The idea is to **collect all signals related to a BGP peer into a single EvidenceBundle** that can be used for decision-making.
 
 ```python
 ev = sdk.collect_bgp_evidence(
@@ -165,7 +265,7 @@ Example output would be:
 }
 ```
 
-## 4) Explore the raw signals
+### Explore the raw signals
 
 You are encouraged to inspect the raw evidence directly:
 
@@ -179,13 +279,15 @@ This is where you learn:
 
 * what disappears during a flap,
 * what goes to zero,
-* what intent actually says.
+* what intent says and compares to reality.
 
-## 5) Make decisions based on evidence
+## 9) Make decisions based on evidence
 
-You can also make decisions based on the evidence collected.
+The following is an example of how to use the `DecisionPolicy` to evaluate the evidence collected.
 
 ### SoT-only Policy
+
+Use this when you just want "should we even look at this peer?"
 
 ```python
 policy = DecisionPolicy()
@@ -199,10 +301,16 @@ The example output would be:
 Decision(ok=True, decision='proceed', reason='policy satisfied', details={})
 ```
 
-### Metrics + SoT Policy
+Typical outcomes:
+
+* `stop` → device not found
+* `skip` → maintenance OR peer not intended OR SoT expects down
+* `proceed` → SoT expects up, now go collect metrics/logs (or continue workflow)
+
+### Metrics + SoT Policy (validate intent vs reality)
 
 ```python
-policy = DecisionPolicy(require_admin_up_for_quarantine=True)
+policy = DecisionPolicy()
 decision = policy.evaluate(ev.sot, ev.metrics)
 decision
 ```
@@ -218,7 +326,7 @@ Decision(
 )
 ```
 
-## 6) Apply actions (Alertmanager quarantine)
+## 10) Apply actions (Alertmanager quarantine)
 
 ```python
 silence_id = sdk.quarantine_bgp(
@@ -228,6 +336,7 @@ silence_id = sdk.quarantine_bgp(
 )
 silence_id
 ```
+
 An example output would be:
 
 ```python
@@ -236,9 +345,10 @@ An example output would be:
 
 You can verify the silence in Alertmanager UI http://<your-alertmanager-host>:9093/#/silences
 
-## 7) Annotate what happened (Loki)
+## 11) Annotate what happened (Loki)
 
 For a general annotation of the action taken, you can use:
+
 ```python
 sdk.annotate(
     labels={
@@ -252,6 +362,7 @@ sdk.annotate(
 ```
 
 But for a decision-specific annotation, you can use:
+
 ```python
 sdk.annotate_decision(
     workflow="demo_quarantine_bgp",
@@ -262,7 +373,7 @@ sdk.annotate_decision(
 )
 ```
 
-## 7) RCA - Optional (LLM-ready)
+## 12) RCA - Optional (LLM-ready)
 
 ```python
 payload = ev.to_rca_payload()
