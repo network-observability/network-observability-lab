@@ -38,6 +38,10 @@ This workshop intentionally starts **outside Prefect** flows so you can:
 * understand what each function returns.
 
 ```bash
+# Navigate to the workshop code directory
+cd ~/network-observability-lab/chapters/webinar
+
+# Start IPython
 ipython
 ```
 
@@ -55,10 +59,63 @@ sdk = WorkshopSDK()
 
 The SDK gives you:
 
-* `WorkshopSDK` → access to Prometheus, Loki, Alertmanager, Nautobot
+* `sdk.prom` → Prometheus instant queries
+* `sdk.loki` → LogQL queries + annotations
+* `sdk.am` → Alertmanager silences
+* `sdk.nb` → Nautobot SoT (custom fields + local context)
 * `EvidenceBundle` → structured container for metrics, logs, and SoT
-* `DecisionPolicy` → explains why we act (or don’t)
+* `DecisionPolicy` → explains why we act (or don't)
 * `Decision` → represents an action taken based on policies
+
+## 3) Key workshop conventions (important)
+
+### BGP metric labels
+
+In this lab, the BGP metrics are labeled like:
+
+* `device="srl1"`
+* `peer_address="10.1.2.2"`
+* `afi_safi_name="ipv4-unicast"`
+* `name="default"` ✅ (instance_name)
+
+So when using the SDK:
+
+* use `instance_name="default"`
+* use `afi_safi="ipv4-unicast"`
+
+BGP state enum mapping (decoded meaning)
+
+The BGP admin/oper values are produced by Telegraf enum mapping:
+
+* `admin_state`: `enable=1`, `disable=2`
+* `oper_state`: `up=1`, `down=2`, `idle=3`, `connect=4`, `active=5`
+
+The SDK summary includes:
+
+* `metrics_hint` → hint derived from metrics only
+* `decoded` → human-friendly decode for admin/oper
+
+## 4) Explore SoT (Nautobot): maintenance + local config context
+
+### Fetch a device
+
+```python
+dev = sdk.nb.get_device("srl1")
+dev["name"]
+```
+
+### Read maintenance flag (custom field)
+
+```python
+sdk.nb.is_device_in_maintenance(dev)
+```
+
+### Inspect local config context
+
+```python
+ctx = dev.get("local_config_context_data") or {}
+ctx
+```
 
 ## 3) Explore the SDK interactively
 

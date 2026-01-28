@@ -36,6 +36,30 @@ except Exception:  # pragma: no cover
 # ------------------------
 
 
+ADMIN_MAP = {1: "enable", 2: "disable"}
+OPER_MAP = {1: "up", 2: "down", 3: "idle", 4: "connect", 5: "active"}
+
+
+def decode_bgp_states(metrics: dict[str, float]) -> dict[str, str]:
+    def _as_int(v: float | int | None) -> int | None:
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except Exception:
+            return None
+
+    admin_i = _as_int(metrics.get("admin_state"))
+    oper_i = _as_int(metrics.get("oper_state"))
+
+    decoded: dict[str, str] = {}
+    if admin_i is not None:
+        decoded["admin_state"] = ADMIN_MAP.get(admin_i, str(admin_i))
+    if oper_i is not None:
+        decoded["oper_state"] = OPER_MAP.get(oper_i, str(oper_i))
+    return decoded
+
+
 def now_utc() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
 
@@ -165,7 +189,8 @@ class EvidenceBundle:
     sot: dict[str, Any] = field(default_factory=dict)
 
     def summary(self) -> dict[str, Any]:
-        hint = bgp_metrics_hint(self.metrics or {}, decoded=self.sot.get("decoded"))
+        decoded = self.sot.get("decoded") or {}
+        hint = bgp_metrics_hint(self.metrics or {}, decoded=decoded)
         return {
             "device": self.device,
             "peer_address": self.peer_address,
@@ -182,7 +207,7 @@ class EvidenceBundle:
                 "site": self.sot.get("site"),
                 "role": self.sot.get("role"),
             },
-            "decoded": self.sot.get("decoded", {}),
+            "decoded": decoded,
         }
 
     def to_rca_payload(self, max_log_lines: int = 40) -> dict[str, Any]:
@@ -635,6 +660,7 @@ class WorkshopSDK:
         ev.metrics = self.bgp_metrics_snapshot(
             device=device, peer_address=peer_address, afi_safi=afi_safi, instance_name=instance_name
         )
+        ev.sot["decoded"] = decode_bgp_states(ev.metrics)
         ev.logs = self.bgp_logs(device=device, peer_address=peer_address, minutes=log_minutes, limit=log_limit)
 
         return ev
