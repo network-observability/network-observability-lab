@@ -11,6 +11,10 @@ The recommended learning path is:
 Before starting IPython or running any Prefect flows, make sure your shell is configured to talk to the already running Prefect server (for the workshop lab). Run this command in your shell:
 
 ```bash
+# Navigate to the workshop code directory
+cd ~/network-observability-lab/chapters/webinar
+
+# Set the PREFECT_API_URL to point to the local Prefect server
 prefect config set PREFECT_API_URL=http://localhost:4200/api
 ```
 
@@ -38,16 +42,15 @@ This workshop intentionally starts **outside Prefect** flows so you can:
 * understand what each function returns.
 
 ```bash
-# Navigate to the workshop code directory
-cd ~/network-observability-lab/chapters/webinar
-
-# Start IPython
 ipython
 ```
 
 ## 2) Import the SDK
 
 ```python
+from rich.pretty import install
+install()
+
 from netobs_workshop_sdk import (
     WorkshopSDK,
     EvidenceBundle,
@@ -95,7 +98,7 @@ The SDK summary includes:
 * `metrics_hint` → hint derived from metrics only
 * `decoded` → human-friendly decode for admin/oper
 
-## 4) Explore SoT (Nautobot): maintenance + local config context
+## 4) Explore SoT (Nautobot): Device + Maintenance + Config Context
 
 ### Fetch a device
 
@@ -122,7 +125,7 @@ ctx
 In part of the workshop, we will check if a BGP peer is intended in Nautobot.
 
 ```python
-gate = sdk.build_bgp_intent_gate(device="srl1", peer_address="10.1.2.2", afi_safi="ipv4-unicast")
+gate = sdk.nb.build_bgp_intent_gate(device="srl1", peer_address="10.1.2.2", afi_safi="ipv4-unicast")
 gate
 ```
 
@@ -130,13 +133,14 @@ You should see something similar to:
 
 ```python
 {
-  "found": True,
-  "maintenance": False,
-  "intended_peer": True,
-  "intended_peers": [...],
-  "expected_state": "established",
-  "site": None,
-  "role": None,
+    'found': True,
+    'maintenance': False,
+    'intended_peer': True,
+    'expected_state': 'established',
+    'session': {'peer_ip': '10.1.2.2', 'remote_as': 65102, 'expected_state': 'established', 'expected_prefixes_received': 10},
+    'device': 'srl1',
+    'site': None,
+    'role': None
 }
 ```
 
@@ -167,7 +171,7 @@ for k, q in qs.items():
 It should show the resulting metrics, for example:
 
 ```python
-admin_state => [{'metric': {'__name__': 'bgp_peer_admin_state', 'device': 'srl1', 'peer_address': '
+admin_state => [{'metric': {'__name__': 'bgp_admin_state', 'afi_safi_name': 'ipv4-unicast', 'collection_type': 'gnmi', 'device': 'srl1', 'host': 'telegraf-01', 'instance': 'telegraf-01:9004', 'job': 'telegraf', 'name': 'default', 'peer_address': '10.1.2.2'}, 'value': [1769585404.363, '1']}]
 ```
 
 ### Get Normalized BGP metrics snapshot
@@ -199,13 +203,23 @@ It is basically a parsed version of the Prometheus metrics for easier consumptio
 
 ### Fetch recent BGP logs from Loki
 
-We can also fetch recent BGP logs for the peer from Loki:
+We can also fetch recent BGP logs for the peer from , the following shows the LogQL query used:
 
 ```python
 sdk.bgp_logql(device="srl1", peer_address="10.1.2.2")
 ```
 
-Or fetch the logs looking back a certain number of minutes:
+> NOTE: If you need to generate some logs, you can flap the BGP session by disabling/enabling on the device or running the command:
+> ```bash
+> netobs utils device-interface-flap \
+>    --device srl1 \
+>    --interface ethernet-1/1 \
+>    --count 2 \
+>    --delay 2 \
+>    --platform nokia_srl
+> ```
+
+You can fetch the logs like this:
 
 ```python
 logs = sdk.bgp_logs(
@@ -259,7 +273,7 @@ Example output would be:
 
     'log_lines': 4,
 
-    'sot': {'found': True, 'maintenance': False, 'intended_peer': True, 'site': None, 'role': None},
+    'sot': {'found': True, 'maintenance': False, 'intended_peer': True, 'expected_state': 'established', 'site': None, 'role': None},
 
     'decoded': {'admin_state': 'enable', 'oper_state': 'up'}
 }
@@ -298,7 +312,7 @@ decision
 The example output would be:
 
 ```python
-Decision(ok=True, decision='proceed', reason='policy satisfied', details={})
+Decision(ok=True, decision='proceed', reason='SoT expects up; metrics not provided (collect evidence)', details={})
 ```
 
 Typical outcomes:
@@ -321,9 +335,27 @@ An example output would be:
 Decision(
   ok=False,
   decision="skip",
-  reason="metrics gate not met (expected admin_state=1 and oper_state=0)",
-  details={"admin_state": 1, "oper_state": 1}
+  reason="peer matches SoT intent (enabled + up)",
+  details={}
 )
+```
+
+### Broken peer example
+
+Try the process above with a broken peer (e.g., `srl2` and `10.1.11.1`).
+
+```python
+ev_broken = sdk.collect_bgp_evidence(
+    device="srl2",
+    peer_address="10.1.11.1",
+    afi_safi="ipv4-unicast",
+    instance_name="default",
+    log_minutes=30,
+    log_limit=50,
+)
+policy = DecisionPolicy()
+decision_broken = policy.evaluate(ev_broken.sot, ev_broken.metrics)
+decision_broken
 ```
 
 ## 10) Apply actions (Alertmanager quarantine)
