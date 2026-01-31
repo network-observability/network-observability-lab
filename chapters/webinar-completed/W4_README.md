@@ -956,82 +956,89 @@ Expected outcome:
 
 ## Diagrams
 
-1) Big Picture:: components and data flow
+### 1) Big Picture:: components and data flow
 
 ```mermaid
-flowchart LR
-  %% Sources
-  subgraph Lab["Lab topology"]
-    SRL1["SRLinux srl1"]
-    SRL2["SRLinux srl2"]
+flowchart TB
+  subgraph Lab["Workshop Lab"]
+    SRL["SRLinux devices<br/>(srl1, srl2)"]
+    TG["Telegraf<br/>(gNMI)"]
   end
 
-  %% Collection & storage
-  T["Telegraf\n(collect gNMI)"]
-  P["Prometheus\n(metrics)"]
-  AM["Alertmanager\n(routing + grouping)"]
-  WH["Webhook service\n(FastAPI)\n/ v1/api/webhook"]
-  PF["Prefect\n(alert-receiver deployment)"]
-  NB["Nautobot\n(SoT intent)"]
-  LK["Loki\n(annotations + device logs)"]
+  subgraph Telemetry["Telemetry stack"]
+    PROM["Prometheus"]
+    LOKI["Loki"]
+    AM["Alertmanager"]
+  end
 
-  %% Links
-  SRL1 --> T
-  SRL2 --> T
-  T --> P
-  P --> AM
-  AM --> WH
-  WH --> PF
+  subgraph Automation["Automation"]
+    WH["Webhook service<br/>(FastAPI)"]
+    PF["Prefect Server"]
+    DEP["Served deployment<br/>alert-receiver"]
+    QF["Subflow<br/>quarantine_bgp_flow"]
+    SDK["WorkshopSDK<br/>(Prom/Loki/AM/Nautobot)"]
+    NB["Nautobot<br/>(SoT intent)"]
+  end
 
-  %% Evidence sources during the flow
-  PF -->|query instant| P
-  PF -->|SoT gate| NB
-  PF -->|LogQL query + annotations| LK
+  SRL --> TG
+  TG --> PROM
+  TG --> LOKI
 
-  %% Action path
-  PF -->|create silence (quarantine)| AM
+  PROM --> AM
+  AM -->|webhook notify| WH
+  WH -->|run_deployment| PF
+  PF --> DEP
+  DEP --> QF
+
+  QF -->|collect evidence| SDK
+  SDK --> PROM
+  SDK --> LOKI
+  SDK --> NB
+  QF -->|policy decision| QF
+  QF -->|create silence - quarantine| AM
+  QF -->|annotate decision/action| LOKI
 ```
 
-2) Runtime workflow: what happens when an alert arrives
+### 2) Runtime workflow: what happens when an alert arrives
 
 ```mermaid
 flowchart TD
-  A["Alert fires in Prometheus\n(BgpSessionNotUp)"] --> B["Alertmanager groups + routes\n→ webhook-receiver"]
-  B --> C["Webhook service receives group\n(normalizes payload)"]
-  C --> D["Prefect deployment run:\nalert_receiver(alertname,status,alert_group)"]
+  A["Alert fires in Prometheus<br/>(BgpSessionNotUp)"] --> B["Alertmanager groups + routes<br/>→ webhook-receiver"]
+  B --> C["Webhook service receives group<br/>(normalizes payload)"]
+  C --> D["Prefect deployment run:<br/>alert_receiver(alertname,status,alert_group)"]
 
-  D --> E["Extract per-alert fields:\n(device, peer_address,\nafi_safi, instance_name)"]
-  E --> F["If status=firing\n→ quarantine_bgp_flow(...)"]
-  E --> G["If status=resolved\n→ resolved_bgp_flow(...)"]
+  D --> E["Extract per-alert fields:<br/>(device, peer_address,<br/>afi_safi, instance_name)"]
+  E --> F["If status=firing<br/>→ quarantine_bgp_flow(...)"]
+  E --> G["If status=resolved<br/>→ resolved_bgp_flow(...)"]
 
   %% quarantine path
-  F --> H["collect_bgp_evidence_task\n- SoT gate (Nautobot)\n- Metrics snapshot (Prom)\n- Logs query (Loki)\n- Decode states + hint"]
-  H --> I["evaluate_policy_task\n(two-stage decision)"]
-  I --> J["annotate_decision_task\n(write to Loki)"]
-  I -->|decision != proceed| K["Stop/Skip\n(no silence)\nreturn summary"]
-  I -->|decision == proceed| L["quarantine_task\n(create Alertmanager silence)"]
-  L --> M["annotate_action_task\n(write QUARANTINE to Loki)"]
-  M --> N["Return result\n(silence_id + summary)"]
+  F --> H["collect_bgp_evidence_task<br/>- SoT gate (Nautobot)<br/>- Metrics snapshot (Prom)<br/>- Logs query (Loki)<br/>- Decode states + hint"]
+  H --> I["evaluate_policy_task<br/>(two-stage decision)"]
+  I --> J["annotate_decision_task<br/>(write to Loki)"]
+  I -->|decision != proceed| K["Stop/Skip<br/>(no silence)<br/>return summary"]
+  I -->|decision == proceed| L["quarantine_task<br/>(create Alertmanager silence)"]
+  L --> M["annotate_action_task<br/>(write QUARANTINE to Loki)"]
+  M --> N["Return result<br/>(silence_id + summary)"]
 
   %% resolved path
-  G --> R["annotate_decision_task\n(decision='resolved')"]
+  G --> R["annotate_decision_task<br/>(decision='resolved')"]
 ```
 
-3) Decision policy: why we proceed vs skip vs stop
+### 3) Decision policy: why we proceed vs skip vs stop
 
 ```mermaid
 flowchart TD
   S["Start: DecisionPolicy.evaluate()"] --> S1{"SoT found device?"}
-  S1 -- "no" --> STOP["STOP\n(device not found)"]
+  S1 -- "no" --> STOP["STOP<br/>(device not found)"]
   S1 -- "yes" --> S2{"Maintenance?"}
-  S2 -- "yes" --> SKIP1["SKIP\n(device under maintenance)"]
+  S2 -- "yes" --> SKIP1["SKIP<br/>(device under maintenance)"]
   S2 -- "no" --> S3{"Peer intended in SoT?"}
-  S3 -- "no" --> SKIP2["SKIP\n(peer not intended)"]
+  S3 -- "no" --> SKIP2["SKIP<br/>(peer not intended)"]
   S3 -- "yes" --> S4{"SoT expects DOWN/disabled?"}
-  S4 -- "yes" --> SKIP3["SKIP\n(expected down)"]
+  S4 -- "yes" --> SKIP3["SKIP<br/>(expected down)"]
   S4 -- "no (expects UP)" --> S5{"Do we have metrics?"}
-  S5 -- "no" --> PROCEED1["PROCEED\n(collect evidence)"]
-  S5 -- "yes" --> S6{"admin_state==enable\nAND oper_state==up?"}
-  S6 -- "yes" --> SKIP4["SKIP\n(healthy vs intent)"]
-  S6 -- "no" --> PROCEED2["PROCEED\n(mismatch: investigate/quarantine)"]
+  S5 -- "no" --> PROCEED1["PROCEED<br/>(collect evidence)"]
+  S5 -- "yes" --> S6{"admin_state==enable<br/>AND oper_state==up?"}
+  S6 -- "yes" --> SKIP4["SKIP<br/>(healthy vs intent)"]
+  S6 -- "no" --> PROCEED2["PROCEED<br/>(mismatch: investigate/quarantine)"]
 ```
