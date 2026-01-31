@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from netobs_workshop_sdk import Decision, DecisionPolicy, EvidenceBundle, WorkshopSDK
 from prefect import flow, tags, task
@@ -82,7 +82,7 @@ def collect_bgp_evidence_task(
 
 
 @task(log_prints=True, task_run_name="evaluate_policy[{device}:{peer_address}]")
-def evaluate_policy_task(ev: EvidenceBundle) -> Decision:
+def evaluate_policy_task(device: str, peer_address: str, ev: EvidenceBundle) -> Decision:
     """
     Uses your DecisionPolicy exactly:
       - SoT only => stop/skip/proceed
@@ -91,6 +91,7 @@ def evaluate_policy_task(ev: EvidenceBundle) -> Decision:
     logger = get_run_logger()
 
     print("🧠 [policy] Evaluating decision policy (two-stage)")
+    print(f"   - device={device} peer_address={peer_address}")
     print("   - Stage 1: SoT-only gate (maintenance / intended / expected_state)")
 
     policy = DecisionPolicy()
@@ -190,7 +191,7 @@ def quarantine_bgp_flow(
     log_minutes: int = 30,
     log_limit: int = 50,
     quarantine_minutes: int = 20,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Demo flow:
       evidence -> decision -> (maybe quarantine) -> annotations
@@ -222,7 +223,11 @@ def quarantine_bgp_flow(
         summary = ev.summary()
         logger.info("Evidence summary: %s", summary)
 
-        decision = evaluate_policy_task(ev)
+        decision = evaluate_policy_task(
+            device=device,
+            peer_address=peer_address,
+            ev=ev,
+        )
 
         annotate_decision_task(
             workflow="demo_quarantine_bgp",
@@ -308,7 +313,7 @@ def resolved_bgp_flow(
 # -------------------------------------------------------------------
 # Alert receiver (Alertmanager webhook payload -> flow fan-out)
 # -------------------------------------------------------------------
-def _extract_bgp_fields(labels: Dict[str, str]) -> Dict[str, str]:
+def _extract_bgp_fields(labels: dict[str, str]) -> dict[str, str]:
     device = labels.get("device") or labels.get("hostname") or ""
     peer_address = labels.get("peer_address") or labels.get("peer") or labels.get("neighbor") or ""
     afi_safi = labels.get("afi_safi_name") or labels.get("afi_safi") or "ipv4-unicast"
@@ -322,8 +327,11 @@ def _extract_bgp_fields(labels: Dict[str, str]) -> Dict[str, str]:
 
 
 @flow(log_prints=True, flow_run_name="alert_receiver | {alertname}:{status}")
-def alert_receiver(alert_group: Dict[str, Any]) -> None:
+# @flow(log_prints=True, flow_run_name="alert_receiver")
+# def alert_receiver(alert_group: dict[str, Any]) -> None:
+def alert_receiver(alertname: str, status: str, alert_group: dict[str, Any]) -> None:
     logger = get_run_logger()
+    print(f"🏁 [receiver] Starting alert_receiver flow: alertname={alertname} status={status}")
 
     status = alert_group.get("status", "unknown")
     group_labels = alert_group.get("groupLabels") or {}

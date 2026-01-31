@@ -7,6 +7,22 @@ import fastapi
 import uvicorn
 from app import config
 from app import api
+import os
+from urllib.parse import urlparse
+
+PREFECT_API_URL = os.getenv("PREFECT_API_URL") or os.getenv("PREFECT_URL", "")
+
+if not PREFECT_API_URL:
+    raise RuntimeError("Missing PREFECT_API_URL (or PREFECT_URL).")
+
+u = urlparse(PREFECT_API_URL)
+if u.scheme not in ("http", "https") or not u.netloc:
+    raise RuntimeError(f"PREFECT_API_URL is not a valid URL: {PREFECT_API_URL}")
+
+# OPTIONAL: if you want to keep a cloud-only validation, guard it:
+if "api.prefect.cloud" in u.netloc:
+    # enforce cloud format here if you really want
+    pass
 
 
 dictConfig(config.LogConfig().dict())

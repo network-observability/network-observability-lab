@@ -5,8 +5,7 @@ global:
 
 route:
   receiver: 'default'
-  # Group per link so ceos-01/Eth2 and ceos-02/Eth2 become separate groups
-  group_by: ['alertname', 'device', 'interface']
+  group_by: ['alertname', 'device', 'peer_address']
   # Collect any quick duplicates for 5s, then send one batch
   group_wait: 5s
   # After the first notify for a group, wait at least 2m before sending another
@@ -19,8 +18,14 @@ route:
   routes:
     - receiver: 'webhook-receiver'
       matchers:
+        - alertname = BgpSessionNotUp
+      continue: true
+
+    - receiver: 'webhook-receiver'
+      matchers:
         - alertname = PeerInterfaceFlapping
-      continue: true           # Continue to the next route if this route is matched
+      continue: true
+
     - receiver: 'keep'
       matchers:
         - severity =~ "critical|warning"

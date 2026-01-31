@@ -770,3 +770,184 @@ payload.keys()
 This payload is a compact, correlated snapshot of intent, metrics, and logs for the BGP peer.
 
 Because the data is already normalized and scoped, it can be consumed directly by a Prefect task, a human operator, or an LLM-based RCA step.
+
+---
+
+## Running the full Prefect flow
+
+Once you are comfortable with the individual SDK steps, run the **end-to-end Prefect flow** that automates everything.
+
+```bash
+# Navigate to the workshop code directory
+cd ~/network-observability-lab/chapters/webinar-completed
+
+# Start the served deployment (the flow will wait for alert payloads)
+python student_flow.py
+```
+
+This serves the `alert-receiver` deployment and waits for alert payloads. When an alert arrives, the workflow:
+
+- parses the Alertmanager payload,
+- extracts the `device` + `peer_address`,
+- collects evidence (SoT + metrics + logs),
+- evaluates the decision policy,
+- applies quarantine (Alertmanager silence) when actionable,
+- annotates decisions/actions to Loki for an audit trail.
+
+> NOTE: The flow is designed to be safe to run repeatedly. If you trigger the same alert multiple times, it should behave predictably (and quarantines are short-lived silences).
+
+## Testing the workflow manually
+
+With `student_flow.py` still running, trigger workflow runs by manually calling the Prefect deployment.
+
+All examples below assume:
+
+- `alertname = BgpSessionNotUp`
+- labels include `device`, `peer_address`, `afi_safi_name`, and `name`
+
+### 1) Actionable quarantine alert
+
+This should result in a quarantine silence being created for the `device` + `peer_address`.
+
+```bash
+prefect deployment run 'alert-receiver/alert-receiver' \
+  --param alertname='BgpSessionNotUp' \
+  --param status='firing' \
+  --param alert_group='{
+    "status":"firing",
+    "groupLabels":{"alertname":"BgpSessionNotUp"},
+    "alerts":[{
+      "labels":{
+        "alertname":"BgpSessionNotUp",
+        "device":"srl2",
+        "peer_address":"10.1.11.1",
+        "afi_safi_name":"ipv4-unicast",
+        "name":"default"
+      },
+      "annotations":{"summary":"expect QUARANTINE (mismatch demo)"}
+    }]
+  }'
+```
+
+Verify:
+
+- **Alertmanager → Silences**: a silence exists matching `alertname/device/peer_address`
+- **Grafana → Loki**: annotations exist for the decision + quarantine action
+
+### 2) Skip because peer is healthy (SoT expects UP and metrics show admin=enable + oper=up)
+
+Pick one of the good peers (likely `10.1.2.1` or `10.1.7.1` from `srl2`).
+
+```bash
+prefect deployment run 'alert-receiver/alert-receiver' \
+  --param alertname='BgpSessionNotUp' \
+  --param status='firing' \
+  --param alert_group='{
+    "status":"firing",
+    "groupLabels":{"alertname":"BgpSessionNotUp"},
+    "alerts":[{
+      "labels":{
+        "alertname":"BgpSessionNotUp",
+        "device":"srl2",
+        "peer_address":"10.1.2.1",
+        "afi_safi_name":"ipv4-unicast",
+        "name":"default"
+      },
+      "annotations":{"summary":"expect SKIP (peer is healthy)"}
+    }]
+  }'
+```
+
+Expected outcome in logs:
+
+- policy stage 2 returns `skip` with reason like “peer matches SoT intent (enabled + up)”
+- it still writes the decision annotation to Loki
+- it does not create a silence
+
+### 3) Skip because peer is not intended in SoT
+
+Use a peer IP that won’t exist in your Nautobot intent list:
+
+```bash
+prefect deployment run 'alert-receiver/alert-receiver' \
+  --param alertname='BgpSessionNotUp' \
+  --param status='firing' \
+  --param alert_group='{
+    "status":"firing",
+    "groupLabels":{"alertname":"BgpSessionNotUp"},
+    "alerts":[{
+      "labels":{
+        "alertname":"BgpSessionNotUp",
+        "device":"srl2",
+        "peer_address":"10.255.255.254",
+        "afi_safi_name":"ipv4-unicast",
+        "name":"default"
+      },
+      "annotations":{"summary":"expect SKIP (peer not intended in SoT)"}
+    }]
+  }'
+```
+
+Expected outcome:
+
+- decision is `skip` at the SoT gate stage
+- no silence is created
+- decision annotation is still written to Loki
+
+### 4) Stop because device not found in SoT
+
+Use a fake device name:
+
+```bash
+prefect deployment run 'alert-receiver/alert-receiver' \
+  --param alertname='BgpSessionNotUp' \
+  --param status='firing' \
+  --param alert_group='{
+    "status":"firing",
+    "groupLabels":{"alertname":"BgpSessionNotUp"},
+    "alerts":[{
+      "labels":{
+        "alertname":"BgpSessionNotUp",
+        "device":"does-not-exist",
+        "peer_address":"10.1.11.1",
+        "afi_safi_name":"ipv4-unicast",
+        "name":"default"
+      },
+      "annotations":{"summary":"expect STOP (device not found)"}
+    }]
+  }'
+```
+
+Expected outcome:
+
+- decision is `stop`
+- no silence is created
+- decision annotation is written to Loki
+
+### 5) Resolved path (should call `resolved_bgp_flow` and annotate “resolved”)
+
+```bash
+prefect deployment run 'alert-receiver/alert-receiver' \
+  --param alertname='BgpSessionNotUp' \
+  --param status='resolved' \
+  --param alert_group='{
+    "status":"resolved",
+    "groupLabels":{"alertname":"BgpSessionNotUp"},
+    "alerts":[{
+      "labels":{
+        "alertname":"BgpSessionNotUp",
+        "device":"srl2",
+        "peer_address":"10.1.11.1",
+        "afi_safi_name":"ipv4-unicast",
+        "name":"default"
+      },
+      "annotations":{"summary":"resolved test"}
+    }]
+  }'
+```
+
+Expected outcome:
+
+- `resolved_bgp_flow` runs
+- a “resolved” decision annotation appears in Loki
+- no silence is created

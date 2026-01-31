@@ -48,23 +48,27 @@ def process_webhook(alert_group: AlertmanagerAlertGroup):
         alertname = alert_group.groupLabels.get("alertname", "unknown")
 
         pairs = {
-            (a.labels.get("device"), a.labels.get("interface"))
+            (a.labels.get("device"), a.labels.get("peer_address"))
             for a in alert_group.alerts
         }
-        pairs = {(d, i) for (d, i) in pairs if d and i}
+        pairs = {(d, p) for (d, p) in pairs if d and p}
         log.info(
             f"Processinginin {len(pairs)} device/interface pairs for alert '{alertname}' with status '{status}'"
         )
 
-        for device, interface in pairs:
-            flow_run_name = f"alert | {alertname}:{status} | {device}:{interface}"
+        for device, peer_address in pairs:
+            flow_run_name = f"alert | {alertname}:{status} | {device}:{peer_address}"
 
             log.info(f"Submitting Prefect run for {flow_run_name}")
 
             _ = run_deployment(
                 name="alert-receiver/alert-receiver",
-                parameters={"alert_group": alert_group.model_dump(mode="json")},
-                flow_run_name=f"alert | {alertname}:{status} | {device}:{interface}",
+                parameters={
+                    "alertname": alertname,
+                    "status": status,
+                    "alert_group": alert_group.model_dump(mode="json"),
+                },
+                flow_run_name=f"alert | {alertname}:{status} | {device}:{peer_address}",
                 timeout=10,
             )
 
