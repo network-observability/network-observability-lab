@@ -951,3 +951,87 @@ Expected outcome:
 - `resolved_bgp_flow` runs
 - a “resolved” decision annotation appears in Loki
 - no silence is created
+
+---
+
+## Diagrams
+
+1) Big Picture:: components and data flow
+
+```mermaid
+flowchart LR
+  %% Sources
+  subgraph Lab["Lab topology"]
+    SRL1["SRLinux srl1"]
+    SRL2["SRLinux srl2"]
+  end
+
+  %% Collection & storage
+  T["Telegraf\n(collect gNMI)"]
+  P["Prometheus\n(metrics)"]
+  AM["Alertmanager\n(routing + grouping)"]
+  WH["Webhook service\n(FastAPI)\n/ v1/api/webhook"]
+  PF["Prefect\n(alert-receiver deployment)"]
+  NB["Nautobot\n(SoT intent)"]
+  LK["Loki\n(annotations + device logs)"]
+
+  %% Links
+  SRL1 --> T
+  SRL2 --> T
+  T --> P
+  P --> AM
+  AM --> WH
+  WH --> PF
+
+  %% Evidence sources during the flow
+  PF -->|query instant| P
+  PF -->|SoT gate| NB
+  PF -->|LogQL query + annotations| LK
+
+  %% Action path
+  PF -->|create silence (quarantine)| AM
+```
+
+2) Runtime workflow: what happens when an alert arrives
+
+```mermaid
+flowchart TD
+  A["Alert fires in Prometheus\n(BgpSessionNotUp)"] --> B["Alertmanager groups + routes\n→ webhook-receiver"]
+  B --> C["Webhook service receives group\n(normalizes payload)"]
+  C --> D["Prefect deployment run:\nalert_receiver(alertname,status,alert_group)"]
+
+  D --> E["Extract per-alert fields:\n(device, peer_address,\nafi_safi, instance_name)"]
+  E --> F["If status=firing\n→ quarantine_bgp_flow(...)"]
+  E --> G["If status=resolved\n→ resolved_bgp_flow(...)"]
+
+  %% quarantine path
+  F --> H["collect_bgp_evidence_task\n- SoT gate (Nautobot)\n- Metrics snapshot (Prom)\n- Logs query (Loki)\n- Decode states + hint"]
+  H --> I["evaluate_policy_task\n(two-stage decision)"]
+  I --> J["annotate_decision_task\n(write to Loki)"]
+  I -->|decision != proceed| K["Stop/Skip\n(no silence)\nreturn summary"]
+  I -->|decision == proceed| L["quarantine_task\n(create Alertmanager silence)"]
+  L --> M["annotate_action_task\n(write QUARANTINE to Loki)"]
+  M --> N["Return result\n(silence_id + summary)"]
+
+  %% resolved path
+  G --> R["annotate_decision_task\n(decision='resolved')"]
+```
+
+3) Decision policy: why we proceed vs skip vs stop
+
+```mermaid
+flowchart TD
+  S["Start: DecisionPolicy.evaluate()"] --> S1{"SoT found device?"}
+  S1 -- "no" --> STOP["STOP\n(device not found)"]
+  S1 -- "yes" --> S2{"Maintenance?"}
+  S2 -- "yes" --> SKIP1["SKIP\n(device under maintenance)"]
+  S2 -- "no" --> S3{"Peer intended in SoT?"}
+  S3 -- "no" --> SKIP2["SKIP\n(peer not intended)"]
+  S3 -- "yes" --> S4{"SoT expects DOWN/disabled?"}
+  S4 -- "yes" --> SKIP3["SKIP\n(expected down)"]
+  S4 -- "no (expects UP)" --> S5{"Do we have metrics?"}
+  S5 -- "no" --> PROCEED1["PROCEED\n(collect evidence)"]
+  S5 -- "yes" --> S6{"admin_state==enable\nAND oper_state==up?"}
+  S6 -- "yes" --> SKIP4["SKIP\n(healthy vs intent)"]
+  S6 -- "no" --> PROCEED2["PROCEED\n(mismatch: investigate/quarantine)"]
+```
