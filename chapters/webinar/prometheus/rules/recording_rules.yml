@@ -1,0 +1,16 @@
+---
+groups:
+  - name: network_traffic_overview
+    rules:
+    - record: device:network_traffic_in_bps:rate_2m
+      expr: sum(rate(interface_in_octets[2m])) by (device) * 8
+    - record: device:network_traffic_out_bps:rate_2m
+      expr: sum(rate(interface_out_octets[2m])) by (device) * 8
+
+  # Example of a recording rule derived from a Loki recording rule generated metric metric'
+  # and a Prometheus metric that is always 0 to ensure there is a metric for every device
+  # when the Loki recording rule does not generate any metrics.
+  - name: interface_updown_events
+    rules:
+    - record: device:interface_updown_rate:2m
+      expr: events:interface_updown_rate:2m or (sum by (device) (interface_admin_status) * 0)

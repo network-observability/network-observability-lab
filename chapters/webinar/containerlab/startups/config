@@ -1,0 +1,49 @@
+set /system aaa authorization role netobs superuser true
+set /system aaa authentication user netobs password netobs123
+set /system aaa authentication user netobs role [netobs]
+set /system aaa authorization role netobs services [gnmi]
+set /system snmp access-group ro security-level no-auth-no-priv
+set /system snmp access-group ro community-entry public_ro community public
+set /system snmp network-instance mgmt admin-state enable
+
+set /system logging network-instance mgmt
+set /system logging remote-server 198.51.100.15 transport udp
+set /system logging remote-server 198.51.100.15 remote-port 1515
+set /system logging remote-server 198.51.100.15 subsystem aaa priority match-above debug
+set /system logging remote-server 198.51.100.15 subsystem accounting priority match-above debug
+set /system logging remote-server 198.51.100.15 subsystem acl priority match-above debug
+set /system logging remote-server 198.51.100.15 subsystem bgp priority match-above debug
+set /system logging remote-server 198.51.100.15 subsystem chassis priority match-above debug
+set /system logging remote-server 198.51.100.15 subsystem debug priority match-above debug
+set /system logging remote-server 198.51.100.15 subsystem gnmi priority match-above debug
+set /system logging remote-server 198.51.100.15 subsystem log priority match-above debug
+set /system logging remote-server 198.51.100.15 subsystem mgmt priority match-above debug
+set /system logging remote-server 198.51.100.15 subsystem platform priority match-above debug
+set /system logging remote-server 198.51.100.15 subsystem sync priority match-above debug
+
+
+set /network-instance default type default
+set /interface ethernet-1/1 admin-state enable
+set /interface ethernet-1/1 subinterface 0 admin-state enable
+set /interface ethernet-1/1 subinterface 0 ipv4 address 10.1.2.1/24
+set /interface ethernet-1/1 subinterface 0 ipv4 admin-state enable
+set /network-instance default interface ethernet-1/1.0
+
+Default credentials1: admin:NokiaSrl1!
+
+
+Get the config from startup
+"save startup"
+$ containerlab exec -t ./chapters/webinar-completed/containerlab/lab.yml srl1 --cmd "cat /etc/opt/srlinux/config.json" \
+  > startup-config-srl1.json 2>&1
+  https://learn.srlinux.dev/blog/2023/sr-linux-logging-with-elk/
+
+$ tcpdump -vAnni any dst 198.51.100.1 and tcp port 1515
+$ tcpdump -nni any host 198.51.100.1 and udp port 1515
+
+$ ip -br addr | grep '198.51.100.1'
+br-3135c466e691  UP             198.51.100.1/24 fe80::76:9eff:fe68:a4f3/64 
+$ tcpdump -nni br-3135c466e691 host 198.51.100.2 and tcp port
+ 1515
+$ nsenter --net=/var/run/docker/netns/9be0fdf2a51b \
+  tcpdump -nni any host 198.51.100.1 and tcp port 1515

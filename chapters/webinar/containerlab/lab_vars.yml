@@ -1,0 +1,108 @@
+# Lab variables file used to populate Nautobot
+---
+prefixes:
+  - prefix: "10.1.2.0/24"
+    name: "lab-link-1"
+  - prefix: "10.1.7.0/24"
+    name: "lab-link-2"
+  - prefix: "10.1.11.0/24"
+    name: "lab-link-broken"
+  - prefix: "10.17.17.0/24"
+    name: "lab-router-ids"
+  - prefix: "10.111.0.0/24"
+    name: "lab-srl1-advertised"
+  - prefix: "10.222.0.0/24"
+    name: "lab-srl2-advertised"
+  - prefix: "10.1.99.0/24"
+    name: "lab-link-broken-mismatch"
+
+nodes:
+  srl1:
+    asn: 65101
+    interfaces:
+      - name: ethernet-1/1
+        ipv4: 10.1.2.1/24
+        role: peer
+      - name: ethernet-1/10
+        ipv4: 10.1.7.1/24
+        role: peer
+      - name: ethernet-1/11
+        ipv4: 10.1.11.1/24
+        role: peer
+        expected_state: down   # intentionally broken BGP
+      - name: lo0
+        ipv4:
+          - 10.17.17.1/32
+          - 10.111.0.1/32
+          - 10.111.0.2/32
+          - 10.111.0.3/32
+          - 10.111.0.4/32
+          - 10.111.0.5/32
+          - 10.111.0.6/32
+          - 10.111.0.7/32
+          - 10.111.0.8/32
+          - 10.111.0.9/32
+          - 10.111.0.10/32
+        role: loopback
+
+  srl2:
+    asn: 65102
+    interfaces:
+      - name: ethernet-1/1
+        ipv4: 10.1.2.2/24
+        role: peer
+      - name: ethernet-1/10
+        ipv4: 10.1.7.2/24
+        role: peer
+      - name: ethernet-1/11
+        ipv4: 10.1.99.2/24
+        role: peer
+        expected_state: down   # intentionally broken BGP
+      - name: lo0
+        ipv4:
+          - 10.17.17.2/32
+          - 10.222.0.1/32
+          - 10.222.0.2/32
+          - 10.222.0.3/32
+          - 10.222.0.4/32
+          - 10.222.0.5/32
+          - 10.222.0.6/32
+          - 10.222.0.7/32
+          - 10.222.0.8/32
+          - 10.222.0.9/32
+          - 10.222.0.10/32
+        role: loopback
+
+# ------------------------
+# Observability intent / config context
+# ------------------------
+observability_intent:
+  bgp:
+    afi_safi: ipv4-unicast
+    intended_peers:
+      srl1:
+        - peer_ip: 10.1.2.2
+          remote_as: 65102
+          expected_state: established
+          expected_prefixes_received: 10
+        - peer_ip: 10.1.7.2
+          remote_as: 65102
+          expected_state: established
+          expected_prefixes_received: 10
+        - peer_ip: 10.1.99.2
+          remote_as: 65102
+          expected_state: established
+          reason: "ip-mismatch-demo"
+      srl2:
+        - peer_ip: 10.1.2.1
+          remote_as: 65101
+          expected_state: established
+          expected_prefixes_received: 10
+        - peer_ip: 10.1.7.1
+          remote_as: 65101
+          expected_state: established
+          expected_prefixes_received: 10
+        - peer_ip: 10.1.11.1
+          remote_as: 65101
+          expected_state: established
+          reason: "ip-mismatch-demo"

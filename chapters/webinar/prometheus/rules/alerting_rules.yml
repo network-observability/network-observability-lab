@@ -1,0 +1,42 @@
+groups:
+- name: interface_intent_mismatch
+  rules:
+  - alert: InterfaceAdminUpOperDown
+    expr: |
+      count by (device, name) (
+        (interface_admin_state{intf_role="peer"} == 1)
+        and on (device, name)
+        (interface_oper_state{intf_role="peer"} == 2)
+      ) > 0
+    for: 2m
+    labels:
+      severity: warning
+      category: network
+    annotations:
+      summary: "Interface intent mismatch detected"
+      description: |
+        Interface {{ $labels.name }} on device {{ $labels.device }}
+        is configured as UP (admin state) but is currently DOWN (oper state).
+
+        This usually indicates a cabling, peer, or physical-layer issue.
+
+- name: workshop-bgp
+  rules:
+    - alert: BgpSessionNotUp
+      expr: |
+        (
+          bgp_admin_state{afi_safi_name="ipv4-unicast", name="default"} == 1
+        )
+        and on (device, peer_address, afi_safi_name, name)
+        (
+          bgp_oper_state{afi_safi_name="ipv4-unicast", name="default"} != 1
+        )
+      for: 30s
+      labels:
+        severity: warning
+        workshop: "mno"
+      annotations:
+        summary: "BGP session not UP ({{ $labels.device }} ↔ {{ $labels.peer_address }})"
+        description: |
+          admin_state=enable (1) but oper_state is not up (1).
+          afi_safi_name={{ $labels.afi_safi_name }}, instance={{ $labels.name }}.
