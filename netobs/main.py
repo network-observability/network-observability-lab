@@ -196,6 +196,19 @@ class NautobotClient:
         return _response.json()
 
 
+def srl_apply(device_conn: netmiko.BaseConnection, commands: list[str]) -> str:
+    """
+    Apply SR Linux commands reliably.
+    Uses timing-based reads to avoid prompt/echo mismatches with netmiko's config_mode().
+    """
+    output = ""
+    for cmd in commands:
+        output += device_conn.send_command_timing(cmd, strip_prompt=False, strip_command=False)
+        # tiny pause helps SRL render/flush output
+        time.sleep(0.1)
+    return output
+
+
 def strtobool(val: str) -> bool:
     """Convert a string representation of truth to true (1) or false (0).
 
@@ -1529,13 +1542,11 @@ def utils_device_interface_flap(
         ),
     ] = PlatformType.ARISTA_EOS,
 ):
-    """Flap a network device interface. Defaults to EOS; specify --platform nokia_srl for SR Linux."""
     console.log(
-        f"Flapping interface: [orange1 i]{interface} on device: {device} (platform={platform})",
+        f"Flapping interface: [orange1 i]{interface} on device: {device} (platform={platform.value})",
         style="info",
     )
 
-    # Hardcoded creds (per your request)
     if platform == PlatformType.NOKIA_SRL:
         username = "admin"
         password = "NokiaSrl1!"
@@ -1550,16 +1561,13 @@ def utils_device_interface_flap(
             host=device,
             username=username,
             password=password,
+            fast_cli=False,      # SRL tends to behave better with this
         )
 
-        # EOS has enable + config mode; SRL uses candidate/commit workflow
-        if platform == "arista_eos":
-            device_conn.enable()
-            device_conn.config_mode()
-
         for i in range(count):
-            if platform == "arista_eos":
+            if platform == PlatformType.ARISTA_EOS:
                 console.log(f"[{i+1}/{count}] Bringing interface down (EOS)...", style="info")
+                device_conn.enable()
                 device_conn.send_config_set([f"interface {interface}", "shutdown"])
                 time.sleep(delay)
 
@@ -1567,35 +1575,39 @@ def utils_device_interface_flap(
                 device_conn.send_config_set([f"interface {interface}", "no shutdown"])
                 time.sleep(delay)
 
-            else:  # nokia_srl
+            else:
+                # SRL: do NOT use send_config_set() (it tries "enter candidate private")
                 console.log(f"[{i+1}/{count}] Bringing interface down (SRL)...", style="info")
-                device_conn.send_config_set(
+                srl_apply(
+                    device_conn,
                     [
                         "enter candidate",
-                        f"set interface {interface} admin-state disable",
+                        f"set /interface {interface} admin-state disable",
                         "commit save",
-                    ]
+                    ],
                 )
                 time.sleep(delay)
 
                 console.log(f"[{i+1}/{count}] Bringing interface up (SRL)...", style="info")
-                device_conn.send_config_set(
+                srl_apply(
+                    device_conn,
                     [
                         "enter candidate",
-                        f"set interface {interface} admin-state enable",
+                        f"set /interface {interface} admin-state enable",
                         "commit save",
-                    ]
+                    ],
                 )
                 time.sleep(delay)
 
         console.log(
-            f"Flapped interface: [orange1 i]{interface} on device: {device} (platform={platform})",
+            f"Flapped interface: [orange1 i]{interface} on device: {device} (platform={platform.value})",
             style="info",
         )
 
     finally:
         if device_conn:
             device_conn.disconnect()
+
 
 
 @utils_app.command("load-prefect-secrets", rich_help_panel="Prefect")
