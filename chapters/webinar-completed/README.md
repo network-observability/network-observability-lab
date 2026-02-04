@@ -25,13 +25,12 @@ $ cp example.env .env
 ```
 (.venv)$ netobs lab deploy \
     --scenario webinar \
-    --topology ./chapters/webinar/containerlab/lab.yml \
-    --vars-topology ./chapters/webinar/containerlab/lab_vars.yml
+    --topology ./chapters/webinar/containerlab/lab.yml
 ```
 
 ### Digital Ocean Linux VM
 
-1.Create a Digital Ocean account: https://www.digitalocean.com/try/free-trial-offer 
+1.Create a Digital Ocean account: https://www.digitalocean.com/try/free-trial-offer
 2. Fork (in GitHub) and Clone the Git Repository
 ```
 $ git clone https://github.com/<your-user>/network-observability-lab.git
@@ -58,8 +57,8 @@ NETOBS_REPO="https://github.com/<your-username>/network-observability-lab.git"
 (.venv)$ netobs setup deploy --scenario webinar \
   --topology ./chapters/webinar/containerlab/lab.yml \
   --vars-topology ./chapters/webinar/containerlab/lab_vars.yml
-[17:15:12] Running command: ansible-playbook setup/create_droplet.yml -i setup/inventory/localhost.yaml             
-Enter the droplet image [ubuntu-22-04-x64]: 
+[17:15:12] Running command: ansible-playbook setup/create_droplet.yml -i setup/inventory/localhost.yaml
+Enter the droplet image [ubuntu-22-04-x64]:
 Enter the droplet size [s-8vcpu-16gb]: s-4vcpu-8gb
 Enter the droplet region [fra1]:
 PLAY [Stand up netobs-droplet] ****************************************************************************
