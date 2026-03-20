@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "netobs"
 version = "0.0.17"
 description = "Utilities and Management Tools for Network Observability Book"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -19,15 +19,14 @@ dependencies = [
     'netmiko==4.6.0',
     'prometheus-api-client>=0.5.5',
     'prefect>=3.2.9',
-    'ansible>=10.1.0',
     'openai==2.6.1',
-    'ipython>=9.9.0',
     'rich>=14.3.1',
 ]
 dynamic = ["readme"]
 
 [project.optional-dependencies]
 dev = ["black", "flake8", "ruff", "pydocstyle"]
+setup = ["ansible>=10.1.0"]
 
 [tool.setuptools]
 packages = ["netobs"]

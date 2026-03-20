@@ -1,0 +1,49 @@
+---
+# Bootstrap the local Linux machine for the network-observability-lab.
+# For DigitalOcean remote deployment, use: netobs setup deploy
+#
+# Usage:
+#   ansible-playbook setup/setup_linux.yml
+#
+# Optional variables:
+#   -e lab_scenario=<name>               (default: batteries-included)
+#   -e lab_topology_file=<path>          (default: ./containerlab/lab.yml)
+#   -e lab_vars_file=<path>              (default: ./containerlab/lab_vars.yml)
+#   CEOS_IMAGE_PATH env var              Path to cEOS .tar file (optional)
+
+#### Bootstrap local machine
+- name: Bootstrap local Linux machine
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: true
+  vars:
+    lab_scenario: "{{ lookup('ansible.builtin.env', 'LAB_SCENARIO', default='batteries-included') }}"
+  tasks:
+    - name: Bootstrap system
+      ansible.builtin.import_tasks: tasks/bootstrap.yml
+
+    - name: Create .env from example.env if not present
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../example.env"
+        dest: "{{ playbook_dir }}/../.env"
+        force: false
+        mode: "0644"
+
+#### Deploy netobs app on local machine
+- name: Deploy netobs app on local Linux machine
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: true
+  vars:
+    ansible_python_interpreter: "{{ ansible_env.HOME }}/miniconda/bin/python"
+    netobs_repo_dir: "{{ playbook_dir }}/.."
+    lab_scenario: "{{ lookup('ansible.builtin.env', 'LAB_SCENARIO', default='batteries-included') }}"
+    lab_topology_file: "{{ playbook_dir }}/../containerlab/lab.yml"
+    lab_vars_file: "{{ playbook_dir }}/../containerlab/lab_vars.yml"
+  environment:
+    PATH: "{{ ansible_env.HOME }}/miniconda/bin:{{ ansible_env.HOME }}/.local/bin:{{ ansible_env.PATH }}"
+  tasks:
+    - name: Deploy netobs app
+      ansible.builtin.import_tasks: tasks/deploy.yml

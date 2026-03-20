@@ -28,7 +28,7 @@ This guide uses DigitalOcean as the cloud provider, and it's important to note t
 
 ### 1. Create a Digital Ocean account
 
-Go to their website and create an account if you don't have one already. You can use this [link](https://www.digitalocean.com/try/free-trial-offer) for a free trial offer.
+Go to their website and create an account if you don't have one already. New accounts receive **$200 in free credits valid for 60 days** — sign up via the [free trial page](https://try.digitalocean.com/freetrialoffer/).
 
 ### 2. Fork and Clone the Git Repository
 

@@ -1,0 +1,131 @@
+---
+# Shared bootstrap tasks: system dependencies, Docker, Miniconda, /etc/hosts,
+# Containerlab, and cEOS image import.
+#
+# Expected variables (set at the play level):
+#   lab_scenario       - scenario name (e.g. "batteries-included")
+#   CEOS_IMAGE_PATH    - (optional) local path to a cEOS .tar file to import
+
+- name: Install or upgrade aptitude
+  ansible.builtin.apt:
+    name: aptitude
+    state: latest
+  tags:
+    - skip_ansible_lint
+
+- name: Install or upgrade system dependencies
+  ansible.builtin.apt:
+    pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+      - python3-pip
+      - virtualenv
+      - python3-setuptools
+      - apache2-utils
+      - git
+    state: latest
+  tags:
+    - skip_ansible_lint
+  retries: 3
+  delay: 10
+  register: apt_install
+  until: apt_install is succeeded
+
+- name: Download Docker
+  ansible.builtin.get_url:
+    url: https://get.docker.com
+    dest: /tmp/get-docker.sh
+    mode: "0755"
+
+- name: Install Docker
+  ansible.builtin.command: bash -c /tmp/get-docker.sh
+  register: docker_install
+  retries: 3
+  delay: 10
+  changed_when: docker_install.rc != 0
+
+- name: Install Python docker package
+  ansible.builtin.pip:
+    name:
+      - docker
+    state: latest
+  tags:
+    - skip_ansible_lint
+
+- name: Download Miniconda python environment
+  ansible.builtin.get_url:
+    # NOTE: Pinned to a specific Miniconda release for reproducibility
+    # url: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    url: https://repo.anaconda.com/miniconda/Miniconda3-py312_25.3.1-1-Linux-x86_64.sh
+    dest: /tmp/install-miniconda.sh
+    mode: "0550"
+
+- name: Install Miniconda
+  ansible.builtin.shell: bash /tmp/install-miniconda.sh -b -p $HOME/miniconda
+  register: miniconda_install
+  failed_when:
+    - "'ERROR: File or directory already exists' not in miniconda_install.stderr"
+    - "'installation finished.' not in miniconda_install.stdout"
+  changed_when: "'ERROR: File or directory already exists' not in miniconda_install.stderr"
+
+- name: Remove Miniconda installer
+  ansible.builtin.file:
+    state: absent
+    path: /tmp/install-miniconda.sh
+
+- name: Add miniconda bin to path
+  ansible.builtin.shell: echo 'export PATH=$HOME/miniconda/bin:$PATH' >> $HOME/.bashrc
+  register: miniconda_path
+  changed_when: miniconda_path.rc != 0
+
+- name: Create localhost records in /etc/hosts
+  ansible.builtin.lineinfile:
+    state: present
+    path: /etc/hosts
+    regexp: ".*{{ item }}"
+    line: "127.0.0.1 {{ item }}"
+  with_items:
+    - "prometheus"
+    - "grafana"
+    - "loki"
+    - "nautobot"
+
+- name: Download containerlab
+  ansible.builtin.get_url:
+    url: https://get.containerlab.dev
+    dest: /tmp/get-clab.sh
+    mode: "0755"
+
+- name: Install containerlab
+  ansible.builtin.command: bash -c /tmp/get-clab.sh
+  register: clab_install
+  retries: 3
+  delay: 10
+  changed_when: clab_install.rc != 0
+
+- name: Copy cEOS container image
+  ansible.builtin.copy:
+    src: "{{ lookup('ansible.builtin.env', 'CEOS_IMAGE_PATH') }}"
+    dest: /tmp/cEOS.tar
+    mode: "0644"
+  when:
+    - lab_scenario == "batteries-included"
+    - lookup('ansible.builtin.env', 'CEOS_IMAGE_PATH', default='') != ''
+
+- name: Check if cEOS image exists
+  ansible.builtin.command: docker image inspect ceos:image
+  register: ceos_image_check
+  failed_when: false
+  changed_when: false
+  when:
+    - lab_scenario == "batteries-included"
+
+- name: Import cEOS container image
+  ansible.builtin.command: docker import /tmp/cEOS.tar ceos:image
+  register: ceos_import
+  changed_when: true
+  when:
+    - lab_scenario == "batteries-included"
+    - ceos_image_check.rc != 0

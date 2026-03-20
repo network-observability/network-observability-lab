@@ -1,0 +1,45 @@
+---
+# Shared deploy tasks: install netobs, deploy the lab, and load seed data.
+#
+# Expected variables (set at the play level):
+#   netobs_repo_dir    - absolute path to the repository root on the target host
+#   lab_scenario       - scenario name (e.g. "batteries-included")
+#   lab_topology_file  - path to containerlab topology file
+#   lab_vars_file      - path to containerlab vars file
+
+- name: Install network-observability-lab
+  ansible.builtin.shell:
+    cmd: "cd {{ netobs_repo_dir }} && pip install ."
+    executable: /bin/bash
+  register: netobs_install
+  changed_when: netobs_install.rc != 0
+
+- name: "Run netobs lab prepare for {{ lab_scenario }} scenario"
+  ansible.builtin.shell:
+    cmd: "cd {{ netobs_repo_dir }} && netobs lab prepare --scenario {{ lab_scenario }} --topology {{ lab_topology_file }}"
+    executable: /bin/bash
+  register: netobs_run
+  changed_when: netobs_run.rc != 0
+
+- name: Wait for Nautobot to come up
+  ansible.builtin.uri:
+    url: "http://localhost:8080/health/"
+    status_code: [200]
+  register: result
+  until: result.status == 200
+  retries: 100
+  delay: 10
+
+- name: Initialize Nautobot data
+  ansible.builtin.shell:
+    cmd: "cd {{ netobs_repo_dir }} && netobs utils load-nautobot --topology {{ lab_topology_file }} --extra-topology-vars {{ lab_vars_file }}"
+    executable: /bin/bash
+  register: netobs_nautobot_data
+  changed_when: netobs_nautobot_data.rc != 0
+
+- name: Initialize Prefect data
+  ansible.builtin.shell:
+    cmd: "cd {{ netobs_repo_dir }} && netobs utils load-prefect-secrets"
+    executable: /bin/bash
+  register: netobs_prefect_data
+  changed_when: netobs_prefect_data.rc != 0

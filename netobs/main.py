@@ -1082,6 +1082,16 @@ def deploy_droplet(
     keep_api_key = Path("./keep_api_key")
     keep_api_key.write_text(ENVVARS.get("KEEP_API_KEY", ""))
 
+    # Install required Ansible collections
+    result = run_cmd(
+        exec_cmd="ansible-galaxy collection install -r setup/requirements.yml",
+        envvars=ENVVARS,
+        task_name="install ansible collections",
+    )
+    if result.returncode != 0:
+        console.log("Issues encountered installing Ansible collections", style="warning")
+        raise typer.Abort()
+
     # Then create the droplets
     exec_cmd = ansible_command(
         playbook="create_droplet.yml",
