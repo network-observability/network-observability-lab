@@ -1126,6 +1126,54 @@ def deploy_droplet(
     keep_api_key.unlink()
 
 
+@setup_app.command(rich_help_panel="Linux", name="linux")
+def setup_linux(
+    verbose: Annotated[int, typer.Option("--verbose", "-v", count=True)] = 0,
+    extra_vars: Annotated[
+        Optional[str], typer.Option("--extra-vars", "-e", help="Extra vars to pass to the playbook")
+    ] = None,
+    scenario: Annotated[
+        NetObsScenarios, typer.Option("--scenario", "-s", help="Scenario to execute command", envvar="LAB_SCENARIO")
+    ] = NetObsScenarios.BATTERIES_INCLUDED,
+    topology: Annotated[Path, typer.Option(help="Path to the topology file", exists=True)] = Path(
+        "./containerlab/lab.yml"
+    ),
+    vars_topology: Annotated[Path, typer.Option(help="Path to the vars topology file", exists=True)] = Path(
+        "./containerlab/lab_vars.yml"
+    ),
+):
+    """Bootstrap the local Linux machine with all lab dependencies.
+
+    [u]Example:[/u]
+        [i]> netobs setup linux --scenario webinar[/i]
+    """
+    # Install required Ansible collections
+    result = run_cmd(
+        exec_cmd="ansible-galaxy collection install -r setup/requirements.yml",
+        envvars=ENVVARS,
+        task_name="install ansible collections",
+    )
+    if result.returncode != 0:
+        console.log("Issues encountered installing Ansible collections", style="warning")
+        raise typer.Abort()
+
+    exec_cmd = ansible_command(
+        playbook="setup_linux.yml",
+        inventories=[],
+        verbose=verbose,
+        extra_vars=extra_vars,
+        scenario=scenario.value,
+        topology=topology,
+        vars_topology=vars_topology,
+    )
+    result = run_cmd(exec_cmd=exec_cmd, envvars=ENVVARS, task_name="setup linux machine")
+    if result.returncode == 0:
+        console.log("Linux machine setup successfully", style="good")
+    else:
+        console.log("Issues encountered setting up Linux machine", style="warning")
+        raise typer.Abort()
+
+
 @setup_app.command(rich_help_panel="DigitalOcean", name="destroy")
 def destroy_droplet(
     verbose: Annotated[int, typer.Option("--verbose", "-v", count=True)] = 0,
