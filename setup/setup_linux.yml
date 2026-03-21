@@ -37,13 +37,13 @@
   gather_facts: true
   become: true
   vars:
-    ansible_python_interpreter: "{{ ansible_env.HOME }}/miniconda/bin/python"
+    ansible_python_interpreter: "{{ lookup('env', 'HOME') }}/miniconda/bin/python"
     netobs_repo_dir: "{{ playbook_dir }}/.."
     lab_scenario: "{{ lookup('ansible.builtin.env', 'LAB_SCENARIO', default='batteries-included') }}"
     lab_topology_file: "{{ playbook_dir }}/../containerlab/lab.yml"
     lab_vars_file: "{{ playbook_dir }}/../containerlab/lab_vars.yml"
   environment:
-    PATH: "{{ ansible_env.HOME }}/miniconda/bin:{{ ansible_env.HOME }}/.local/bin:{{ ansible_env.PATH }}"
+    PATH: "{{ lookup('env', 'HOME') }}/miniconda/bin:{{ lookup('env', 'HOME') }}/.local/bin:{{ lookup('env', 'PATH') }}"
   tasks:
     - name: Deploy netobs app
       ansible.builtin.import_tasks: tasks/deploy.yml
