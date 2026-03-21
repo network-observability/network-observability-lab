@@ -34,7 +34,7 @@
 - name: Deploy netobs app on local Linux machine
   hosts: localhost
   connection: local
-  gather_facts: false
+  gather_facts: true
   become: true
   vars:
     ansible_python_interpreter: "{{ ansible_env.HOME }}/miniconda/bin/python"
