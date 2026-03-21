@@ -21,50 +21,62 @@ The repository includes all the lab scenarios from the book, which progressively
 
 ## Requirements
 
-The lab environments are designed to set up a small network and an attached observability stack. Developed and tested on Debian-based systems, we provide **[setup](setup/README.md) documentation to guide** you through automatic setup on a DigitalOcean droplet. This process will provision, install dependencies, and configure the environment automatically. But if you want to host the lab environment, ensure the following:
+The lab environments are designed to set up a small network and an attached observability stack. Developed and tested on Debian-based Linux systems. We provide two ways to get started:
 
-- `docker` installed (version `26.1.1` or above)
-- `containerlab` for the network lab (version `0.54.2` or above)
-- `netobs` for managing the network lab and observability stack (installed with this repository, more details later)
-- Arista `cEOS` images for the `containerlab` environment. You can open an account and download them at [arista.com](https://www.arista.com)
+- **Linux machine** (local or remote): automated setup via an Ansible playbook — see [Linux setup](#quickstart-linux).
+- **DigitalOcean droplet**: fully automated provisioning and configuration — see the [setup README](./setup/README.md).
 
-For detailed setup instructions, please refer to the [setup README](./setup/README.md). It provides a comprehensive guide on installing the lab environment on a DigitalOcean Droplet.
+Both paths install all dependencies (Docker, Containerlab, Python environment) and deploy the lab automatically. The Arista `cEOS` image is only required for scenarios that use it (e.g. `batteries-included`). You can download it after registering at [arista.com](https://www.arista.com).
 
-### Prepare cEOS image
+## Quickstart — Linux
 
-After downloading the image, use the following command to import them as Docker images:
+This is the recommended path if you already have a Linux machine (local or remote). It installs all dependencies and deploys the lab in one command.
 
-```bash
-# Import cEOS images as Docker images
-docker import <path-to-image>/cEOS64-lab-<version>.tar.xz ceos:image
-```
-
-## Quickstart
-
-To get started with the network lab and observability stack, you need to:
-
-1. Copy the necessary environment variables to configure the components used within the lab scenarios.
+1. Clone the repository and enter it:
 
   ```bash
-  # Setup environment variables (edit the .env file to your liking)
+  git clone https://github.com/network-observability/network-observability-lab.git
+  cd network-observability-lab
+  ```
+
+2. Copy and edit the environment file:
+
+  ```bash
   cp example.env .env
+  # Edit .env with your credentials and settings
   ```
 
-2. Install the `netobs` utility command that helps manage the entire lab environment.
+3. Install Ansible and run the bootstrap playbook:
 
   ```bash
-  # Install the python dependencies
-  pip install .
+  pip install ansible
+  ansible-playbook setup/setup_linux.yml -e "lab_scenario=batteries-included"
   ```
 
-3. Test everything is working by deploying a lab that has most of the components configured and ready to go.
+  For a specific scenario and topology:
 
   ```bash
-  # Start the network lab
+  ansible-playbook setup/setup_linux.yml \
+    -e "lab_scenario=webinar" \
+    -e "lab_topology_file=./chapters/webinar/containerlab/lab.yml" \
+    -e "lab_vars_file=./chapters/webinar/containerlab/lab_vars.yml"
+  ```
+
+  This installs Docker, Containerlab, the `netobs` tool, deploys the lab, and loads Nautobot data automatically.
+
+4. Once setup completes, use `netobs` for day-to-day operations:
+
+  ```bash
   netobs lab deploy --scenario batteries-included
+  netobs docker logs telegraf-01 --follow
+  netobs lab destroy --scenario batteries-included
   ```
 
-> NOTE: Our lab comes with a `batteries-included` setup, providing you with everything you need to get started with network observability right away. This setup includes pre-configured tools and detailed step-by-step instructions to help you explore and learn without any hassle. Head over to the [instructions](./chapters/batteries-included/README.md) section to begin!
+> NOTE: Our lab comes with a `batteries-included` setup, providing you with everything you need to get started with network observability right away. Head over to the [instructions](./chapters/batteries-included/README.md) section to begin!
+
+## Quickstart — DigitalOcean
+
+For fully automated remote provisioning on DigitalOcean, refer to the **[setup README](./setup/README.md)**. This path creates a droplet, installs all dependencies, and deploys the lab automatically using `netobs setup deploy`.
 
 ---
 
@@ -76,7 +88,7 @@ The `netobs` utility tool simplifies managing and monitoring the network lab and
 
 The `netobs` utility includes five main commands to help manage the environment:
 
-- **`netobs setup`**: Manages the overall setup of a remote DigitalOcean droplet hosting this repository and its lab environment. This command simplifies the process of preparing a hosting environment for users.
+- **`netobs setup`**: Manages the setup of the lab environment. Use `netobs setup linux` to bootstrap a local Linux machine, or `netobs setup deploy` to provision and configure a remote DigitalOcean droplet.
 
 - **`netobs containerlab`**: Manages the `containerlab` pre-configured setup. All lab scenarios presented in the chapters operate under this network lab configuration.
 

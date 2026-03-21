@@ -1,13 +1,12 @@
-# Remote Machine Setup
+# Machine Setup
 
-This directory contains instructions for deploying a remote droplet (virtual machine) on DigitalOcean to follow along with the labs stored in this repository.
-
-The virtual machine is configured to run the network observability lab using the `netobs` utility tool. If you are following along with the book, you can use this virtual machine to run the labs presented in the book.
+This directory contains instructions for setting up the network observability lab on either a **local Linux machine** or a **remote DigitalOcean droplet**.
 
 ![Overall Lab Environment](./../pics/overall-lab-environment.png)
 
-- [Remote Machine Setup](#remote-machine-setup)
-  - [Requirements](#requirements)
+- [Machine Setup](#machine-setup)
+  - [Linux Machine Setup](#linux-machine-setup)
+  - [DigitalOcean Remote Setup](#digitalocean-remote-setup)
     - [1. Create a Digital Ocean account](#1-create-a-digital-ocean-account)
     - [2. Fork and Clone the Git Repository](#2-fork-and-clone-the-git-repository)
     - [3. Install the `netobs` tool](#3-install-the-netobs-tool)
@@ -22,7 +21,63 @@ The virtual machine is configured to run the network observability lab using the
     - [Note About the Lab Chapters](#note-about-the-lab-chapters)
   - [Removing the Lab Environment](#removing-the-lab-environment)
 
-## Requirements
+## Linux Machine Setup
+
+Use this path if you have a Linux machine (local or remote, Ubuntu 22.04+) and want to install all dependencies and deploy the lab automatically.
+
+### Prerequisites
+
+- A Debian/Ubuntu Linux machine with `python3` and `pip` available
+- Internet access
+- Root or sudo access
+
+### Steps
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/network-observability/network-observability-lab.git
+cd network-observability-lab
+```
+
+2. Copy and edit the environment file:
+
+```bash
+cp example.env .env
+# Edit .env with your credentials and settings
+```
+
+3. Install Ansible and run the bootstrap playbook:
+
+```bash
+pip install ansible
+ansible-playbook setup/setup_linux.yml -e "lab_scenario=batteries-included"
+```
+
+For a specific scenario and topology (e.g. webinar):
+
+```bash
+ansible-playbook setup/setup_linux.yml \
+  -e "lab_scenario=webinar" \
+  -e "lab_topology_file=./chapters/webinar/containerlab/lab.yml" \
+  -e "lab_vars_file=./chapters/webinar/containerlab/lab_vars.yml"
+```
+
+The playbook installs Docker, Containerlab, Miniconda (Python 3.12), the `netobs` tool, deploys the lab, and loads Nautobot data.
+
+> **Note:** The `batteries-included` scenario requires the Arista cEOS image. Set `CEOS_IMAGE_PATH` in your environment to the path of the `.tar` file before running the playbook, or import it manually with `docker import <path> ceos:image`.
+
+Once complete, use `netobs` for day-to-day operations:
+
+```bash
+netobs setup linux --scenario batteries-included   # Re-run full setup via netobs
+netobs lab deploy --scenario batteries-included    # Deploy only (dependencies already installed)
+netobs lab destroy --scenario batteries-included   # Tear down
+```
+
+---
+
+## DigitalOcean Remote Setup
 
 This guide uses DigitalOcean as the cloud provider, and it's important to note that charges may apply. The process employs the `netobs` utility to wrap Ansible playbooks for configuring the DigitalOcean droplet. A "control" machine, usually your local machine, is required to execute the commands and initiate the setup process.
 
