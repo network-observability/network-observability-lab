@@ -1753,7 +1753,7 @@
                 "uid": "P1809F7CD0C75ACF3"
               },
               "editorMode": "code",
-              "expr": "sum(bgp_prefixes_accepted{device=\"$device\"})",
+              "expr": "sum(bgp_received_routes{device=\"$device\"})",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -1901,11 +1901,11 @@
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "bgp_neighbor_state{device=\"$device\"}",
+              "expr": "bgp_oper_state{afi_safi_name=\"ipv4-unicast\",device=\"$device\"}",
               "format": "time_series",
               "instant": false,
               "interval": "",
-              "legendFormat": "(ASN: {{neighbor_asn}}) - {{neighbor}}",
+              "legendFormat": "Peer: {{peer_address}}",
               "range": true,
               "refId": "A"
             }
