@@ -1,11 +1,12 @@
 ---
-- name: Stand up netobs-droplet
+- name: Stand up DigitalOcean droplet
   hosts: localhost
   gather_facts: false
   vars:
     ansible_connection: local
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     delay_between_droplet_creation: "{{ lookup('ansible.builtin.env', 'DO_DROPLET_CREATION_DELAY', default='60') | int }}"
+    do_droplet_name: "{{ lookup('ansible.builtin.env', 'DO_DROPLET_NAME', default='netobs-droplet') }}"
   vars_prompt:
     - name: "droplet_image"
       prompt: "Enter the droplet image"
@@ -27,7 +28,7 @@
       community.digitalocean.digital_ocean_droplet:
         state: present
         oauth_token: "{{ lookup('ansible.builtin.env', 'DO_API_TOKEN') }}"
-        name: "netobs-droplet"
+        name: "{{ do_droplet_name }}"
         size: "{{ droplet_size }}"
         image: "{{ droplet_image }}"
         region: "{{ droplet_region }}"

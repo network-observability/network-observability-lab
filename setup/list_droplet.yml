@@ -1,7 +1,9 @@
 ---
 - name: Show Inventory
-  hosts: "netobs-droplet"
+  hosts: "{{ do_droplet_name }}"
   gather_facts: false
+  vars:
+    do_droplet_name: "{{ lookup('ansible.builtin.env', 'DO_DROPLET_NAME', default='netobs-droplet') }}"
   tasks:
     - name: Show SSH command
       ansible.builtin.debug:

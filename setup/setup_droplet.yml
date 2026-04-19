@@ -1,22 +1,23 @@
 ---
-#### Bootstrap netobs-droplet
-- name: Bootstrap netobs-droplet
-  hosts: "netobs-droplet"
+#### Bootstrap {{ do_droplet_name }}
+- name: Bootstrap DigitalOcean droplet
+  hosts: "{{ do_droplet_name }}"
   gather_facts: false
   tasks:
-    - name: Wait for connection to netobs-droplet
+    - name: Wait for connection to {{ do_droplet_name }}
       ansible.builtin.wait_for_connection:
         timeout: 60
 
     - name: Bootstrap system
       ansible.builtin.import_tasks: tasks/bootstrap.yml
 
-#### Setup netobs-droplet
+#### Setup {{ do_droplet_name }}
 - name: Setup netobs app
-  hosts: netobs-droplet
+  hosts: "{{ do_droplet_name }}"
   vars:
     ansible_python_interpreter: /root/miniconda/bin/python
     netobs_repo_dir: /root/network-observability-lab
+    do_droplet_name: "{{ lookup('ansible.builtin.env', 'DO_DROPLET_NAME', default='netobs-droplet') }}"
   environment:
     PATH: "/root/miniconda/bin:/root/.local/bin:{{ ansible_env.PATH }}"
   tasks:

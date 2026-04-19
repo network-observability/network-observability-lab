@@ -1,7 +1,9 @@
 ---
 - name: Destroy Droplet in DigitalOcean
-  hosts: netobs-droplet
+  hosts: "{{ do_droplet_name }}"
   gather_facts: false
+  vars:
+    do_droplet_name: "{{ lookup('ansible.builtin.env', 'DO_DROPLET_NAME', default='netobs-droplet') }}"
   tasks:
 
     - name: "Destroy Droplet"
