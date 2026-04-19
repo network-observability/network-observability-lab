@@ -1051,6 +1051,9 @@ def ansible_command(
     if vars_topology:
         exec_cmd += f' -e "lab_vars_file={vars_topology}"'
 
+    do_droplet_name = ENVVARS.get("DO_DROPLET_NAME", "netobs-droplet")
+    exec_cmd += f' -e "do_droplet_name={do_droplet_name}"'
+
     if verbose:
         exec_cmd += f" -{'v' * verbose}"
 
