@@ -428,7 +428,7 @@ def containerlab_deploy(
     console.log(f"Topology file: [orange1 i]{topology}", style="info")
     exec_cmd = f"containerlab deploy -t {topology}"
     if sudo:
-        exec_cmd = f"sudo {exec_cmd}"
+        exec_cmd = f"sudo --preserve-env=CEOS_IMAGE {exec_cmd}"
     run_cmd(exec_cmd, task_name="Deploying containerlab topology")
 
 
@@ -446,7 +446,7 @@ def containerlab_destroy(
     console.log(f"Topology file: [orange1 i]{topology}", style="info")
     exec_cmd = f"containerlab destroy -t {topology} --cleanup"
     if sudo:
-        exec_cmd = f"sudo {exec_cmd}"
+        exec_cmd = f"sudo --preserve-env=CEOS_IMAGE {exec_cmd}"
     run_cmd(exec_cmd, task_name="Destroying containerlab topology")
 
 
@@ -464,7 +464,7 @@ def containerlab_inspect(
     console.log(f"Topology file: [orange1 i]{topology}", style="info")
     exec_cmd = f"containerlab inspect -t {topology}"
     if sudo:
-        exec_cmd = f"sudo {exec_cmd}"
+        exec_cmd = f"sudo --preserve-env=CEOS_IMAGE {exec_cmd}"
     run_cmd(exec_cmd, task_name="Inspect containerlab topology")
 
 
